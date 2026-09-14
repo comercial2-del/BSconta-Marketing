@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BSconta + Marketing</title>
+  <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
+  <link rel="stylesheet" href="../css/styles.css?v=20260914" />
+</head>
+<body>
+  <div class="app-shell">
+    <div id="app-header"></div>
+    <div class="app-content">
+      <main class="main">
+        <div id="content"><div class="loading-wrap"><div class="spinner"></div></div></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- VELOCIDADE: estas bibliotecas ficavam no <head>, onde travam a
+       pintura da tela até terminarem de baixar. Aqui embaixo o HTML
+       aparece primeiro e elas carregam em seguida, antes dos nossos
+       scripts — que é a única ordem que importa. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="../js/config.js?v=20260914"></script>
+  <script src="../js/supabaseClient.js?v=20260914"></script>
+  <script src="../js/auth.js?v=20260914"></script>
+  <script src="../js/data.js?v=20260914"></script>
+  <script src="../js/calc.js?v=20260914"></script>
+  <script src="../js/ui.js?v=20260914"></script>
+  <script src="../js/charts.js?v=20260914"></script>
+  <script>
+    let store = null;
+
+    function render() {
+      const { period } = currentPeriodFromUrl("this_month");
+      const range = resolvePeriod(period);
+      const ranking = getRanking(store, range);
+
+      document.getElementById("content").innerHTML = `
+        <div class="space-y">
+          <div class="row-between">
+            <h1 class="page-title">Ranking comercial</h1>
+            <div id="period-filter"></div>
+          </div>
+          <div class="card card-p">
+            <h2>Faturamento por vendedor</h2>
+            <div style="position:relative;height:${Math.max(64, ranking.filter((r) => r.revenue > 0).length * 34 + 22)}px">
+              <canvas id="chart-ranking"></canvas>
+            </div>
+          </div>
+
+          <div class="card card-p table-scroll">
+            <table>
+              <thead><tr><th>Posição</th><th>Vendedor/SDR</th><th>Ligações</th><th>Reuniões</th><th>Propostas</th><th>Vendas</th><th>Faturamento</th></tr></thead>
+              <tbody>
+                ${ranking
+                  .map(
+                    (r, i) => `<tr>
+                      <td style="font-size:1.125rem;font-weight:600;color:var(--text-faint)">${i + 1}º</td>
+                      <td style="font-weight:500">${esc(r.name)}</td>
+                      <td>${r.calls}</td>
+                      <td>${r.meetings}</td>
+                      <td>${r.proposals}</td>
+                      <td>${r.sales}</td>
+                      <td style="font-weight:500;color:var(--emerald-700)">${brl(r.revenue)}</td>
+                    </tr>`
+                  )
+                  .join("")}
+                ${ranking.length === 0 ? `<tr><td colspan="7" class="text-empty">Nenhum vendedor cadastrado ainda.</td></tr>` : ""}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      renderBarrasPorPessoa(
+        "chart-ranking",
+        ranking.map((r) => ({ nome: r.name, valor: r.revenue, detalhe: `${r.sales} venda${r.sales === 1 ? "" : "s"}` })),
+        { dinheiro: true, vazio: "Nenhum faturamento no período." }
+      );
+
+      renderPeriodFilter(document.getElementById("period-filter"), store.sellers, render, { defaultPeriod: "this_month", showSellerFilter: false });
+    }
+
+    (async () => {
+      try {
+        // VELOCIDADE: a busca dos dados COMEÇA JÁ, sem esperar o perfil.
+        // Antes era uma fila: perguntava quem é o usuário, esperava a resposta
+        // do servidor, e só então começava a carregar os dados — uma ida e
+        // volta inteira (~250 ms) parada no caminho. As duas coisas não
+        // dependem uma da outra, então agora andam juntas.
+        const dados = loadAllInstantaneo((novo) => {
+          store = novo;
+          render();
+        }).catch((e) => e); // guardado para ser relançado depois do login
+
+        const auth = await requireAuth();
+        if (!auth) return; // sem sessão: já foi redirecionado para o login
+        renderShell(auth.profile);
+
+        const resultado = await dados;
+        if (resultado instanceof Error) throw resultado;
+        store = resultado;
+        render();
+      } catch (err) {
+        console.error(err);
+        showFatalError(err);
+      }
+    })();
+  </script>
+</body>
+</html>

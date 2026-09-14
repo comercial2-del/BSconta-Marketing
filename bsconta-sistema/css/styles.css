@@ -1,0 +1,1201 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+:root {
+  --bg: #f4f5fa;
+  --surface: #ffffff;
+  --surface-2: #fafafe;
+  --border: #e7e8f2;
+  --text: #16172b;
+  --text-soft: #6b6d85;
+  --text-faint: #9799ad;
+
+  --indigo-50: #eef0ff;
+  --indigo-100: #e0e2ff;
+  --indigo-500: #6366f1;
+  --indigo-600: #4f46e5;
+  --indigo-700: #4338ca;
+
+  --emerald-50: #ecfdf5;
+  --emerald-100: #d1fae5;
+  --emerald-500: #10b981;
+  --emerald-600: #059669;
+  --emerald-700: #047857;
+
+  --amber-50: #fffbeb;
+  --amber-100: #fef3c7;
+  --amber-500: #f59e0b;
+  --amber-700: #b45309;
+
+  --red-50: #fef2f2;
+  --red-100: #fee2e2;
+  --red-500: #ef4444;
+  --red-600: #dc2626;
+  --red-700: #b91c1c;
+
+  --blue-50: #eff6ff;
+
+  --teal-50: #f0fdfa;
+  --teal-100: #ccfbf1;
+  --teal-500: #14b8a6;
+  --teal-600: #0d9488;
+  --teal-700: #0f766e;
+
+  --violet-50: #f5f3ff;
+  --violet-100: #ede9fe;
+  --violet-500: #8b5cf6;
+  --violet-600: #7c3aed;
+  --violet-700: #6d28d9;
+
+  --orange-50: #fff7ed;
+  --orange-100: #ffedd5;
+  --orange-500: #f97316;
+  --orange-600: #ea580c;
+  --orange-700: #c2410c;
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 6px 20px rgba(15, 23, 42, 0.05);
+  --shadow-lg: 0 16px 40px rgba(15, 23, 42, 0.09);
+  --radius: 15px;
+  --gap: 0.85rem;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-decoration: none; }
+::selection { background: var(--indigo-100); }
+
+/* ---------------------------------------------------------------------- */
+/* App shell: sidebar + content                                           */
+/* ---------------------------------------------------------------------- */
+.app-shell { display: flex; min-height: 100vh; }
+
+.sidebar {
+  width: 268px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+.sidebar-brand { padding: 1.35rem 1.25rem 1rem; }
+.sidebar-brand .logo-mark {
+  width: 43px; height: 43px; border-radius: 11px;
+  object-fit: contain; flex-shrink: 0;
+}
+.sidebar-brand .brand-row { display: flex; align-items: center; gap: 0.7rem; }
+.sidebar-brand h1 { font-size: 1.18rem; font-weight: 800; margin: 0; letter-spacing: -0.01em; color: var(--indigo-700); }
+.sidebar-brand h1 sup { color: var(--indigo-500); font-size: 0.7em; top: -0.4em; }
+.sidebar-brand p { font-size: 0.73rem; font-weight: 600; color: var(--text-faint); margin: 0.05rem 0 0; letter-spacing: 0.01em; }
+
+.sidebar-nav { flex: 1; padding: 0.5rem 0.8rem; display: flex; flex-direction: column; gap: 0.22rem; overflow-y: auto; }
+.sidebar-nav a {
+  position: relative;
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.62rem 0.85rem; border-radius: 11px;
+  font-size: 0.95rem; font-weight: 500; color: var(--text-soft);
+  transition: background 0.14s, color 0.14s, box-shadow 0.14s;
+}
+.sidebar-nav a svg { width: 20px; height: 20px; flex-shrink: 0; opacity: 0.72; transition: opacity 0.14s; }
+.sidebar-nav a:hover { background: var(--surface-2); color: var(--text); }
+.sidebar-nav a:hover svg { opacity: 0.95; }
+/* Item ativo: fundo em degradê suave, sombra leve e um traço colorido na
+   borda esquerda — dá o destaque sem pesar. */
+.sidebar-nav a.active {
+  background: linear-gradient(90deg, var(--indigo-50), rgba(238, 240, 255, 0.45));
+  color: var(--indigo-700); font-weight: 600;
+  box-shadow: 0 1px 3px rgba(79, 70, 229, 0.07);
+}
+.sidebar-nav a.active::before {
+  content: ""; position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+  width: 3px; height: 1.35rem; border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--indigo-500), var(--indigo-700));
+}
+.sidebar-nav a.active svg { opacity: 1; }
+
+.sidebar-foot { padding: 0.9rem 1rem 1rem; border-top: 1px solid var(--border); }
+.sidebar-user { display: flex; align-items: center; gap: 0.65rem; cursor: default; }
+.sidebar-user .chevron { margin-left: auto; width: 15px; height: 15px; color: var(--text-faint); flex-shrink: 0; }
+.sidebar-user .chevron svg { width: 100%; height: 100%; display: block; }
+.avatar {
+  width: 35px; height: 35px; border-radius: 50%; flex-shrink: 0;
+  background: var(--indigo-100); color: var(--indigo-700);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.78rem; font-weight: 700;
+}
+.sidebar-user-name { font-size: 0.89rem; font-weight: 600; margin: 0; line-height: 1.2; }
+.sidebar-user-role { font-size: 0.77rem; color: var(--text-faint); margin: 0; }
+
+.sidebar-promo {
+  position: relative; overflow: hidden;
+  margin-top: 0.75rem; padding: 0.8rem 0.9rem;
+  border-radius: 12px; border: 1px solid var(--indigo-100);
+  background: linear-gradient(160deg, var(--indigo-50), var(--blue-50) 70%);
+}
+.sidebar-promo .promo-icon {
+  position: absolute; right: -10px; bottom: -12px; width: 64px; height: 64px;
+  color: var(--indigo-500); opacity: 0.14;
+}
+.sidebar-promo .promo-icon svg { width: 100%; height: 100%; }
+.sidebar-promo .brand-row { gap: 0.5rem; margin-bottom: 0.4rem; }
+.sidebar-promo .logo-mark { width: 24px; height: 24px; border-radius: 7px; }
+.sidebar-promo strong { font-size: 0.9rem; font-weight: 800; color: var(--indigo-700); }
+.sidebar-promo p { position: relative; margin: 0; font-size: 0.81rem; font-weight: 500; color: var(--text-soft); line-height: 1.35; max-width: 9rem; }
+
+.btn-logout {
+  margin-top: 0.7rem; width: 100%;
+  border: 1px solid var(--border); background: var(--surface);
+  border-radius: 9px; padding: 0.5rem; font-size: 0.85rem; font-weight: 500;
+  color: var(--text-soft); cursor: pointer; transition: background 0.12s, color 0.12s;
+  display: flex; align-items: center; justify-content: center; gap: 0.4rem;
+}
+.btn-logout svg { width: 15px; height: 15px; flex-shrink: 0; }
+.btn-logout:hover { background: var(--red-50); color: var(--red-600); border-color: var(--red-100); }
+
+.app-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.main { width: 100%; max-width: 82rem; margin: 0 auto; padding: 1.35rem 1.6rem 2.25rem; flex: 1; }
+
+/* mobile: collapse sidebar to a top bar */
+.mobile-topbar { display: none; }
+@media (max-width: 860px) {
+  .app-shell { flex-direction: column; }
+  .sidebar { display: none; }
+  .mobile-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 0.85rem 1.1rem; position: sticky; top: 0; z-index: 10;
+  }
+  .main { padding: 1rem 0.9rem 2rem; }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Page structure                                                          */
+/* ---------------------------------------------------------------------- */
+.space-y > * + * { margin-top: 1.05rem; }
+.row-between { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.65rem; margin-bottom: 0.15rem; }
+h1.page-title { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
+.page-sub { font-size: 0.87rem; color: var(--text-faint); margin: 0.2rem 0 0; }
+
+/* Pode quebrar em telas estreitas (nas páginas em que o filtro de período
+   fica aqui dentro, ao lado do botão de calendário); os botões de ícone é
+   que não encolhem. */
+.header-actions { display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; min-width: 0; }
+.header-actions .icon-btn { flex-shrink: 0; }
+.icon-btn {
+  position: relative; width: 38px; height: 38px; border-radius: 11px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-soft);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  transition: background 0.12s, color 0.12s, box-shadow 0.12s;
+}
+.icon-btn svg { width: 18px; height: 18px; }
+.icon-btn:hover { background: var(--surface-2); color: var(--text); box-shadow: var(--shadow-sm); }
+.icon-btn .dot { position: absolute; top: 7px; right: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--red-500); border: 1.5px solid var(--surface); }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+.card-p { padding: 1.05rem 1.15rem; }
+.card h2 { margin: 0 0 0.7rem; font-size: 0.92rem; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+
+/* ---------------------------------------------------------------------- */
+/* KPI cards                                                                */
+/* ---------------------------------------------------------------------- */
+.kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--gap); }
+@media (min-width: 640px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1024px) { .kpi-grid { grid-template-columns: repeat(4, 1fr); } }
+.kpi-grid.cols-5 { grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 640px) { .kpi-grid.cols-5 { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1024px) { .kpi-grid.cols-5 { grid-template-columns: repeat(5, 1fr); } }
+
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.95rem 1.05rem;
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.kpi-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.kpi-card::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--indigo-500);
+}
+.kpi-card.tone-green::before { background: var(--emerald-500); }
+.kpi-card.tone-amber::before { background: var(--amber-500); }
+.kpi-card.tone-red::before { background: var(--red-500); }
+.kpi-label { font-size: 0.73rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); margin: 0; }
+.kpi-value { margin: 0.3rem 0 0; font-size: 1.72rem; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+.kpi-change { margin: 0.3rem 0 0; font-size: 0.77rem; font-weight: 600; }
+.kpi-change.up { color: var(--emerald-600); }
+.kpi-change.down { color: var(--red-600); }
+.kpi-change.neutral { color: var(--text-faint); font-weight: 500; }
+
+/* Variante com selo de ícone colorido (mockup "BSconta+") ------------------ */
+.kpi-card--icon::before { display: none; }
+.kpi-card--icon { padding: 1rem 1.05rem 1.05rem; }
+.kpi-card-top { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.55rem; }
+.kpi-icon {
+  width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.kpi-icon svg { width: 21px; height: 21px; }
+.kpi-card--icon .kpi-label { font-size: 0.73rem; line-height: 1.25; }
+.kpi-card--icon .kpi-value { font-size: 1.62rem; }
+
+.kpi-icon.tone-blue { background: var(--blue-50); color: var(--indigo-600); }
+.kpi-icon.tone-indigo { background: var(--indigo-50); color: var(--indigo-600); }
+.kpi-icon.tone-teal { background: var(--teal-50); color: var(--teal-600); }
+.kpi-icon.tone-violet { background: var(--violet-50); color: var(--violet-600); }
+.kpi-icon.tone-orange { background: var(--orange-50); color: var(--orange-600); }
+.kpi-icon.tone-green { background: var(--emerald-50); color: var(--emerald-600); }
+.kpi-icon.tone-amber { background: var(--amber-50); color: var(--amber-700); }
+.kpi-icon.tone-red { background: var(--red-50); color: var(--red-600); }
+
+/* Cartão único em destaque, para quando uma página tem só uma métrica
+   principal no topo (ex.: "Ligações de vendas" na página Ligações) — mais
+   rico que o kpi-card comum: selo de ícone em degradê, fundo suave e um
+   ícone decorativo grande do lado direito. */
+.kpi-hero {
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 1.25rem;
+  background: linear-gradient(135deg, var(--blue-50), #fff 65%);
+  border-color: var(--indigo-100);
+}
+.kpi-hero-icon {
+  width: 58px; height: 58px; border-radius: 16px; flex-shrink: 0;
+  background: linear-gradient(135deg, var(--indigo-500), var(--indigo-700));
+  color: #fff; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 10px 24px -8px rgba(79, 70, 229, 0.45);
+}
+.kpi-hero-icon svg { width: 27px; height: 27px; }
+.kpi-hero-body { flex: 0 0 auto; min-width: 0; }
+.kpi-hero-body .kpi-label { font-size: 0.74rem; }
+.kpi-hero-body .kpi-value { font-size: 2.2rem; margin-top: 0.3rem; }
+.kpi-hero-chart { flex: 1 1 auto; min-width: 0; height: 100px; position: relative; }
+.kpi-hero-trend { flex-shrink: 0; text-align: right; }
+.kpi-hero-trend .pill {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.35rem 0.75rem; border-radius: 999px; font-size: 0.84rem; font-weight: 700;
+}
+.kpi-hero-trend .pill.up { background: var(--emerald-50); color: var(--emerald-700); }
+.kpi-hero-trend .pill.down { background: var(--red-50); color: var(--red-700); }
+.kpi-hero-trend .pill.neutral { background: var(--surface-2); color: var(--text-faint); }
+.kpi-hero-trend .sub { display: block; margin-top: 0.4rem; font-size: 0.74rem; color: var(--text-faint); }
+@media (max-width: 640px) {
+  .kpi-hero { flex-wrap: wrap; padding: 1.25rem; }
+  .kpi-hero-chart { flex-basis: 100%; width: 100%; height: 110px; margin-top: 0.5rem; }
+  .kpi-hero-trend { margin-left: calc(58px + 1.25rem); text-align: left; }
+}
+
+/* Cartões largos (linha inferior: valores em R$) --------------------------- */
+.kpi-wide-grid { display: grid; gap: var(--gap); grid-template-columns: repeat(2, 1fr); }
+.kpi-wide-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 0.95rem 1.15rem; display: flex; align-items: center; gap: 0.9rem;
+  box-shadow: var(--shadow-sm); transition: box-shadow 0.15s, transform 0.15s;
+}
+.kpi-wide-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.kpi-wide-card .kpi-icon { width: 46px; height: 46px; }
+.kpi-wide-card .kpi-icon svg { width: 23px; height: 23px; }
+.kpi-wide-body { min-width: 0; }
+.kpi-wide-body .kpi-label { font-size: 0.73rem; }
+.kpi-wide-body .kpi-value { font-size: 1.68rem; margin-top: 0.3rem; }
+.kpi-wide-body .kpi-value.tone-blue { color: var(--indigo-600); }
+.kpi-wide-body .kpi-value.tone-green { color: var(--emerald-600); }
+.kpi-wide-trend { margin-left: auto; text-align: right; flex-shrink: 0; }
+.kpi-wide-trend .amount { display: block; font-size: 0.84rem; font-weight: 700; }
+.kpi-wide-trend .amount.up { color: var(--emerald-600); }
+.kpi-wide-trend .amount.down { color: var(--red-600); }
+.kpi-wide-trend .sub { display: block; font-size: 0.72rem; color: var(--text-faint); font-weight: 500; margin-top: 0.1rem; }
+@media (max-width: 640px) { .kpi-wide-grid { grid-template-columns: 1fr; } }
+
+/* Cartões de tendência com gráfico embutido (mockup "Reuniões"): selo de
+   ícone + rótulo/valor/pill à esquerda, linha com área preenchida à direita. */
+.trend-card {
+  position: relative; overflow: hidden;
+  display: flex; align-items: center; gap: 1.75rem;
+  padding-top: 1.2rem; padding-bottom: 1.2rem;
+}
+.trend-card::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  background: var(--indigo-500);
+}
+.trend-card.tone-green::before { background: var(--emerald-500); }
+.trend-card-info { flex: 0 0 auto; min-width: 8.5rem; }
+.trend-card-icon {
+  width: 48px; height: 48px; border-radius: 13px; margin-bottom: 0.75rem;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--indigo-50); color: var(--indigo-600);
+}
+.trend-card.tone-green .trend-card-icon { background: var(--emerald-50); color: var(--emerald-600); }
+.trend-card-icon svg { width: 24px; height: 24px; }
+.trend-card-info .kpi-label { font-size: 0.73rem; }
+.trend-card-info .kpi-value { font-size: 2rem; margin-top: 0.3rem; }
+.trend-card-pill {
+  display: inline-flex; align-items: center; gap: 0.3rem; margin-top: 0.75rem;
+  padding: 0.3rem 0.65rem; border-radius: 999px; font-size: 0.78rem; font-weight: 700;
+  background: var(--indigo-50); color: var(--indigo-700);
+}
+.trend-card.tone-green .trend-card-pill { background: var(--emerald-50); color: var(--emerald-700); }
+.trend-card-pill.down { background: var(--red-50); color: var(--red-700); }
+.trend-card-pill.neutral { background: var(--surface-2); color: var(--text-faint); }
+.trend-card-chart { flex: 1; min-width: 0; height: 130px; position: relative; }
+@media (max-width: 640px) {
+  .trend-card { flex-wrap: wrap; }
+  .trend-card-chart { flex-basis: 100%; width: 100%; }
+}
+
+/* Célula de data com ícone pequeno (tabelas "Reuniões"/"Ligações") -------- */
+.date-cell { display: flex; align-items: center; gap: 0.45rem; }
+.date-cell svg { width: 15px; height: 15px; color: var(--indigo-300); flex-shrink: 0; }
+th.col-chevron, td.col-chevron { width: 1.5rem; text-align: right; }
+.row-chevron { color: var(--text-faint); display: inline-flex; }
+.row-chevron svg { width: 16px; height: 16px; }
+
+/* Itens de grid não encolhem abaixo do próprio conteúdo por padrão
+   (min-width: auto) — sem isto, um texto longo sem quebra (ex.: a linha de
+   detalhe do funil) alarga o cartão e faz a página rolar de lado no celular. */
+.grid-2 > *, .grid-3 > *, .grid-goals > *, .kpi-grid > *, .kpi-wide-grid > * { min-width: 0; }
+.grid-2 { display: grid; gap: var(--gap); align-items: start; }
+@media (min-width: 1024px) { .grid-2 { grid-template-columns: repeat(2, 1fr); } }
+.grid-3 { display: grid; gap: var(--gap); align-items: start; }
+@media (min-width: 1024px) { .grid-3 { grid-template-columns: 2fr 1fr; } }
+@media (min-width: 1024px) { .grid-3.reverse { grid-template-columns: 1fr 1.35fr; } }
+.grid-goals { display: grid; gap: var(--gap); }
+@media (min-width: 640px) { .grid-goals { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1024px) { .grid-goals { grid-template-columns: repeat(3, 1fr); } }
+
+/* Cartões de meta (página "Metas") ----------------------------------------- */
+
+/* ---------------------------------------------------------------------- */
+/* Tables                                                                   */
+/* ---------------------------------------------------------------------- */
+table { width: 100%; text-align: left; font-size: 0.89rem; border-collapse: collapse; }
+th {
+  border-bottom: 1px solid var(--border);
+  font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em;
+  color: var(--text-faint); padding: 0 0.9rem 0.5rem 0; font-weight: 700;
+}
+td { border-bottom: 1px solid var(--surface-2); padding: 0.55rem 0.9rem 0.55rem 0; }
+tbody tr:hover { background: var(--surface-2); }
+tbody tr:last-child td { border-bottom: none; }
+.table-scroll { overflow-x: auto; }
+.text-empty { text-align: center; color: var(--text-faint); padding: 1.2rem 0; }
+
+.status-badge { border-radius: 999px; padding: 0.18rem 0.6rem; font-size: 0.74rem; font-weight: 600; }
+.status-DONE { background: var(--emerald-100); color: var(--emerald-700); }
+.status-SCHEDULED { background: var(--indigo-100); color: var(--indigo-700); }
+.status-CANCELED, .status-NO_SHOW { background: var(--red-100); color: var(--red-700); }
+.status-RESCHEDULED { background: var(--amber-100); color: var(--amber-700); }
+.status-DECLINED { background: var(--surface-2); color: var(--text-soft); }
+.badge { border-radius: 999px; padding: 0.18rem 0.55rem; font-size: 0.74rem; font-weight: 600; }
+.badge-admin { background: var(--indigo-100); color: var(--indigo-700); }
+.badge-viewer { background: var(--surface-2); color: var(--text-soft); }
+.badge-green { background: var(--emerald-100); color: var(--emerald-700); }
+.badge-neutral { background: var(--surface-2); color: var(--text-faint); }
+
+.meeting-confirm { display: inline-flex; gap: 0.2rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 0.18rem; }
+.meeting-confirm-btn {
+  border: none; background: transparent; border-radius: 6px;
+  padding: 0.3rem 0.62rem; font-size: 0.79rem; font-weight: 600;
+  color: var(--text-soft); cursor: pointer; transition: background 0.12s, color 0.12s;
+}
+.meeting-confirm-btn:hover:not(.active) { color: var(--text); }
+.meeting-confirm-btn:disabled { opacity: 0.6; cursor: default; }
+.meeting-confirm-btn.active.yes { background: var(--emerald-100); color: var(--emerald-700); }
+.meeting-confirm-btn.active.no { background: var(--red-100); color: var(--red-700); }
+
+/* ---------------------------------------------------------------------- */
+/* Filters / forms                                                         */
+/* ---------------------------------------------------------------------- */
+.period-filter { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.period-buttons { display: flex; flex-wrap: wrap; gap: 0.2rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: 11px; padding: 0.22rem; }
+.period-buttons button {
+  border: none; background: transparent; border-radius: 8px;
+  padding: 0.4rem 0.72rem; font-size: 0.84rem; font-weight: 600;
+  color: var(--text-soft); cursor: pointer; transition: background 0.12s, color 0.12s;
+}
+.period-buttons button.active { background: var(--surface); color: var(--indigo-700); box-shadow: var(--shadow-sm); }
+.period-buttons button:hover:not(.active) { color: var(--text); }
+
+/* Chip do período escolhido no calendário, ao lado dos botões fixos */
+.period-buttons .cal-chip { display: inline-flex; align-items: center; gap: 0.35rem; }
+.period-buttons .cal-chip svg { width: 14px; height: 14px; }
+
+/* ---------------------------------------------------------------------- */
+/* Aviso de sincronização (canto inferior direito)                         */
+/* ---------------------------------------------------------------------- */
+.sync-toast {
+  position: fixed; right: 1.15rem; bottom: 1.15rem; z-index: 80;
+  display: flex; align-items: center; gap: 0.5rem;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 999px; padding: 0.5rem 0.95rem;
+  font-size: 0.82rem; font-weight: 600; color: var(--text-soft);
+  box-shadow: var(--shadow-md);
+  opacity: 0; transform: translateY(8px); pointer-events: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+/* pointer-events volta a "auto" aqui: sem isto o aviso ficava visível mas não
+   clicável (o gráfico atrás capturava o clique), e não dava para abrir o
+   detalhe técnico nem fechar o aviso. */
+.sync-toast.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+/* Concluído: verde bem visível, com um "check" branco no círculo. */
+.sync-toast.ok {
+  color: var(--emerald-700); font-weight: 700;
+  background: var(--emerald-50); border-color: var(--emerald-500);
+  box-shadow: 0 6px 18px -4px rgba(5, 150, 105, 0.28);
+}
+/* Falha total: vermelho. Falha parcial: âmbar. Nenhum dos dois desaparece
+   sozinho — o usuário fecha clicando, e o clique também abre o detalhe. */
+.sync-toast.error {
+  color: var(--red-700); font-weight: 700;
+  background: var(--red-50); border-color: var(--red-500);
+  box-shadow: 0 6px 18px -4px rgba(220, 38, 38, 0.26);
+}
+.sync-toast.warn {
+  color: var(--amber-700); font-weight: 700;
+  background: var(--amber-50); border-color: var(--amber-500);
+  box-shadow: 0 6px 18px -4px rgba(180, 83, 9, 0.22);
+}
+.sync-toast.error, .sync-toast.warn { cursor: pointer; }
+
+.sync-check {
+  width: 17px; height: 17px; border-radius: 50%; flex-shrink: 0;
+  background: var(--emerald-600); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+.sync-check svg { width: 11px; height: 11px; }
+.sync-toast.error .sync-check.alert { background: var(--red-600); }
+.sync-toast.warn .sync-check.alert { background: var(--amber-600, #d97706); }
+
+/* Com detalhe/segunda linha o aviso deixa de ser uma pílula e vira um cartão. */
+.sync-toast:has(.sync-text small) { border-radius: 13px; align-items: flex-start; padding: 0.6rem 0.95rem; max-width: min(26rem, calc(100vw - 2rem)); }
+.sync-toast .sync-text { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; }
+.sync-toast .sync-text small { font-size: 0.76rem; font-weight: 500; opacity: 0.85; line-height: 1.35; }
+.sync-toast .sync-more { text-decoration: underline; opacity: 0.7; }
+.sync-toast .sync-tech {
+  margin: 0.4rem 0 0; padding: 0.5rem 0.6rem; max-height: 9rem; overflow: auto;
+  border-radius: 8px; background: rgba(0, 0, 0, 0.05); border: 1px solid currentColor;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.7rem; font-weight: 500; white-space: pre-wrap; word-break: break-word;
+}
+.sync-spinner {
+  width: 13px; height: 13px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--indigo-100); border-top-color: var(--indigo-600);
+  animation: spin 0.7s linear infinite;
+}
+@media (max-width: 640px) { .sync-toast { right: 0.75rem; bottom: 0.75rem; } }
+
+/* ---------------------------------------------------------------------- */
+/* Calendário (seleção de dia / semana)                                    */
+/* ---------------------------------------------------------------------- */
+.cal-pop {
+  position: absolute; z-index: 60; width: 278px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; box-shadow: var(--shadow-lg); padding: 0.75rem;
+}
+.cal-head { display: flex; align-items: center; justify-content: space-between; gap: 0.4rem; margin-bottom: 0.5rem; }
+.cal-title { font-size: 0.87rem; font-weight: 700; color: var(--text); }
+.cal-nav {
+  width: 26px; height: 26px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-soft); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.cal-nav svg { width: 14px; height: 14px; }
+.cal-nav:hover { background: var(--surface-2); color: var(--text); }
+
+.cal-modes { display: flex; gap: 0.2rem; background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px; padding: 0.18rem; margin-bottom: 0.55rem; }
+.cal-modes button {
+  flex: 1; border: none; background: transparent; border-radius: 7px;
+  padding: 0.3rem; font-size: 0.79rem; font-weight: 600; color: var(--text-soft); cursor: pointer;
+}
+.cal-modes button.active { background: var(--surface); color: var(--indigo-700); box-shadow: var(--shadow-sm); }
+
+.cal-week { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; border-radius: 8px; }
+.cal-dow { margin-bottom: 0.25rem; }
+.cal-dow span { text-align: center; font-size: 0.68rem; font-weight: 700; color: var(--text-faint); padding: 0.2rem 0; }
+.cal-day {
+  border: none; background: transparent; border-radius: 7px; cursor: pointer;
+  padding: 0.34rem 0; font-size: 0.8rem; font-weight: 600; color: var(--text);
+  transition: background 0.1s, color 0.1s;
+}
+.cal-day.muted { color: var(--text-faint); font-weight: 500; }
+.cal-day.today { color: var(--indigo-600); font-weight: 800; }
+.cal-day.selected { background: var(--indigo-100); color: var(--indigo-700); }
+/* Modo "Dia": realce só na célula. Modo "Semana": a linha inteira acende. */
+.cal-grid.mode-day .cal-day:hover { background: var(--indigo-50); color: var(--indigo-700); }
+.cal-grid.mode-week .cal-week:not(.cal-dow):hover { background: var(--indigo-50); }
+.cal-grid.mode-week .cal-week:not(.cal-dow):hover .cal-day { color: var(--indigo-700); }
+
+.cal-foot { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-top: 0.6rem; padding-top: 0.55rem; border-top: 1px solid var(--border); }
+.cal-hint { font-size: 0.7rem; color: var(--text-faint); }
+.cal-clear {
+  border: 1px solid var(--border); background: var(--surface); border-radius: 8px;
+  padding: 0.28rem 0.6rem; font-size: 0.76rem; font-weight: 600; color: var(--text-soft); cursor: pointer;
+}
+.cal-clear:hover { background: var(--surface-2); color: var(--text); }
+
+select, input[type="text"], input[type="number"], input[type="email"], input[type="password"] {
+  border: 1px solid var(--border); border-radius: 9px; padding: 0.42rem 0.75rem;
+  font-size: 0.87rem; color: var(--text); background: var(--surface);
+  font-family: inherit; transition: border-color 0.12s, box-shadow 0.12s;
+}
+select:focus, input:focus { outline: none; border-color: var(--indigo-500); box-shadow: 0 0 0 3px var(--indigo-50); }
+
+.perf-banner { display: flex; align-items: center; gap: 1.1rem; background: linear-gradient(135deg, var(--indigo-50), #fff); border-color: var(--indigo-100); }
+.perf-banner.green { background: linear-gradient(135deg, var(--emerald-50), #fff); border-color: var(--emerald-100); }
+.perf-banner.blue { background: linear-gradient(135deg, var(--blue-50), #fff); border-color: var(--indigo-100); }
+.perf-banner.amber { background: linear-gradient(135deg, var(--amber-50), #fff); border-color: var(--amber-100); }
+.perf-banner.red { background: linear-gradient(135deg, var(--red-50), #fff); border-color: var(--red-100); }
+.perf-icon {
+  width: 50px; height: 50px; border-radius: 14px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; color: #fff;
+  background: linear-gradient(135deg, var(--indigo-500), var(--indigo-700));
+  box-shadow: var(--shadow-md);
+}
+.perf-banner.green .perf-icon { background: linear-gradient(135deg, var(--emerald-500), var(--emerald-700)); }
+.perf-banner.amber .perf-icon { background: linear-gradient(135deg, var(--amber-500), var(--amber-700)); }
+.perf-banner.red .perf-icon { background: linear-gradient(135deg, var(--red-500), var(--red-700)); }
+.perf-icon svg { width: 25px; height: 25px; }
+.perf-text { flex-shrink: 0; }
+.perf-label-small { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); margin: 0; }
+.perf-label-big { font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; margin: 0.1rem 0 0; display: flex; align-items: center; gap: 0.35rem; }
+.perf-desc { flex: 1; max-width: 26rem; text-align: right; font-size: 0.81rem; color: var(--text-soft); margin-left: auto; }
+.perf-illustration { width: 74px; height: 74px; flex-shrink: 0; color: var(--indigo-500); opacity: 0.85; }
+.perf-banner.green .perf-illustration { color: var(--emerald-500); }
+.perf-banner.amber .perf-illustration { color: var(--amber-600); }
+.perf-banner.red .perf-illustration { color: var(--red-500); }
+.perf-illustration svg { width: 100%; height: 100%; }
+@media (max-width: 860px) { .perf-illustration { display: none; } .perf-desc { text-align: left; margin-left: 0; } }
+@media (max-width: 640px) { .perf-banner { flex-wrap: wrap; } .perf-desc { max-width: none; } }
+
+/* Gráficos com legenda em lista (mockup) ----------------------------------- */
+.chart-with-legend { display: flex; align-items: center; gap: 1.1rem; flex-wrap: wrap; }
+.chart-canvas-wrap { position: relative; flex: 0 0 auto; width: 100%; max-width: 200px; }
+.chart-legend { flex: 1; min-width: 9rem; display: flex; flex-direction: column; gap: 0.55rem; }
+.chart-legend-row { display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; color: var(--text-soft); }
+.chart-legend-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+.chart-legend-label { flex: 1; font-weight: 500; color: var(--text); }
+.chart-legend-value { font-weight: 700; color: var(--text); }
+
+.progress-track { margin-top: 0.6rem; height: 0.55rem; width: 100%; overflow: hidden; border-radius: 999px; background: var(--surface-2); }
+.progress-fill { height: 100%; border-radius: 999px; }
+
+.report-pre {
+  white-space: pre-wrap; border-radius: 10px; background: var(--surface-2);
+  border: 1px solid var(--border); padding: 1.1rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.83rem; color: var(--text);
+}
+
+/* ---------------------------------------------------------------------- */
+/* Login                                                                    */
+/* ---------------------------------------------------------------------- */
+.login-wrap {
+  position: relative; isolation: isolate; overflow: hidden;
+  min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+  background: var(--bg);
+}
+/* Efeito de fundo: manchas de cor suaves e desfocadas, boiando devagar,
+   sobre uma trama de pontos discreta — dá profundidade sem tirar o foco
+   do cartão de login. Desligado para quem prefere menos movimento. */
+.login-wrap::before {
+  content: ""; position: absolute; inset: 0; z-index: -2;
+  background-image: radial-gradient(var(--indigo-100) 1.4px, transparent 1.4px);
+  background-size: 26px 26px;
+  -webkit-mask-image: radial-gradient(circle at 50% 40%, transparent 0%, #000 45%, #000 65%, transparent 95%);
+  mask-image: radial-gradient(circle at 50% 40%, transparent 0%, #000 45%, #000 65%, transparent 95%);
+  opacity: 0.7;
+}
+.login-blobs { position: absolute; inset: 0; z-index: -1; overflow: hidden; }
+.login-blobs span {
+  position: absolute; border-radius: 50%; filter: blur(50px); opacity: 0.65;
+  animation: login-float 22s ease-in-out infinite;
+}
+.login-blobs span:nth-child(1) { width: 28rem; height: 28rem; left: -9rem; top: -7rem; background: radial-gradient(circle, rgba(99, 102, 241, 0.55), transparent 72%); animation-delay: 0s; }
+.login-blobs span:nth-child(2) { width: 24rem; height: 24rem; right: -7rem; top: 6%; background: radial-gradient(circle, rgba(20, 184, 166, 0.45), transparent 72%); animation-delay: -7s; }
+.login-blobs span:nth-child(3) { width: 26rem; height: 26rem; left: 14%; bottom: -11rem; background: radial-gradient(circle, rgba(139, 92, 246, 0.45), transparent 72%); animation-delay: -14s; }
+@keyframes login-float {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(2.5%, 3%) scale(1.06); }
+  66% { transform: translate(-2%, -2.5%) scale(0.96); }
+}
+@media (prefers-reduced-motion: reduce) { .login-blobs span { animation: none; } }
+
+/* Duas colunas: painel de apresentação (some em telas estreitas) + cartão
+   de login — ambos centralizados juntos dentro de .login-shell. */
+.login-shell { position: relative; display: flex; align-items: center; justify-content: center; gap: 4.5rem; width: 100%; max-width: 72rem; }
+
+.login-promo { display: none; flex: 1 1 26rem; max-width: 28rem; }
+.login-promo .brand-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 2.5rem; padding-bottom: 1.5rem; position: relative; }
+.login-promo .brand-row::after {
+  content: ""; position: absolute; left: 0; bottom: 0; width: 2.75rem; height: 3px; border-radius: 999px;
+  background: linear-gradient(90deg, var(--indigo-500), var(--violet-500));
+}
+.login-promo .logo-mark { width: 52px; height: 52px; filter: drop-shadow(0 6px 14px rgba(79, 70, 229, 0.18)); }
+.login-promo h2 { margin: 0; font-size: 1.4rem; font-weight: 800; letter-spacing: -0.01em; color: var(--indigo-700); }
+.login-promo h2 sup { color: var(--indigo-500); font-size: 0.65em; }
+.login-promo .brand-row p { margin: 0.1rem 0 0; font-size: 0.85rem; font-weight: 600; color: var(--text-soft); }
+.login-hero-title { margin: 0; font-size: 2.5rem; line-height: 1.16; font-weight: 800; letter-spacing: -0.02em; color: var(--text); text-wrap: balance; }
+.login-hero-title span { display: block; background: linear-gradient(135deg, var(--indigo-600), var(--violet-600)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.login-hero-sub { max-width: 26rem; margin: 1.15rem 0 0; font-size: 0.95rem; line-height: 1.6; color: var(--text-soft); }
+.login-features {
+  list-style: none; margin: 2.25rem 0 0; padding: 1.35rem 1.5rem; display: flex; flex-direction: column; gap: 1.15rem;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.25));
+  border: 1px solid rgba(99, 102, 241, 0.12);
+  border-radius: 18px;
+}
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .login-features { -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+}
+.login-features li { display: flex; align-items: center; gap: 0.85rem; font-size: 0.92rem; font-weight: 600; color: var(--text); }
+.login-features .feat-icon {
+  width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, var(--indigo-50), #fff); color: var(--indigo-600);
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.14), inset 0 0 0 1px rgba(99, 102, 241, 0.08);
+}
+.login-features .feat-icon svg { width: 19px; height: 19px; }
+@media (min-width: 960px) { .login-promo { display: block; } }
+
+.login-card {
+  position: relative; flex-shrink: 0; width: 100%; max-width: 24rem; padding: 2.75rem 2.25rem 2.5rem;
+  background: rgba(255, 255, 255, 0.86);
+  border-radius: 22px; overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 24px 60px -16px rgba(79, 70, 229, 0.28), 0 10px 28px -8px rgba(15, 23, 42, 0.1);
+}
+.login-card::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  background: linear-gradient(90deg, var(--indigo-500), var(--violet-500), var(--teal-500));
+}
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .login-card { -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+}
+.login-card-brand { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 1.65rem; }
+.login-card-brand strong { font-size: 1.05rem; font-weight: 800; color: var(--indigo-700); }
+.login-card-brand strong sup { color: var(--indigo-500); font-size: 0.68em; }
+.login-logo {
+  width: 42px; height: 42px; border-radius: 13px; object-fit: contain;
+  background: #fff; border: 1px solid var(--indigo-100);
+  box-shadow: 0 4px 12px rgba(79, 70, 229, 0.14); padding: 6px; flex-shrink: 0;
+}
+.login-title { font-size: 1.25rem; font-weight: 800; margin: 0; letter-spacing: -0.02em; }
+.login-subtitle { margin-top: 0.3rem; font-size: 0.83rem; line-height: 1.5; color: var(--text-soft); }
+.field { margin-top: 1.1rem; }
+.field label { display: block; font-size: 0.78rem; font-weight: 600; color: var(--text-soft); margin-bottom: 0.35rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.field input { width: 100%; }
+
+/* Campos com ícone à esquerda (e, na senha, o botão de mostrar/ocultar) */
+.input-icon-wrap { position: relative; display: flex; align-items: center; }
+.input-icon-wrap svg.input-icon { position: absolute; left: 0.75rem; width: 16px; height: 16px; color: var(--text-faint); pointer-events: none; transition: color 0.15s; }
+.input-icon-wrap input { padding-left: 2.35rem; }
+.input-icon-wrap input[type="password"], .input-icon-wrap input.has-toggle { padding-right: 2.35rem; }
+.input-icon-wrap:focus-within svg.input-icon { color: var(--indigo-500); }
+.input-icon-btn {
+  position: absolute; right: 0.4rem; width: 28px; height: 28px; border-radius: 7px;
+  border: none; background: transparent; color: var(--text-faint);
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.input-icon-btn:hover { color: var(--text-soft); background: var(--surface-2); }
+.input-icon-btn svg { width: 16px; height: 16px; }
+
+/* Campos do cartão de login: fundo levemente tingido, cantos mais macios e
+   anel de foco mais generoso — só neste cartão, sem afetar os demais
+   formulários do sistema. */
+.login-card input[type="email"],
+.login-card input[type="password"] {
+  background: var(--surface-2);
+  border: 1.5px solid var(--border);
+  border-radius: 11px;
+  padding-top: 0.62rem;
+  padding-bottom: 0.62rem;
+  transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+}
+.login-card input[type="email"]:focus,
+.login-card input[type="password"]:focus {
+  background: #fff;
+  border-color: var(--indigo-500);
+  box-shadow: 0 0 0 4px var(--indigo-50);
+}
+
+.login-row-aux { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-top: 0.85rem; font-size: 0.8rem; }
+.checkbox-inline { display: flex; align-items: center; gap: 0.4rem; color: var(--text-soft); font-weight: 500; cursor: pointer; }
+.checkbox-inline input { width: auto; margin: 0; accent-color: var(--indigo-600); }
+.login-link { color: var(--indigo-600); font-weight: 600; }
+.login-link:hover { text-decoration: underline; }
+.login-hint-text { margin: 0.5rem 0 0; font-size: 0.78rem; color: var(--text-soft); }
+
+/* Botão do cartão de login: gradiente mais rico e brilho colorido, para
+   destacar a ação principal sem alterar o botão padrão usado no resto do
+   sistema (ex.: tela de erro fatal). */
+.login-card .btn-primary {
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--indigo-500), var(--indigo-700) 65%, var(--violet-600));
+  padding: 0.75rem;
+  font-size: 0.88rem;
+  letter-spacing: 0.01em;
+  box-shadow: 0 12px 26px -8px rgba(79, 70, 229, 0.5);
+}
+.login-card .btn-primary:hover { box-shadow: 0 16px 32px -8px rgba(79, 70, 229, 0.58); transform: translateY(-1px); }
+.login-card .btn-primary:disabled { box-shadow: none; transform: none; }
+
+.btn-primary {
+  width: 100%; border: none; border-radius: 10px;
+  background: linear-gradient(135deg, var(--indigo-600), var(--indigo-700));
+  color: #fff; padding: 0.6rem; font-size: 0.85rem; font-weight: 700;
+  cursor: pointer; margin-top: 1.25rem; box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.btn-primary:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.6; cursor: default; transform: none; box-shadow: none; }
+.btn-small {
+  border: none; border-radius: 9px; background: linear-gradient(135deg, var(--indigo-600), var(--indigo-700));
+  color: #fff; padding: 0.48rem 0.9rem; font-size: 0.86rem; font-weight: 600; cursor: pointer;
+}
+.btn-small:hover { box-shadow: var(--shadow-sm); }
+.btn-small:disabled { opacity: 0.6; cursor: default; }
+.btn-ghost {
+  border: 1px solid var(--border); background: var(--surface); border-radius: 9px;
+  padding: 0.45rem 0.85rem; font-size: 0.82rem; font-weight: 600; color: var(--text-soft); cursor: pointer;
+}
+.btn-ghost:hover { background: var(--surface-2); color: var(--text); }
+.error-text { color: var(--red-600); font-size: 0.86rem; margin-top: 0.85rem; }
+.demo-box { margin-top: 1.5rem; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); padding: 0.85rem; font-size: 0.76rem; color: var(--text-soft); }
+.demo-box p { margin: 0.15rem 0; }
+.demo-box .lbl { font-weight: 700; color: var(--text); }
+.demo-box.login-secure-box {
+  display: flex; align-items: flex-start; gap: 0.65rem;
+  background: linear-gradient(135deg, var(--indigo-50), rgba(255, 255, 255, 0.5));
+  border-color: var(--indigo-100);
+}
+.demo-box.login-secure-box .secure-icon {
+  width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0;
+  background: #fff; color: var(--indigo-600);
+  box-shadow: 0 3px 8px rgba(79, 70, 229, 0.16);
+  display: flex; align-items: center; justify-content: center;
+}
+.demo-box.login-secure-box .secure-icon svg { width: 15px; height: 15px; }
+
+.goal-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.6rem; }
+.goal-form .field-inline label { display: block; font-size: 0.76rem; font-weight: 600; color: var(--text-faint); margin-bottom: 0.2rem; }
+.goal-form input[type="number"] { width: 7rem; }
+
+.text-xs { font-size: 0.8rem; color: var(--text-faint); }
+.hint { font-size: 0.8rem; color: var(--text-faint); }
+.loading-wrap { min-height: 60vh; display: flex; align-items: center; justify-content: center; }
+.spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--indigo-100); border-top-color: var(--indigo-600); animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+canvas { max-width: 100%; }
+.chart-empty { text-align: center; color: var(--text-faint); font-size: 0.84rem; padding: 1.6rem 0; }
+
+/* Rosca com total no centro (ex.: "Ligações por tipo") */
+.donut-center {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  text-align: center; pointer-events: none; width: 5.5rem;
+}
+.donut-center .num { display: block; font-size: 1.65rem; font-weight: 800; color: var(--text); letter-spacing: -0.02em; line-height: 1.1; }
+.donut-center .lbl { display: block; font-size: 0.69rem; color: var(--text-faint); margin-top: 0.2rem; line-height: 1.25; }
+
+/* Cartão de destaque com ícone + texto explicativo, abaixo de um gráfico
+   (ex.: "As ligações de agendamento representam X% do total...") */
+.insight-box {
+  margin-top: 0.9rem; display: flex; align-items: flex-start; gap: 0.65rem;
+  border-radius: 10px; border: 1px solid var(--indigo-100); background: var(--indigo-50);
+  padding: 0.8rem 0.9rem; font-size: 0.84rem; line-height: 1.45; color: var(--text-soft);
+}
+.insight-box .insight-icon {
+  width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+  background: #fff; color: var(--indigo-600);
+  display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm);
+}
+.insight-box .insight-icon svg { width: 14px; height: 14px; }
+.insight-box p { margin: 0; }
+.insight-box strong { color: var(--text); }
+
+/* Faixa-resumo abaixo de um gráfico (total do período + variação) */
+.summary-strip {
+  margin-top: 0.9rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap;
+  border-radius: 10px; border: 1px solid var(--border); background: var(--surface-2);
+  padding: 0.7rem 0.9rem; font-size: 0.86rem;
+}
+.summary-strip .summary-left { display: flex; align-items: center; gap: 0.6rem; color: var(--text-soft); }
+.summary-strip .summary-icon {
+  width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+  background: var(--indigo-50); color: var(--indigo-600);
+  display: flex; align-items: center; justify-content: center;
+}
+.summary-strip .summary-icon svg { width: 14px; height: 14px; }
+.summary-strip strong { color: var(--text); font-weight: 700; }
+.summary-strip .trend-pill { font-weight: 700; font-size: 0.84rem; display: flex; align-items: center; gap: 0.25rem; white-space: nowrap; }
+.summary-strip .trend-pill.up { color: var(--emerald-600); }
+.summary-strip .trend-pill.down { color: var(--red-600); }
+.summary-strip .trend-pill.neutral { color: var(--text-faint); font-weight: 500; }
+
+/* Utilitários de tabela: coluna numérica centralizada e colorida */
+.avatar-sm { width: 28px; height: 28px; font-size: 0.7rem; }
+.cell-num { text-align: center; font-weight: 700; }
+.cell-blue { color: var(--indigo-600); }
+.cell-green { color: var(--emerald-600); }
+th.cell-num { text-align: center; }
+.person-cell { display: flex; align-items: center; gap: 0.55rem; font-weight: 600; }
+
+/* ---------------------------------------------------------------------- */
+/* Tela de erro fatal (config ausente / falha de conexão)                  */
+/* ---------------------------------------------------------------------- */
+.fatal-error-wrap {
+  min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+  background: radial-gradient(circle at 20% 20%, var(--red-50), var(--bg) 55%);
+}
+.fatal-error-card { width: 100%; max-width: 30rem; padding: 2.25rem 2rem; text-align: center; }
+.fatal-error-icon {
+  width: 48px; height: 48px; margin: 0 auto 1rem; border-radius: 12px;
+  background: var(--amber-50); color: var(--amber-700);
+  display: flex; align-items: center; justify-content: center;
+}
+.fatal-error-icon svg { width: 24px; height: 24px; }
+.fatal-error-card h1 { font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; margin: 0; }
+.fatal-error-card p { font-size: 0.85rem; color: var(--text-soft); margin: 0.7rem 0 0; }
+.fatal-error-detail { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.75rem !important; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem; word-break: break-word; }
+.fatal-error-hint { background: var(--indigo-50); border: 1px solid var(--indigo-100); border-radius: 8px; padding: 0.7rem; color: var(--text) !important; }
+.fatal-error-hint code { background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 0.05rem 0.35rem; font-size: 0.78rem; }
+.fatal-error-card .btn-primary { margin-top: 1.25rem; }
+
+/* ======================================================================== */
+/* RESPONSIVO — adaptação por tamanho de tela                               */
+/*                                                                          */
+/* Auditado com test/verify-responsivo.mjs, que abre as 8 telas em 7        */
+/* tamanhos (de 360 px a 1920 px) e reprova qualquer coisa que faça a       */
+/* página rolar para o lado. Tabela larga que rola DENTRO do próprio        */
+/* cartão é o comportamento certo e não conta como erro.                    */
+/* ======================================================================== */
+
+/* ---- Barra de navegação inferior (celular e tablet retrato) ------------- */
+/* No lugar do menu lateral, que some abaixo de 860 px. Fica fixa embaixo,
+   ao alcance do polegar, e é a mesma navegação — só em outro formato.     */
+.mobile-nav { display: none; }
+
+@media (max-width: 860px) {
+  .mobile-nav {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -2px 12px -6px rgba(15, 23, 42, 0.18);
+    /* respeita a faixa do gesto de "home" no iPhone */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .mobile-nav a {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 0.15rem;
+    min-height: 54px; padding: 0.4rem 0.15rem;
+    text-decoration: none; color: var(--text-faint);
+    font-size: 0.68rem; font-weight: 600; line-height: 1.1;
+    text-align: center;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mobile-nav a svg { width: 21px; height: 21px; }
+  .mobile-nav a.active { color: var(--indigo-600); }
+  .mobile-nav a.active svg { color: var(--indigo-600); }
+  /* marca fina no topo do item atual (posicionada pela borda de cima do
+     link, não pelo fluxo — senão fica por cima do próprio ícone) */
+  .mobile-nav a { position: relative; }
+  .mobile-nav a.active::before {
+    content: ""; position: absolute; top: 0; left: 50%;
+    width: 26px; height: 3px; margin-left: -13px;
+    border-radius: 0 0 3px 3px;
+    background: var(--indigo-500);
+  }
+
+  /* o conteúdo não pode terminar embaixo da barra */
+  .main { padding-bottom: calc(4.75rem + env(safe-area-inset-bottom, 0px)); }
+  /* o aviso de sincronização também sobe, para não ficar atrás da barra */
+  .sync-toast { bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px)); }
+}
+
+/* ---- Alvos de toque: dedo não é ponteiro de mouse ----------------------- */
+/* No celular os botões tinham 24-28 px de altura. A recomendação de
+   acessibilidade é 44 px; abaixo de ~40 px erra-se o toque com frequência. */
+@media (max-width: 860px) {
+  .period-buttons button { min-height: 40px; padding-left: 0.85rem; padding-right: 0.85rem; }
+  .period-filter select, #seller-filter { min-height: 40px; }
+  .icon-btn { width: 42px; height: 42px; }
+  .meeting-confirm-btn { min-height: 34px; min-width: 40px; }
+  .btn-small, .btn-logout { min-height: 40px; }
+  /* linhas de tabela clicáveis ganham área de toque */
+  tbody td { padding-top: 0.7rem; padding-bottom: 0.7rem; }
+  /* um link dentro da célula precisa ocupar a célula inteira: como texto
+     solto ele tinha 16 px de altura, menos da metade do alvo mínimo.
+     `flex` e não `line-height`: com altura de linha fixa, um nome que quebra
+     em duas linhas ficava com um vão enorme entre elas. */
+  tbody td > a { display: flex; align-items: center; min-height: 40px; }
+}
+
+/* ---- Cartões de indicador ---------------------------------------------- */
+/* Um rótulo longo ("OPORTUNIDADES ABERTAS") é um item flex que, por padrão,
+   não encolhe abaixo do próprio tamanho — e como o cartão corta o que
+   transborda, a palavra aparecia cortada pela metade no celular. */
+.kpi-card-top { min-width: 0; }
+.kpi-card-top .kpi-label { min-width: 0; overflow-wrap: anywhere; hyphens: auto; }
+
+@media (max-width: 420px) {
+  /* telas bem estreitas: o selo de ícone rouba espaço do texto */
+  .kpi-icon { width: 36px; height: 36px; border-radius: 10px; }
+  .kpi-icon svg { width: 18px; height: 18px; }
+  .kpi-card--icon { padding: 0.85rem 0.8rem 0.9rem; }
+  .kpi-card--icon .kpi-value { font-size: 1.45rem; }
+  .kpi-card--icon .kpi-label { font-size: 0.69rem; letter-spacing: 0.02em; }
+  .kpi-change { font-size: 0.72rem; }
+  h1.page-title { font-size: 1.3rem; }
+}
+
+/* ---- Tabelas ------------------------------------------------------------ */
+/* Sem largura mínima, a tabela se espremia até caber e cada célula virava
+   um parágrafo de quatro linhas — ilegível. Com largura mínima ela rola de
+   lado DENTRO do cartão, que é o jeito certo: cada dado numa linha só. */
+@media (max-width: 900px) {
+  /* sombra suave na direita enquanto houver conteúdo escondido: sem uma
+     dica visual, ninguém descobre que a tabela rola para o lado */
+  .table-scroll {
+    -webkit-overflow-scrolling: touch;
+    background:
+      linear-gradient(to right, var(--surface) 30%, rgba(255, 255, 255, 0)) left / 24px 100% no-repeat,
+      linear-gradient(to left, var(--surface) 30%, rgba(255, 255, 255, 0)) right / 24px 100% no-repeat,
+      radial-gradient(farthest-side at 0 50%, rgba(15, 23, 42, 0.13), transparent) left / 12px 100% no-repeat,
+      radial-gradient(farthest-side at 100% 50%, rgba(15, 23, 42, 0.13), transparent) right / 12px 100% no-repeat;
+    background-attachment: local, local, scroll, scroll;
+  }
+  .table-scroll table { min-width: 34rem; }
+  .table-scroll th, .table-scroll td { white-space: nowrap; }
+  /* O nome do cliente pode quebrar em duas linhas — é a coluna mais longa e
+     a mais importante. Com limite de largura: sem ele, um nome comprido
+     empurrava as demais colunas para fora do alcance da rolagem. */
+  .table-scroll td:first-child, .table-scroll th:first-child { white-space: normal; max-width: 13rem; }
+}
+
+/* ---- Tablet e notebook pequeno ----------------------------------------- */
+/* Entre 861 e 1100 px o menu lateral de 268 px comia quase um terço da
+   largura útil. Continua completo, só mais estreito. */
+@media (min-width: 861px) and (max-width: 1100px) {
+  .sidebar { width: 208px; }
+  .sidebar-nav a { padding-left: 0.85rem; padding-right: 0.7rem; font-size: 0.88rem; }
+  .sidebar-promo { display: none; }
+  /* nesta largura a assinatura e o nome do usuário quebravam em duas linhas
+     e ficavam desalinhados; some a assinatura e o nome ganha reticências */
+  .sidebar-brand p { display: none; }
+  .sidebar-user-name, .sidebar-user-role { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sidebar-user > div { min-width: 0; }
+  .main { padding-left: 1.15rem; padding-right: 1.15rem; }
+}
+
+/* ---- Monitor grande ----------------------------------------------------- */
+/* Em telas muito largas o conteúdo parava em 82rem e sobrava um vazio
+   grande à direita. Um pouco mais de largura aproveita o espaço sem
+   esticar as linhas de texto a ponto de dificultar a leitura. */
+@media (min-width: 1600px) {
+  .main { max-width: 92rem; padding-left: 2rem; padding-right: 2rem; }
+}
+
+/* ---- Impressão ---------------------------------------------------------- */
+@media print {
+  .sidebar, .mobile-topbar, .mobile-nav, .sync-toast, .header-actions, .period-filter { display: none !important; }
+  .main { max-width: none; padding: 0; }
+  .card { break-inside: avoid; box-shadow: none; }
+}
+
+/* Linha "+ N agendadas" abaixo do número em destaque na tela de Ligações.
+   Existe para que uma ligação marcada na Agenda para os próximos dias não
+   fique invisível só porque ainda não aconteceu (ver ligacoes.html). */
+.kpi-hero-agendadas {
+  margin: 0.3rem 0 0;
+  font-size: 0.78rem; font-weight: 600;
+  color: var(--indigo-600);
+}
+
+/* ---------------------------------------------------------------------------
+   LIGAÇÕES — aviso de informação restrita e linha em edição
+   Ver telas/ligacoes.html: o total de ligações realizadas só aparece para quem
+   pode lançar; os demais veem este aviso no lugar, para a tela não parecer
+   quebrada.
+   --------------------------------------------------------------------------- */
+
+.linha-edicao { background: var(--indigo-50); }
+.linha-edicao input[type="number"] { padding: 0.32rem 0.5rem; font-size: 0.86rem; }
+.btn-editar { font-size: 0.78rem; padding: 0.28rem 0.6rem; }
+
+@media (max-width: 860px) {
+  .linha-edicao input[type="number"] { width: 4.2rem !important; }
+}
+
+/* METAS — ações no cartão e o bloco recolhido de metas batidas -------------- */
+
+.batidas-toggle {
+  display: flex; align-items: center; gap: 0.5rem; width: 100%;
+  background: none; border: 0; padding: 0; cursor: pointer;
+  font-size: 0.88rem; font-weight: 600; color: var(--emerald-700); text-align: left;
+}
+.batidas-toggle svg { width: 17px; height: 17px; flex-shrink: 0; }
+.batidas-toggle .text-xs { margin-left: auto; text-decoration: underline; }
+
+/* Cartões de meta ("Metas") -------------------------------------------------
+   O cartão foi redesenhado em 14/09/2026. O antigo mostrava "Meta: 40 ·
+   Realizado: 0" numa linha de texto corrido e o percentual como nota de rodapé
+   minúscula — a informação mais importante era a menos visível, e TODA meta no
+   começo do período aparecia em vermelho ("0% atingido"), o que transformava o
+   alarme em ruído.
+
+   Agora o percentual é o número grande, e a barra tem uma AGULHA marcando
+   quanto do prazo já passou: a cor sai da comparação entre os dois, não do
+   percentual sozinho. 30% na segunda é verde; 30% na sexta é vermelho. */
+.goal-card { padding: 1.05rem 1.1rem 0.95rem; transition: box-shadow 0.15s, transform 0.15s; }
+.goal-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+
+.goal-head { display: flex; align-items: flex-start; gap: 0.6rem; min-height: 2.9rem; }
+.goal-head-txt { min-width: 0; flex: 1; }
+.goal-title { margin: 0; font-size: 0.93rem; font-weight: 700; color: var(--text); letter-spacing: -0.01em; line-height: 1.25; }
+.goal-sub { margin: 0.12rem 0 0; font-size: 0.76rem; color: var(--text-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.goal-selo { flex-shrink: 0; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase;
+             padding: 0.2rem 0.45rem; border-radius: 999px; background: var(--surface-2); color: var(--text-soft); }
+
+/* O número grande. Fica alinhado com a barra logo abaixo, não à direita: o
+   olho lê de cima para baixo na mesma coluna. */
+.goal-pct { margin: 0.9rem 0 0; font-size: 2rem; font-weight: 800; line-height: 1; letter-spacing: -0.03em; color: var(--text); }
+.goal-pct span { font-size: 1rem; font-weight: 700; margin-left: 0.08rem; color: var(--text-faint); }
+.goal-numeros { margin: 0.25rem 0 0; font-size: 0.82rem; font-weight: 700; color: var(--text); }
+.goal-numeros span { font-weight: 500; color: var(--text-faint); }
+
+.goal-barra { position: relative; margin-top: 0.8rem; height: 0.5rem; width: 100%; border-radius: 999px; background: var(--surface-2); }
+.goal-barra-fill { height: 100%; border-radius: 999px; transition: width 0.4s ease; }
+/* A agulha do prazo: um traço vertical sobre a barra. É ela que dá sentido ao
+   comprimento — barra à esquerda da agulha é atraso, à direita é adiantamento. */
+.goal-barra-agulha { position: absolute; top: -4px; bottom: -4px; width: 2px; border-radius: 2px;
+                     background: var(--text-soft); opacity: 0.75; transform: translateX(-1px); }
+
+.goal-rodape { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem;
+               margin: 0.5rem 0 0; font-size: 0.76rem; color: var(--text-soft); }
+.goal-falta { color: var(--text-soft); }
+.goal-falta strong { color: var(--text); font-weight: 700; }
+.goal-prazo { color: var(--text-faint); white-space: nowrap; }
+
+.goal-acoes { display: flex; gap: 0.4rem; margin-top: 0.85rem; padding-top: 0.65rem; border-top: 1px solid var(--border); }
+.goal-acoes .btn-ghost, .goal-acoes .btn-small { font-size: 0.78rem; padding: 0.28rem 0.6rem; }
+
+/* Uma cor por situação, aplicada à barra e ao selo. Verde só quando está em
+   dia de verdade; vermelho só quando está longe do ritmo. */
+.situacao-ok       .goal-barra-fill { background: var(--emerald-500); }
+.situacao-ritmo    .goal-barra-fill { background: var(--indigo-500); }
+.situacao-atrasada .goal-barra-fill { background: var(--amber-500); }
+.situacao-critica  .goal-barra-fill { background: var(--red-500); }
+.situacao-ok       .goal-selo { background: var(--emerald-50); color: var(--emerald-600); }
+.situacao-ritmo    .goal-selo { background: var(--indigo-50); color: var(--indigo-600); }
+.situacao-atrasada .goal-selo { background: var(--amber-50); color: var(--amber-700); }
+.situacao-critica  .goal-selo { background: var(--red-50); color: var(--red-600); }
+.situacao-ok       .goal-pct { color: var(--emerald-600); }
+.situacao-atrasada .goal-pct { color: var(--amber-700); }
+.situacao-critica  .goal-pct { color: var(--red-600); }
+
+.goal-card-editando { border-color: var(--indigo-500); box-shadow: 0 0 0 3px var(--indigo-50); }
+.goal-edit { margin-top: 0.9rem; }
+.goal-edit label { display: block; font-size: 0.76rem; font-weight: 600; color: var(--text-faint); margin-bottom: 0.25rem; }
+.goal-edit input[type="number"] { width: 100%; }
+.goal-edit-hint { margin: 0.45rem 0 0; font-size: 0.78rem; color: var(--text-soft); }
+.goal-edit-hint strong { color: var(--text); }
+
+.page-sub { margin: 0.2rem 0 0; font-size: 0.83rem; color: var(--text-soft); }
+.txt-atencao { color: var(--amber-700); }
+
+/* Meta batida — a comemoração ----------------------------------------------
+   No formato normal, uma meta cumprida virava "100% · faltam 0": uma forma
+   burocrática de dar a única notícia boa da tela. Ganhou cartão próprio. */
+.faixa-parabens { display: flex; align-items: center; gap: 0.85rem;
+                  background: linear-gradient(135deg, var(--emerald-50), var(--surface));
+                  border-color: #a7f3d0; }
+.faixa-parabens-icone { display: flex; flex-shrink: 0; width: 38px; height: 38px; border-radius: 12px;
+                        align-items: center; justify-content: center;
+                        background: var(--emerald-500); color: #fff; }
+.faixa-parabens-icone svg { width: 22px; height: 22px; }
+.faixa-parabens-titulo { margin: 0; font-size: 0.97rem; font-weight: 800; color: var(--emerald-600); letter-spacing: -0.01em; }
+.faixa-parabens-sub { margin: 0.1rem 0 0; font-size: 0.83rem; color: var(--text-soft); }
+.faixa-parabens .btn-small { margin-left: auto; flex-shrink: 0; }
+
+.goal-batida { text-align: center; padding: 1.3rem 1.1rem 1rem;
+               background: linear-gradient(160deg, var(--emerald-50), var(--surface) 62%);
+               border-color: #a7f3d0; }
+.goal-batida-selo { display: flex; align-items: center; justify-content: center;
+                    width: 46px; height: 46px; margin: 0 auto; border-radius: 50%;
+                    background: var(--emerald-500); color: #fff;
+                    box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.14); }
+.goal-batida-selo svg { width: 27px; height: 27px; }
+.goal-batida-titulo { margin: 0.75rem 0 0; font-size: 1.05rem; font-weight: 800;
+                      color: var(--emerald-600); letter-spacing: -0.02em; }
+.goal-batida-meta { margin: 0.2rem 0 0; font-size: 0.82rem; color: var(--text-soft); }
+.goal-batida-num { margin: 0.6rem 0 0; font-size: 1.05rem; font-weight: 800; color: var(--text); }
+.goal-batida-num span { font-size: 0.86rem; font-weight: 500; color: var(--text-faint); }
+.goal-batida-extra { margin: 0.15rem 0 0; font-size: 0.78rem; font-weight: 700; color: var(--emerald-600); }
+.goal-acoes-batida { justify-content: center; border-top-color: #a7f3d0; }
+
+.batidas-secao { display: grid; gap: 0.7rem; }
+.batidas-secao .batidas-toggle { background: none; border: 0; padding: 0; cursor: pointer;
+  display: flex; align-items: baseline; gap: 0.6rem; width: 100%;
+  font-size: 0.86rem; font-weight: 700; color: var(--text-soft); }
+.batidas-secao .batidas-toggle .text-xs { margin-left: auto; font-weight: 500; text-decoration: underline; }
+
+/* Confirmação de ação destrutiva ------------------------------------------
+   Substitui o confirm() do navegador, que é uma caixa cinza do sistema, não
+   diz o que vai ser apagado e não combina com nada da tela. */
+.btn-perigo {
+  border: none; border-radius: 9px; background: linear-gradient(135deg, var(--red-500), var(--red-600));
+  color: #fff; padding: 0.48rem 0.95rem; font-size: 0.86rem; font-weight: 700; cursor: pointer;
+  box-shadow: 0 1px 2px rgba(220, 38, 38, 0.3);
+}
+.btn-perigo:hover { box-shadow: 0 3px 10px rgba(220, 38, 38, 0.32); }
+.btn-perigo:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
+
+dialog.confirmacao {
+  border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem 1.4rem 1.25rem;
+  width: min(92vw, 23rem); text-align: center; background: var(--surface);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+  animation: confirmacao-entra 0.16s ease-out;
+}
+dialog.confirmacao.saindo { animation: confirmacao-sai 0.12s ease-in forwards; }
+dialog.confirmacao::backdrop { background: rgba(15, 23, 42, 0.45); backdrop-filter: blur(2px); }
+
+@keyframes confirmacao-entra { from { opacity: 0; transform: translateY(8px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes confirmacao-sai   { to { opacity: 0; transform: translateY(4px) scale(0.98); } }
+/* Quem pediu menos animação no sistema não recebe nenhuma. */
+@media (prefers-reduced-motion: reduce) {
+  dialog.confirmacao, dialog.confirmacao.saindo { animation: none; }
+}
+
+.confirmacao-icone {
+  display: flex; align-items: center; justify-content: center;
+  width: 46px; height: 46px; margin: 0 auto 0.85rem; border-radius: 50%;
+  background: var(--red-50); color: var(--red-600);
+  box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.07);
+}
+.confirmacao-icone svg { width: 24px; height: 24px; }
+.confirmacao-titulo { margin: 0; font-size: 1.02rem; font-weight: 800; color: var(--text); letter-spacing: -0.01em; }
+/* O nome do item em destaque: é o que diferencia "apagar algo" de "apagar
+   ISTO", e é o que falta no confirm() do navegador. */
+.confirmacao-item { margin: 0.5rem 0 0; font-size: 0.88rem; font-weight: 700; color: var(--text);
+                    background: var(--surface-2); border-radius: 9px; padding: 0.45rem 0.7rem; }
+.confirmacao-texto { margin: 0.65rem 0 0; font-size: 0.83rem; color: var(--text-soft); line-height: 1.45; }
+.confirmacao-acoes { display: flex; gap: 0.5rem; margin-top: 1.2rem; }
+.confirmacao-acoes button { flex: 1; }

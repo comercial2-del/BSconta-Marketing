@@ -1,0 +1,9 @@
+# Configuração do projeto Supabase (usada pela CLI ao rodar `supabase functions deploy`).
+# project_id = referência do projeto no painel do Supabase (não é segredo).
+project_id = "zqhuhaqothpxusnaijog"
+
+# verify_jwt = true (padrão) — a função só aceita chamadas com um header
+# "Authorization: Bearer <anon key ou service role key>". Isso evita que
+# qualquer pessoa na internet dispare a sincronização sem autorização.
+[functions.sync-rd-station]
+verify_jwt = true

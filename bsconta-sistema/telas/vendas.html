@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BSconta + Marketing</title>
+  <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
+  <link rel="stylesheet" href="../css/styles.css?v=20260914" />
+</head>
+<body>
+  <div class="app-shell">
+    <div id="app-header"></div>
+    <div class="app-content">
+      <main class="main">
+        <div id="content"><div class="loading-wrap"><div class="spinner"></div></div></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- VELOCIDADE: estas bibliotecas ficavam no <head>, onde travam a
+       pintura da tela até terminarem de baixar. Aqui embaixo o HTML
+       aparece primeiro e elas carregam em seguida, antes dos nossos
+       scripts — que é a única ordem que importa. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="../js/config.js?v=20260914"></script>
+  <script src="../js/supabaseClient.js?v=20260914"></script>
+  <script src="../js/auth.js?v=20260914"></script>
+  <script src="../js/data.js?v=20260914"></script>
+  <script src="../js/calc.js?v=20260914"></script>
+  <script src="../js/ui.js?v=20260914"></script>
+  <script src="../js/charts.js?v=20260914"></script>
+  <script src="../js/sync.js?v=20260914"></script>
+  <script>
+    let store = null;
+
+    function render() {
+      const { period } = currentPeriodFromUrl("this_month");
+      const range = resolvePeriod(period);
+
+      const sellerById = new Map(store.sellers.map((s) => [s.id, s]));
+      const dealById = new Map(store.deals.map((d) => [d.id, d]));
+
+      const saleRows = store.sales
+        .filter((s) => inRange(s.closed_at, range))
+        .map((s) => {
+          const deal = dealById.get(s.deal_id);
+          const seller = sellerById.get(s.seller_id);
+          return { ...s, clientName: deal?.client_name, companyName: deal?.company_name, sellerName: seller?.name };
+        })
+        .sort((a, b) => a.closed_at - b.closed_at);
+
+      const totalValue = saleRows.reduce((a, s) => a + Number(s.value), 0);
+
+      const proposalStage = store.stages.find((s) => s.name === "Enviar Proposta");
+      const probableStage = store.stages.find((s) => s.name === "Provável Fechamento");
+      const countOpenByStage = (stageId) => (stageId ? store.deals.filter((d) => d.stage_id === stageId && d.status === "OPEN").length : 0);
+
+      const wonInPeriod = saleRows.length;
+
+      const perSeller = store.sellers
+        .map((seller) => {
+          const rows = saleRows.filter((s) => s.sellerName === seller.name);
+          return { name: seller.name, count: rows.length, value: rows.reduce((a, s) => a + Number(s.value), 0) };
+        })
+        .sort((a, b) => b.value - a.value);
+
+      document.getElementById("content").innerHTML = `
+        <div class="space-y">
+          <div class="row-between">
+            <h1 class="page-title">Vendas</h1>
+            <div class="header-actions">
+              <div id="period-filter"></div>
+              <button type="button" class="icon-btn" aria-label="Calendário">${ICONS.meeting}</button>
+            </div>
+          </div>
+          <div id="kpi-grid"></div>
+
+          <div class="card card-p table-scroll">
+            <h2>Vendas por vendedor</h2>
+            <div style="position:relative;height:${Math.max(64, perSeller.filter((v) => v.value > 0).length * 34 + 22)}px;margin-bottom:0.9rem">
+              <canvas id="chart-vendas-vendedor"></canvas>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Vendedor</th>
+                  <th class="cell-num">Vendas</th>
+                  <th class="cell-num">Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${perSeller
+                  .map(
+                    (s) => `
+                  <tr>
+                    <td><div class="person-cell"><span class="avatar avatar-sm">${initials(s.name)}</span>${esc(s.name)}</div></td>
+                    <td class="cell-num cell-blue">${s.count}</td>
+                    <td class="cell-num cell-green">${brl(s.value)}</td>
+                  </tr>`
+                  )
+                  .join("")}
+                ${perSeller.length === 0 ? `<tr><td colspan="3" class="text-empty">Nenhum vendedor cadastrado ainda.</td></tr>` : ""}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="card card-p table-scroll">
+            <h2>Vendas do período</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Cliente</th>
+                  <th>Empresa</th>
+                  <th>Vendedor</th>
+                  <th class="cell-num">Valor</th>
+                  <th class="cell-num">Recorrente</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${saleRows
+                  .map(
+                    (s) => `<tr>
+                      <td>${s.closed_at.toLocaleDateString("pt-BR")}</td>
+                      <td>${esc(s.clientName) || "—"}</td>
+                      <td>${esc(s.companyName) || "—"}</td>
+                      <td><div class="person-cell"><span class="avatar avatar-sm">${initials(s.sellerName)}</span>${esc(s.sellerName) || "—"}</div></td>
+                      <td class="cell-num cell-green">${brl(s.value)}</td>
+                      <td class="cell-num"><span class="badge ${s.is_recurring ? "badge-green" : "badge-neutral"}">${s.is_recurring ? "Sim" : "Não"}</span></td>
+                    </tr>`
+                  )
+                  .join("")}
+                ${saleRows.length === 0 ? `<tr><td colspan="6" class="text-empty">Nenhuma venda no período selecionado.</td></tr>` : ""}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      renderBarrasPorPessoa(
+        "chart-vendas-vendedor",
+        perSeller.map((v) => ({ nome: v.name, valor: v.value, detalhe: `${v.count} venda${v.count === 1 ? "" : "s"}` })),
+        { dinheiro: true, vazio: "Nenhuma venda no período." }
+      );
+
+      renderPeriodFilter(document.getElementById("period-filter"), store.sellers, render, { defaultPeriod: "this_month", showSellerFilter: false });
+      setupCalendarPicker(render);
+      renderKpiGrid(document.getElementById("kpi-grid"), [
+        { label: "Quantidade de vendas", value: wonInPeriod, tone: "green", icon: ICONS.sales },
+        { label: "Valor total vendido", value: totalValue, format: "currency", tone: "green", icon: ICONS.dollarSign },
+        { label: "Em proposta", value: countOpenByStage(proposalStage?.id), tone: "violet", icon: ICONS.send },
+        { label: "Provável fechamento", value: countOpenByStage(probableStage?.id), tone: "amber", icon: ICONS.checkCircle },
+      ]);
+    }
+
+    (async () => {
+      try {
+        // VELOCIDADE: a busca dos dados COMEÇA JÁ, sem esperar o perfil.
+        // Antes era uma fila: perguntava quem é o usuário, esperava a resposta
+        // do servidor, e só então começava a carregar os dados — uma ida e
+        // volta inteira (~250 ms) parada no caminho. As duas coisas não
+        // dependem uma da outra, então agora andam juntas.
+        const dados = loadAllInstantaneo((novo) => {
+          store = novo;
+          render();
+        }).catch((e) => e); // guardado para ser relançado depois do login
+
+        const auth = await requireAuth();
+        if (!auth) return; // sem sessão: já foi redirecionado para o login
+        renderShell(auth.profile);
+
+        const resultado = await dados;
+        if (resultado instanceof Error) throw resultado;
+        store = resultado;
+        render();
+        // Sincroniza com RD/Agenda ao abrir a página (não trava a tela: os
+        // dados atuais já apareceram acima e a tela se atualiza sozinha
+        // quando a sincronização terminar).
+        startPageLoadSync(async () => {
+          store = await loadAll({ fresh: true });
+          render();
+        });
+      } catch (err) {
+        console.error(err);
+        showFatalError(err);
+      }
+    })();
+  </script>
+</body>
+</html>

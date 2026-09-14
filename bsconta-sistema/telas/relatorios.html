@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BSconta + Marketing</title>
+  <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
+  <link rel="stylesheet" href="../css/styles.css?v=20260914" />
+</head>
+<body>
+  <div class="app-shell">
+    <div id="app-header"></div>
+    <div class="app-content">
+      <main class="main">
+        <div id="content"><div class="loading-wrap"><div class="spinner"></div></div></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- VELOCIDADE: estas bibliotecas ficavam no <head>, onde travam a
+       pintura da tela até terminarem de baixar. Aqui embaixo o HTML
+       aparece primeiro e elas carregam em seguida, antes dos nossos
+       scripts — que é a única ordem que importa. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../js/config.js?v=20260914"></script>
+  <script src="../js/supabaseClient.js?v=20260914"></script>
+  <script src="../js/auth.js?v=20260914"></script>
+  <script src="../js/data.js?v=20260914"></script>
+  <script src="../js/calc.js?v=20260914"></script>
+  <script src="../js/ui.js?v=20260914"></script>
+  <script>
+    let store = null;
+
+    function render() {
+      const { period } = currentPeriodFromUrl("this_week");
+      const range = resolvePeriod(period);
+      const prevRange = previousRange(range);
+
+      const current = generateWeeklyReport(store, range);
+      const previous = generateWeeklyReport(store, prevRange);
+      const comparison = compareReports(current, previous);
+      const top = bestSeller(store, range);
+      const reportText = formatWeeklyReportText(current);
+      const revenue = current.fechamentos.reduce((a, f) => a + f.valor, 0);
+
+      document.getElementById("content").innerHTML = `
+        <div class="space-y">
+          <div class="row-between">
+            <h1 class="page-title">Relatório automático</h1>
+            <div id="period-filter"></div>
+          </div>
+
+          <div class="card card-p">
+            <h2>Relatório no formato padrão</h2>
+            <pre class="report-pre">${esc(reportText)}</pre>
+          </div>
+
+          <div class="card card-p">
+            <h2>Análise automática</h2>
+            <ul style="margin:0;padding-left:1.25rem;font-size:0.875rem;color:var(--text);line-height:1.9">
+              <li>Reuniões agendadas: <strong>${pctText(comparison.agendadas)}</strong> em relação ao período anterior.</li>
+              <li>Reuniões realizadas: <strong>${pctText(comparison.realizadas)}</strong> em relação ao período anterior.</li>
+              <li>Fechamentos: <strong>${pctText(comparison.fechamentos)}</strong> · Faturamento do período: <strong>${brl(revenue)}</strong> (${pctText(comparison.receita)} vs. anterior).</li>
+              <li>Melhor vendedor do período: <strong>${top && top.revenue > 0 ? `${esc(top.name)} (${brl(top.revenue)})` : "sem vendas registradas ainda"}</strong>.</li>
+              ${current.noShow > 0 ? `<li style="color:var(--amber-700)">Ponto de atenção: ${current.noShow} no-show${current.noShow > 1 ? "s" : ""} no período.</li>` : ""}
+              ${current.perdidos.count > 0 ? `<li style="color:var(--red-700)">Ponto de atenção: ${current.perdidos.count} oportunidade${current.perdidos.count > 1 ? "s" : ""} perdida${current.perdidos.count > 1 ? "s" : ""} (desqualificada${current.perdidos.count > 1 ? "s" : ""}).</li>` : ""}
+            </ul>
+          </div>
+
+          <p class="text-xs">Relatório mensal segue a mesma lógica — selecione "Este mês" ou "Mês passado" no filtro de período acima para recalcular estes números na janela mensal.</p>
+        </div>
+      `;
+
+      renderPeriodFilter(document.getElementById("period-filter"), store.sellers, render, { defaultPeriod: "this_week", showSellerFilter: false });
+    }
+
+    (async () => {
+      try {
+        // VELOCIDADE: a busca dos dados COMEÇA JÁ, sem esperar o perfil.
+        // Antes era uma fila: perguntava quem é o usuário, esperava a resposta
+        // do servidor, e só então começava a carregar os dados — uma ida e
+        // volta inteira (~250 ms) parada no caminho. As duas coisas não
+        // dependem uma da outra, então agora andam juntas.
+        const dados = loadAllInstantaneo((novo) => {
+          store = novo;
+          render();
+        }).catch((e) => e); // guardado para ser relançado depois do login
+
+        const auth = await requireAuth();
+        if (!auth) return; // sem sessão: já foi redirecionado para o login
+        renderShell(auth.profile);
+
+        const resultado = await dados;
+        if (resultado instanceof Error) throw resultado;
+        store = resultado;
+        render();
+      } catch (err) {
+        console.error(err);
+        showFatalError(err);
+      }
+    })();
+  </script>
+</body>
+</html>

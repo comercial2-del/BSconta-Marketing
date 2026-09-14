@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BSconta + Marketing</title>
+  <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
+  <link rel="stylesheet" href="../css/styles.css?v=20260914" />
+</head>
+<body>
+  <div class="app-shell">
+    <div id="app-header"></div>
+    <div class="app-content">
+      <main class="main">
+        <div id="content"><div class="loading-wrap"><div class="spinner"></div></div></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- VELOCIDADE: estas bibliotecas ficavam no <head>, onde travam a
+       pintura da tela até terminarem de baixar. Aqui embaixo o HTML
+       aparece primeiro e elas carregam em seguida, antes dos nossos
+       scripts — que é a única ordem que importa. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="../js/config.js?v=20260914"></script>
+  <script src="../js/supabaseClient.js?v=20260914"></script>
+  <script src="../js/auth.js?v=20260914"></script>
+  <script src="../js/data.js?v=20260914"></script>
+  <script src="../js/calc.js?v=20260914"></script>
+  <script src="../js/ui.js?v=20260914"></script>
+  <script src="../js/charts.js?v=20260914"></script>
+  <script>
+    let store = null;
+
+    function render() {
+      const params = new URLSearchParams(window.location.search);
+      const stageName = params.get("stage");
+      const funnel = getFunnel(store);
+      const selectedStage = stageName ? store.stages.find((s) => s.name === stageName) : null;
+
+      const sellerById = new Map(store.sellers.map((s) => [s.id, s]));
+      const dealsInStage = selectedStage
+        ? store.deals.filter((d) => d.stage_id === selectedStage.id && (selectedStage.is_won ? d.status === "WON" : d.status === "OPEN"))
+        : [];
+
+      document.getElementById("content").innerHTML = `
+        <div class="space-y">
+          <h1 class="page-title">Funil comercial</h1>
+
+          <div class="card card-p">
+            <h2>Oportunidades por etapa</h2>
+            <div style="position:relative;height:${Math.max(200, funnel.filter((f) => f.count > 0).length * 34 + 40)}px">
+              <canvas id="chart-funil"></canvas>
+            </div>
+          </div>
+
+          <div class="card card-p table-scroll">
+            <table>
+              <thead><tr><th>Etapa</th><th>Oportunidades</th><th>Valor total</th><th>% da etapa anterior</th></tr></thead>
+              <tbody>
+                ${funnel
+                  .map(
+                    (f) => `<tr>
+                      <td><a href="funil.html?stage=${encodeURIComponent(f.stage)}" style="color:var(--blue-700);font-weight:500">${esc(f.stage)}</a></td>
+                      <td>${f.count}</td>
+                      <td>${brl(f.value)}</td>
+                      <td>${f.conversionFromPrev != null ? `${f.conversionFromPrev.toFixed(0)}%` : "—"}</td>
+                    </tr>`
+                  )
+                  .join("")}
+              </tbody>
+            </table>
+          </div>
+
+          ${
+            selectedStage
+              ? `
+          <div class="card card-p">
+            <h2>Oportunidades em "${esc(selectedStage.name)}"</h2>
+            <div class="table-scroll">
+              <table>
+                <thead><tr><th>Cliente</th><th>Empresa</th><th>Vendedor</th><th>Valor</th><th>Probabilidade</th></tr></thead>
+                <tbody>
+                  ${dealsInStage
+                    .map(
+                      (d) => `<tr>
+                        <td>${esc(d.client_name)}</td>
+                        <td>${esc(d.company_name) || "—"}</td>
+                        <td>${esc(sellerById.get(d.seller_id)?.name) || "—"}</td>
+                        <td>${brl(d.value)}</td>
+                        <td>${d.probability != null ? `${d.probability}%` : "—"}</td>
+                      </tr>`
+                    )
+                    .join("")}
+                  ${dealsInStage.length === 0 ? `<tr><td colspan="5" class="text-empty">Nenhuma oportunidade nesta etapa.</td></tr>` : ""}
+                </tbody>
+              </table>
+            </div>
+          </div>`
+              : ""
+          }
+        </div>
+      `;
+
+      renderFunilBarras("chart-funil", funnel);
+    }
+
+    (async () => {
+      try {
+        // VELOCIDADE: a busca dos dados COMEÇA JÁ, sem esperar o perfil.
+        // Antes era uma fila: perguntava quem é o usuário, esperava a resposta
+        // do servidor, e só então começava a carregar os dados — uma ida e
+        // volta inteira (~250 ms) parada no caminho. As duas coisas não
+        // dependem uma da outra, então agora andam juntas.
+        const dados = loadAllInstantaneo((novo) => {
+          store = novo;
+          render();
+        }).catch((e) => e); // guardado para ser relançado depois do login
+
+        const auth = await requireAuth();
+        if (!auth) return; // sem sessão: já foi redirecionado para o login
+        renderShell(auth.profile);
+
+        const resultado = await dados;
+        if (resultado instanceof Error) throw resultado;
+        store = resultado;
+        render();
+      } catch (err) {
+        console.error(err);
+        showFatalError(err);
+      }
+    })();
+  </script>
+</body>
+</html>

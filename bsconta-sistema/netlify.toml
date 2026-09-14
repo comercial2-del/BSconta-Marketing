@@ -1,0 +1,68 @@
+# ---------------------------------------------------------------------------
+# Configuração da hospedagem (Netlify) — 14/09/2026
+#
+# POR QUE ESTE ARQUIVO EXISTE
+# Ao publicar, TUDO que está na pasta vai para o ar e fica acessível a quem
+# souber o endereço. Sem isto, qualquer pessoa poderia abrir
+# https://<o-site>/banco/02_seed_dados_reais.sql e ler o faturamento da
+# BSconta, ou /banco/01_schema.sql e ver como a segurança é feita.
+#
+# O `.gitignore` NÃO protege aqui: ele só vale para o Git. Quem manda na
+# hospedagem é este arquivo.
+#
+# As pastas abaixo não são do site — são material de instalação e manutenção.
+# O sistema no ar não precisa de nenhuma delas para funcionar.
+# ---------------------------------------------------------------------------
+
+# Sem build: são páginas prontas. A pasta publicada é a raiz, onde está o
+# index.html — apontar para `telas` quebraria todos os caminhos ../css e ../js.
+[build]
+  publish = "."
+  command = ""
+
+[[redirects]]
+  from = "/banco/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/docs/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/test/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/supabase/*"
+  to = "/404.html"
+  status = 404
+  force = true
+
+# Cabeçalhos de segurança básicos, válidos para o site inteiro.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "SAMEORIGIN"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# O HTML tem que ser sempre buscado do servidor. Se o navegador guardar uma
+# tela antiga junto de um js/ novo (ou o contrário), a tela chama uma função
+# que não existe mais, o render() lança erro e some tudo dali para baixo.
+# O ?v= nos <script> resolve o par HTML→JS; esta regra garante que o HTML que
+# carrega esse ?v= seja o novo.
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache"

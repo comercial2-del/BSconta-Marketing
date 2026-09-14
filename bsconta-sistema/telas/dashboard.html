@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BSconta + Marketing</title>
+  <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
+  <link rel="stylesheet" href="../css/styles.css?v=20260914" />
+</head>
+<body>
+  <div class="app-shell">
+    <div id="app-header"></div>
+    <div class="app-content">
+      <main class="main">
+        <div id="content"><div class="loading-wrap"><div class="spinner"></div></div></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- VELOCIDADE: estas bibliotecas ficavam no <head>, onde travam a
+       pintura da tela até terminarem de baixar. Aqui embaixo o HTML
+       aparece primeiro e elas carregam em seguida, antes dos nossos
+       scripts — que é a única ordem que importa. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="../js/config.js?v=20260914"></script>
+  <script src="../js/supabaseClient.js?v=20260914"></script>
+  <script src="../js/auth.js?v=20260914"></script>
+  <script src="../js/data.js?v=20260914"></script>
+  <script src="../js/calc.js?v=20260914"></script>
+  <script src="../js/ui.js?v=20260914"></script>
+  <script src="../js/lancamentos.js?v=20260914"></script>
+  <script src="../js/sync.js?v=20260914"></script>
+  <script src="../js/charts.js?v=20260914"></script>
+  <script>
+    let store = null;
+    let lancamentos = []; // lançamento manual de ligações (js/lancamentos.js)
+
+    function performanceLabel(kpis) {
+      const rate = kpis.meetingRealizationRate ?? 0;
+      if (kpis.salesCount >= 3 && rate >= 70) return { label: "Excelente", tone: "green" };
+      if (kpis.salesCount >= 1 && rate >= 50) return { label: "Boa", tone: "blue" };
+      if (rate >= 30) return { label: "Atenção", tone: "amber" };
+      return { label: "Ruim", tone: "red" };
+    }
+
+    function render() {
+      const { period, sellerId } = currentPeriodFromUrl("this_week");
+      const range = resolvePeriod(period);
+      const prevRange = previousRange(range);
+
+      const kpis = getKpis(store, { range, sellerId });
+      const prevKpis = getKpis(store, { range: prevRange, sellerId });
+
+      // LIGAÇÕES: vêm de js/lancamentos.js, a mesma fonte da tela de Ligações.
+      // O getKpis olha só as atividades do RD e não conhece o lançamento
+      // manual — usá-lo aqui faria a Visão geral mostrar um número e a tela de
+      // Ligações mostrar outro, para o mesmo período.
+      const ligacoes = numerosDeLigacoesGeral(store, lancamentos, range);
+      const ligacoesAntes = numerosDeLigacoesGeral(store, lancamentos, prevRange);
+      // LEADS ZERADOS a pedido do usuário (14/09/2026): o cartão fica na tela
+      // com as duas barras e 0 em cada, sem puxar número do banco ainda.
+      //
+      // Para LIGAR os números de verdade, troque a linha de baixo por:
+      //     const leads = getLeads(store, { range, sellerId });
+      // O cálculo continua pronto em getLeads() (js/calc.js) — "chegaram" sai
+      // de created_at e "perdidos" de closed_at, o mesmo critério do cartão de
+      // Perdas. Nada além desta linha precisa mudar.
+      const leads = { chegaram: 0, perdidos: 0 };
+      const perf = performanceLabel(kpis);
+
+      const content = document.getElementById("content");
+      content.className = "space-y";
+      content.innerHTML = `
+        <div class="row-between">
+          <div>
+            <h1 class="page-title">Visão geral</h1>
+            <p class="page-sub">Acompanhe seus indicadores e desempenho comercial em tempo real.</p>
+          </div>
+          <div class="header-actions">
+            <button type="button" class="icon-btn" aria-label="Notificações">${ICONS.bell}<span class="dot"></span></button>
+            <button type="button" class="icon-btn" aria-label="Calendário">${ICONS.meeting}</button>
+          </div>
+        </div>
+
+        <div id="period-filter"></div>
+
+        <div class="card card-p perf-banner ${perf.tone}">
+          <div class="perf-icon">${ICONS.sales}</div>
+          <div class="perf-text">
+            <p class="perf-label-small">Performance Comercial do período</p>
+            <p class="perf-label-big">${perf.label} <span aria-hidden="true">✨</span></p>
+          </div>
+          <p class="perf-desc">Calculado a partir da taxa de realização de reuniões e do volume de vendas fechadas no período selecionado.</p>
+          <div class="perf-illustration">${ICONS.rocket}</div>
+        </div>
+
+        <div id="kpi-grid"></div>
+        <div id="kpi-wide-grid" class="kpi-wide-grid"></div>
+
+        <div class="grid-2">
+          <div class="card card-p">
+            <h2>Reuniões por status</h2>
+            <div class="chart-with-legend">
+              <div class="chart-canvas-wrap"><canvas id="chart-donut"></canvas></div>
+              <div class="chart-legend" id="chart-donut-legend"></div>
+            </div>
+          </div>
+          <div class="card card-p">
+            <h2>Leads no período</h2>
+            <div style="position:relative;height:118px"><canvas id="chart-leads"></canvas></div>
+          </div>
+        </div>
+      `;
+
+      renderPeriodFilter(document.getElementById("period-filter"), store.sellers, render, { defaultPeriod: "this_week" });
+      setupCalendarPicker(render);
+
+      renderKpiGrid(document.getElementById("kpi-grid"), [
+        { label: "Ligações de agendamento", value: ligacoes.agendamento, change: pctChange(ligacoes.agendamento, ligacoesAntes.agendamento), tone: "blue", icon: ICONS.phone },
+        { label: "Reuniões agendadas", value: kpis.meetingsScheduled, change: pctChange(kpis.meetingsScheduled, prevKpis.meetingsScheduled), tone: "indigo", icon: ICONS.meeting },
+        { label: "Reuniões realizadas", value: kpis.meetingsDone, change: pctChange(kpis.meetingsDone, prevKpis.meetingsDone), tone: "teal", icon: ICONS.users },
+        { label: "Perdas", value: kpis.perdas.total, sub: resumoDasPerdas(kpis.perdas), tone: "red", icon: ICONS.xCircle },
+        { label: "Reunião de proposta", value: kpis.reuniaoPropostaCount, sub: brl(kpis.reuniaoPropostaValue), tone: "orange", icon: ICONS.handshake },
+        { label: "Follow-up", value: kpis.followUpCount, sub: brl(kpis.followUpValue), tone: "blue", icon: ICONS.userCheck },
+        { label: "Prováveis fechamentos", value: kpis.probableClosures, sub: brl(kpis.probableClosuresValue), tone: "violet", icon: ICONS.checkCircle },
+        { label: "Vendas realizadas", value: kpis.salesCount, change: pctChange(kpis.salesCount, prevKpis.salesCount), tone: "green", icon: ICONS.dollarSign },
+      ]);
+
+      document.getElementById("kpi-wide-grid").innerHTML = [
+        kpiWideCardHtml({ label: "Valor em oportunidades abertas", value: kpis.opportunitiesValue, tone: "blue", icon: ICONS.dollarSign }),
+        kpiWideCardHtml({ label: "Valor de vendas realizadas", value: kpis.revenue, change: pctChange(kpis.revenue, prevKpis.revenue), tone: "green", icon: ICONS.sales }),
+      ].join("");
+
+      renderMeetingStatusDonut("chart-donut", {
+        done: kpis.meetingsDone,
+        canceled: kpis.meetingsCanceled,
+        noShow: kpis.meetingsNoShow,
+        scheduled: Math.max(kpis.meetingsScheduled - kpis.meetingsDone - kpis.meetingsCanceled - kpis.meetingsNoShow, 0),
+      }, "chart-donut-legend");
+      renderLeadsChegaramPerdidos("chart-leads", leads);
+    }
+
+    // Mesma janela larga usada na tela de Ligações: os lançamentos são poucos
+    // (uma linha por vendedor por dia) e assim não há uma ida ao banco por
+    // período comparado.
+    const JANELA_LANCAMENTOS = () => {
+      const hoje = new Date();
+      return { start: new Date(hoje.getFullYear() - 1, 0, 1), end: new Date(hoje.getFullYear() + 1, 0, 1) };
+    };
+
+    (async () => {
+      try {
+        // VELOCIDADE: a busca dos dados COMEÇA JÁ, sem esperar o perfil.
+        // Antes era uma fila: perguntava quem é o usuário, esperava a resposta
+        // do servidor, e só então começava a carregar os dados — uma ida e
+        // volta inteira (~250 ms) parada no caminho. As duas coisas não
+        // dependem uma da outra, então agora andam juntas.
+        const dados = loadAllInstantaneo((novo) => {
+          store = novo;
+          render();
+        }).catch((e) => e); // guardado para ser relançado depois do login
+
+        const auth = await requireAuth();
+        if (!auth) return; // sem sessão: já foi redirecionado para o login
+        renderShell(auth.profile);
+
+        const resultado = await dados;
+        if (resultado instanceof Error) throw resultado;
+        store = resultado;
+        lancamentos = await carregarLancamentos(JANELA_LANCAMENTOS());
+        render();
+        // Sincroniza com RD/Agenda ao abrir a página (não trava a tela: os
+        // dados atuais já apareceram acima e a tela se atualiza sozinha
+        // quando a sincronização terminar).
+        startPageLoadSync(async () => {
+          [store, lancamentos] = await Promise.all([loadAll({ fresh: true }), carregarLancamentos(JANELA_LANCAMENTOS())]);
+          render();
+        });
+      } catch (err) {
+        console.error(err);
+        showFatalError(err);
+      }
+    })();
+  </script>
+</body>
+</html>

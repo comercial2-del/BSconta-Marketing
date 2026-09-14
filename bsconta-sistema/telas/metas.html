@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BSconta + Marketing</title>
+  <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
+  <link rel="stylesheet" href="../css/styles.css?v=20260914" />
+</head>
+<body>
+  <div class="app-shell">
+    <div id="app-header"></div>
+    <div class="app-content">
+      <main class="main">
+        <div id="content"><div class="loading-wrap"><div class="spinner"></div></div></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- VELOCIDADE: estas bibliotecas ficavam no <head>, onde travam a
+       pintura da tela até terminarem de baixar. Aqui embaixo o HTML
+       aparece primeiro e elas carregam em seguida, antes dos nossos
+       scripts — que é a única ordem que importa. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../js/config.js?v=20260914"></script>
+  <script src="../js/supabaseClient.js?v=20260914"></script>
+  <script src="../js/auth.js?v=20260914"></script>
+  <script src="../js/data.js?v=20260914"></script>
+  <script src="../js/calc.js?v=20260914"></script>
+  <script src="../js/ui.js?v=20260914"></script>
+  <script src="../js/lancamentos.js?v=20260914"></script>
+  <script src="../js/sync.js?v=20260914"></script>
+  <script>
+    let store = null;
+    let currentProfile = null;
+    // Lançamento manual de ligações. Sem isso, uma meta de ligações mostraria
+    // só o que o RD trouxe e divergiria da tela de Ligações.
+    let lancamentos = [];
+
+    function metricIconTone(metric) {
+      return {
+        CALLS: { icon: ICONS.phone, tone: "blue" },
+        SALES_CALLS: { icon: ICONS.phone, tone: "indigo" },
+        MEETINGS: { icon: ICONS.meeting, tone: "indigo" },
+        MEETINGS_HELD: { icon: ICONS.checkCircle, tone: "teal" },
+        PROPOSALS: { icon: ICONS.send, tone: "violet" },
+        SALES: { icon: ICONS.sales, tone: "green" },
+        REVENUE: { icon: ICONS.dollarSign, tone: "green" },
+      }[metric] || { icon: ICONS.goal, tone: "indigo" };
+    }
+
+    function goalFormHtml(sellers) {
+      const sellerOptions = sellers.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join("");
+      return `
+        <div class="card card-p">
+          <h2>Nova meta</h2>
+          <form id="goal-form" class="goal-form">
+            <div class="field-inline">
+              <label>Período</label>
+              <select id="goal-period"><option value="WEEK">Semanal</option><option value="MONTH">Mensal</option></select>
+            </div>
+            <div class="field-inline">
+              <label>Métrica</label>
+              <select id="goal-metric">
+                <option value="CALLS">Ligações</option>
+                <option value="SALES_CALLS">Ligações de vendas</option>
+                <option value="MEETINGS">Reuniões agendadas</option>
+                <option value="MEETINGS_HELD">Reuniões realizadas</option>
+                <option value="PROPOSALS">Propostas enviadas</option>
+                <option value="SALES">Vendas</option>
+                <option value="REVENUE">Faturamento (R$)</option>
+              </select>
+            </div>
+            <div class="field-inline">
+              <label>Vendedor</label>
+              <select id="goal-seller"><option value="">Equipe (geral)</option>${sellerOptions}</select>
+            </div>
+            <div class="field-inline">
+              <label>Meta</label>
+              <input type="number" id="goal-target" required placeholder="50" />
+            </div>
+            <button type="submit" class="btn-small" id="goal-submit">Adicionar meta</button>
+          </form>
+          <p class="error-text" id="goal-error" style="display:none"></p>
+        </div>
+      `;
+    }
+
+    let editandoMeta = null;    // id da meta aberta para edição
+    let mostrarBatidas = true;  // metas batidas começam à vista: esconder a comemoração atrás de um clique tira a graça
+    let formAberto = false;     // "Nova meta" fica fechado até alguém pedir
+
+    // Rótulo curto para o cartão: o nome longo do eixo ("Faturamento (R$)")
+    // repete o que a formatação do número já diz.
+    const TITULO_CURTO = { REVENUE: "Faturamento", SALES_CALLS: "Ligações de vendas", MEETINGS_HELD: "Reuniões realizadas", MEETINGS: "Reuniões agendadas", PROPOSALS: "Propostas enviadas" };
+
+    const SITUACAO = {
+      batida:     { rotulo: "Batida",      classe: "ok"       },
+      adiantada:  { rotulo: "Adiantada",   classe: "ok"       },
+      "no-ritmo": { rotulo: "No ritmo",    classe: "ritmo"    },
+      atrasada:   { rotulo: "Atrasada",    classe: "atrasada" },
+      critica:    { rotulo: "Muito atrás", classe: "critica"  },
+    };
+
+    const numero = (metric, v) =>
+      metric === "REVENUE" ? brl(v) : Number(v).toLocaleString("pt-BR");
+
+    // Quanto falta, em unidade de meta — é a informação que faz agir. "Faltam
+    // 59.000" diz o que fazer; "34% atingido" só descreve.
+    const quantoFalta = (g) => Math.max(0, Number(g.target_value) - Number(g.realized));
+
+    async function render() {
+      const agora = new Date();
+      const rows = store.goals.map((g) => {
+        const range = rangeForGoalPeriod(g.period);
+        const realized = realizedForMetric(store, g.metric, range, g.seller_id, lancamentos);
+        const pct = g.target_value > 0 ? Math.min((realized / g.target_value) * 100, 100) : 0;
+        const seller = g.seller_id ? store.sellers.find((s) => s.id === g.seller_id) : null;
+        const ritmo = ritmoDoPeriodo(range, agora);
+        return { ...g, realized, pct, ritmo, situacao: situacaoDaMeta(pct, ritmo), sellerName: seller?.name || "Equipe" };
+      });
+
+      // Meta batida sai da vista. Pedido do usuário (14/09/2026): "se a meta
+      // for concluída, ela precisa sumir". Some da lista principal, mas não é
+      // apagada sozinha — vai para um bloco recolhido embaixo, porque apagar
+      // sem a pessoa mandar é decidir por ela.
+      const batidas = rows.filter((g) => g.pct >= 100);
+      // As mais atrasadas primeiro: a lista passa a ser uma fila de atenção,
+      // não uma vitrine em ordem de cadastro.
+      const ativas = rows.filter((g) => g.pct < 100).sort((a, b) => a.pct - a.ritmo - (b.pct - b.ritmo));
+      const podeMexer = currentProfile.role === "ADMIN";
+
+      const precisamAtencao = ativas.filter((g) => g.situacao === "atrasada" || g.situacao === "critica").length;
+
+      const cartaoHtml = (g) => {
+        const { icon, tone } = metricIconTone(g.metric);
+        const s = SITUACAO[g.situacao];
+        const titulo = TITULO_CURTO[g.metric] || metricLabel(g.metric);
+
+        if (editandoMeta === g.id) {
+          return `
+              <div class="card goal-card goal-card-editando">
+                <div class="goal-head">
+                  <div class="kpi-icon tone-${tone}">${icon}</div>
+                  <div class="goal-head-txt">
+                    <p class="goal-title">${esc(titulo)}</p>
+                    <p class="goal-sub">${esc(g.sellerName)} · ${g.period === "WEEK" ? "semana" : "mês"}</p>
+                  </div>
+                </div>
+                <div class="goal-edit">
+                  <label for="meta-alvo">Nova meta</label>
+                  <input type="number" id="meta-alvo" min="0" step="1" value="${Number(g.target_value)}" />
+                  <p class="goal-edit-hint">Realizado até agora: <strong>${numero(g.metric, g.realized)}</strong></p>
+                  <div class="goal-acoes">
+                    <button type="button" class="btn-small" id="meta-salvar">Salvar</button>
+                    <button type="button" class="btn-ghost" id="meta-cancelar">Cancelar</button>
+                  </div>
+                  <p class="error-text" id="meta-erro" style="display:none"></p>
+                </div>
+              </div>`;
+        }
+
+        if (g.pct >= 100) {
+          // Meta batida tem cartão próprio. No formato normal ela viraria
+          // "100% · faltam 0", que é uma forma burocrática de dar uma notícia
+          // boa. Bater meta é o único momento da tela que merece ser
+          // comemorado, então o cartão muda de cara.
+          return `
+              <div class="card goal-card goal-batida">
+                <div class="goal-batida-selo">${ICONS.checkCircle}</div>
+                <p class="goal-batida-titulo">Meta cumprida!</p>
+                <p class="goal-batida-meta">${esc(titulo)} · ${esc(g.sellerName)}</p>
+                <p class="goal-batida-num">${numero(g.metric, g.realized)} <span>de ${numero(g.metric, g.target_value)}</span></p>
+                ${
+                  g.realized > g.target_value
+                    ? `<p class="goal-batida-extra">${numero(g.metric, g.realized - g.target_value)} acima da meta</p>`
+                    : ""
+                }
+                ${
+                  podeMexer
+                    ? `<div class="goal-acoes goal-acoes-batida">
+                         <button type="button" class="btn-small meta-nova">Criar nova meta</button>
+                         <button type="button" class="btn-ghost meta-apagar" data-id="${g.id}" data-nome="${esc(titulo)} · ${esc(g.sellerName)} · ${g.period === "WEEK" ? "semana" : "mês"}">Apagar</button>
+                       </div>`
+                    : ""
+                }
+              </div>`;
+        }
+
+        const falta = quantoFalta(g);
+        return `
+              <div class="card goal-card situacao-${s.classe}">
+                <div class="goal-head">
+                  <div class="kpi-icon tone-${tone}">${icon}</div>
+                  <div class="goal-head-txt">
+                    <p class="goal-title">${esc(titulo)}</p>
+                    <p class="goal-sub">${esc(g.sellerName)} · ${g.period === "WEEK" ? "semana" : "mês"}</p>
+                  </div>
+                  <span class="goal-selo">${s.rotulo}</span>
+                </div>
+
+                <p class="goal-pct">${g.pct.toFixed(0)}<span>%</span></p>
+                <p class="goal-numeros">${numero(g.metric, g.realized)} <span>de ${numero(g.metric, g.target_value)}</span></p>
+
+                <div class="goal-barra">
+                  <div class="goal-barra-fill" style="width:${g.pct}%"></div>
+                  <span class="goal-barra-agulha" style="left:${g.ritmo}%" title="${g.ritmo.toFixed(0)}% do prazo já passou"></span>
+                </div>
+                <p class="goal-rodape">
+                  <span class="goal-falta">${g.pct >= 100 ? "Meta batida" : `Faltam <strong>${numero(g.metric, falta)}</strong>`}</span>
+                  <span class="goal-prazo">${g.ritmo.toFixed(0)}% do prazo</span>
+                </p>
+
+                ${
+                  podeMexer
+                    ? `<div class="goal-acoes">
+                         <button type="button" class="btn-ghost meta-editar" data-id="${g.id}">Editar</button>
+                         <button type="button" class="btn-ghost meta-apagar" data-id="${g.id}" data-nome="${esc(titulo)} · ${esc(g.sellerName)} · ${g.period === "WEEK" ? "semana" : "mês"}">Apagar</button>
+                       </div>`
+                    : ""
+                }
+              </div>`;
+      };
+
+      const semMetas = rows.length === 0;
+
+      document.getElementById("content").innerHTML = `
+        <div class="space-y">
+          <div class="row-between">
+            <div>
+              <h1 class="page-title">Metas</h1>
+              <p class="page-sub">${
+                semMetas
+                  ? "Nenhuma meta cadastrada ainda."
+                  : `${ativas.length} em andamento${precisamAtencao ? ` · <strong class="txt-atencao">${precisamAtencao} pedindo atenção</strong>` : ""}${batidas.length ? ` · ${batidas.length} batida${batidas.length === 1 ? "" : "s"}` : ""}`
+              }</p>
+            </div>
+            ${podeMexer ? `<button type="button" class="btn-small" id="abrir-form">${formAberto ? "Fechar" : "+ Nova meta"}</button>` : ""}
+          </div>
+
+          ${
+            batidas.length === 0
+              ? ""
+              : `<div class="card card-p faixa-parabens">
+                   <span class="faixa-parabens-icone">${ICONS.checkCircle}</span>
+                   <div>
+                     <p class="faixa-parabens-titulo">${
+                       batidas.length === 1 ? "Meta cumprida com sucesso!" : `${batidas.length} metas cumpridas com sucesso!`
+                     }</p>
+                     <p class="faixa-parabens-sub">${
+                       ativas.length === 0
+                         ? "Tudo batido no período. Bora definir a próxima?"
+                         : `Faltam ${ativas.length} para fechar o período. Bora?`
+                     }</p>
+                   </div>
+                   ${podeMexer ? `<button type="button" class="btn-small meta-nova">Criar nova meta</button>` : ""}
+                 </div>`
+          }
+
+          ${podeMexer && (formAberto || semMetas) ? goalFormHtml(store.sellers) : ""}
+
+          <div class="grid-goals">
+            ${ativas.map(cartaoHtml).join("")}
+          </div>
+          ${ativas.length === 0 && !semMetas ? `<p class="text-xs">Todas as metas do período foram batidas.</p>` : ""}
+
+          ${
+            batidas.length === 0
+              ? ""
+              : `<div class="batidas-secao">
+                   <button type="button" class="batidas-toggle" id="batidas-toggle">
+                     <span>Cumpridas (${batidas.length})</span>
+                     <span class="text-xs">${mostrarBatidas ? "esconder" : "ver"}</span>
+                   </button>
+                   ${mostrarBatidas ? `<div class="grid-goals">${batidas.map(cartaoHtml).join("")}</div>` : ""}
+                 </div>`
+          }
+        </div>
+      `;
+
+      document.getElementById("abrir-form")?.addEventListener("click", () => {
+        formAberto = !formAberto;
+        render();
+      });
+
+      document.querySelectorAll(".meta-nova").forEach((b) =>
+        b.addEventListener("click", () => {
+          formAberto = true;
+          render();
+          document.getElementById("goal-period")?.focus();
+        })
+      );
+
+      document.getElementById("batidas-toggle")?.addEventListener("click", () => {
+        mostrarBatidas = !mostrarBatidas;
+        render();
+      });
+
+      if (currentProfile.role === "ADMIN") {
+        ligarAcoesDasMetas();
+        document.getElementById("goal-form")?.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const errorEl = document.getElementById("goal-error");
+          const submitBtn = document.getElementById("goal-submit");
+          errorEl.style.display = "none";
+          submitBtn.disabled = true;
+          submitBtn.textContent = "Salvando...";
+          try {
+            const sellerId = document.getElementById("goal-seller").value || null;
+            await insertGoal({
+              period: document.getElementById("goal-period").value,
+              metric: document.getElementById("goal-metric").value,
+              seller_id: sellerId,
+              target_value: Number(document.getElementById("goal-target").value),
+            });
+            invalidateStoreCache();
+            formAberto = false;
+            await recarregar();
+          } catch (err) {
+            errorEl.textContent = err.message || "Erro ao salvar meta.";
+            errorEl.style.display = "block";
+          } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = "Adicionar meta";
+          }
+        });
+      }
+    }
+
+    // Mesma janela larga usada na tela de Ligações: os lançamentos são poucos
+    // (uma linha por vendedor por dia) e assim não há uma ida ao banco por
+    // período comparado.
+    const JANELA_LANCAMENTOS = () => {
+      const hoje = new Date();
+      return { start: new Date(hoje.getFullYear() - 1, 0, 1), end: new Date(hoje.getFullYear() + 1, 0, 1) };
+    };
+
+    async function recarregar() {
+      invalidateStoreCache();
+      [store, lancamentos] = await Promise.all([loadAll({ fresh: true }), carregarLancamentos(JANELA_LANCAMENTOS())]);
+      render();
+    }
+
+    function ligarAcoesDasMetas() {
+      document.querySelectorAll(".meta-editar").forEach((b) =>
+        b.addEventListener("click", () => {
+          editandoMeta = b.dataset.id;
+          render();
+        })
+      );
+
+      document.querySelectorAll(".meta-apagar").forEach((b) =>
+        b.addEventListener("click", async () => {
+          // Apagar meta não tem volta, então pergunta antes. É a única ação
+          // destrutiva da tela. O diálogo mostra QUAL meta vai sumir — o
+          // confirm() do navegador só dizia "esta meta", e com vários cartões
+          // na tela "esta" não identifica nada.
+          const confirmado = await confirmarAcao({
+            titulo: "Apagar esta meta?",
+            item: b.dataset.nome,
+            texto: "A meta some da tela e não dá para desfazer. Os números realizados continuam onde estão — só o alvo é apagado.",
+            confirmar: "Sim, apagar",
+            cancelar: "Cancelar",
+          });
+          if (!confirmado) return;
+          b.disabled = true;
+          try {
+            await deleteGoal(b.dataset.id);
+            await recarregar();
+          } catch (e) {
+            await confirmarAcao({
+              titulo: "Não foi possível apagar",
+              texto: e.message || "Tente de novo em instantes.",
+              confirmar: "Entendi",
+              cancelar: "Fechar",
+            });
+            b.disabled = false;
+          }
+        })
+      );
+
+      const salvar = document.getElementById("meta-salvar");
+      if (!salvar) return;
+      document.getElementById("meta-cancelar").addEventListener("click", () => {
+        editandoMeta = null;
+        render();
+      });
+      salvar.addEventListener("click", async () => {
+        const erro = document.getElementById("meta-erro");
+        const alvo = Number(document.getElementById("meta-alvo").value);
+        if (!Number.isFinite(alvo) || alvo < 0) {
+          erro.textContent = "Informe um número válido.";
+          erro.style.display = "block";
+          return;
+        }
+        salvar.disabled = true;
+        erro.style.display = "none";
+        try {
+          await updateGoal(editandoMeta, { target_value: alvo });
+          editandoMeta = null;
+          await recarregar();
+        } catch (e) {
+          erro.textContent = e.message || "Não foi possível salvar.";
+          erro.style.display = "block";
+          salvar.disabled = false;
+        }
+      });
+    }
+
+    (async () => {
+      try {
+        // VELOCIDADE: a busca dos dados COMEÇA JÁ, sem esperar o perfil.
+        // Antes era uma fila: perguntava quem é o usuário, esperava a resposta
+        // do servidor, e só então começava a carregar os dados — uma ida e
+        // volta inteira (~250 ms) parada no caminho. As duas coisas não
+        // dependem uma da outra, então agora andam juntas.
+        const dados = loadAllInstantaneo((novo) => {
+          store = novo;
+          render();
+        }).catch((e) => e); // guardado para ser relançado depois do login
+
+        const auth = await requireAuth();
+        if (!auth) return; // sem sessão: já foi redirecionado para o login
+        currentProfile = auth.profile;
+        renderShell(auth.profile);
+
+        const resultado = await dados;
+        if (resultado instanceof Error) throw resultado;
+        store = resultado;
+        lancamentos = await carregarLancamentos(JANELA_LANCAMENTOS());
+        render();
+        // Sincroniza com RD/Agenda ao abrir a página (não trava a tela: os
+        // dados atuais já apareceram acima e a tela se atualiza sozinha
+        // quando a sincronização terminar).
+        startPageLoadSync(async () => {
+          [store, lancamentos] = await Promise.all([loadAll({ fresh: true }), carregarLancamentos(JANELA_LANCAMENTOS())]);
+          render();
+        });
+      } catch (err) {
+        console.error(err);
+        showFatalError(err);
+      }
+    })();
+  </script>
+</body>
+</html>

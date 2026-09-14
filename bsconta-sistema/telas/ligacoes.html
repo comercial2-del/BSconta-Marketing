@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BSconta + Marketing</title>
+  <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
+  <link rel="stylesheet" href="../css/styles.css?v=20260914" />
+</head>
+<body>
+  <div class="app-shell">
+    <div id="app-header"></div>
+    <div class="app-content">
+      <main class="main">
+        <div id="content"><div class="loading-wrap"><div class="spinner"></div></div></div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+  <script src="../js/config.js?v=20260914"></script>
+  <script src="../js/supabaseClient.js?v=20260914"></script>
+  <script src="../js/auth.js?v=20260914"></script>
+  <script src="../js/data.js?v=20260914"></script>
+  <script src="../js/calc.js?v=20260914"></script>
+  <script src="../js/ui.js?v=20260914"></script>
+  <script src="../js/lancamentos.js?v=20260914"></script>
+  <script src="../js/sync.js?v=20260914"></script>
+  <script src="../js/charts.js?v=20260914"></script>
+  <script>
+    let store = null;
+    let lancamentos = [];   // linhas de call_entries (lançamento manual)
+    let usuario = null;     // quem está logado — decide quem edita
+    let editando = null;    // id do vendedor cuja linha está aberta para edição
+
+    // Os números vêm de js/lancamentos.js — a MESMA fonte que a Visão geral
+    // usa. Antes cada tela calculava do seu jeito e elas divergiam.
+    const numeros = (range, sellerId) => numerosDeLigacoes(store, lancamentos, range, sellerId);
+    const numerosGerais = (range) => numerosDeLigacoesGeral(store, lancamentos, range);
+
+    // Distribuição por dia da semana das ligações de vendas — inclui o que foi
+    // lançado à mão, senão o gráfico contaria uma história diferente do número
+    // grande ao lado dele.
+    function vendasPorDiaDaSemana(range) {
+      const balde = [0, 0, 0, 0, 0, 0, 0];
+      const dia = new Date(range.start);
+      while (dia <= range.end) {
+        const umDia = { start: startOfDay(dia), end: endOfDay(dia) };
+        balde[dia.getDay()] += numerosGerais(umDia).vendas;
+        dia.setDate(dia.getDate() + 1);
+      }
+      return balde;
+    }
+
+    const PREV_LABEL = { today: "ontem", this_week: "semana passada", this_month: "mês passado" };
+
+    function render() {
+      const { period } = currentPeriodFromUrl("this_week");
+      const range = resolvePeriod(period);
+      const prevRange = previousRange(range);
+      const periodLabel = (PERIODS.find((p) => p.value === period)?.label || "período").toLowerCase();
+
+      const podeEditar = podeEditarLigacoes(usuario);
+      const umDiaSo = ehUmDiaSo(range);
+      const diaSelecionado = isoDate(range.start);
+      const podeLancarAgora = podeEditar && umDiaSo && diaLancavel(diaSelecionado);
+
+      const current = numerosGerais(range);
+      const previous = numerosGerais(prevRange);
+      const vendasChange = pctChange(current.vendas, previous.vendas);
+      const totalChange = pctChange(current.total, previous.total);
+
+      const evoRows = PERIODS.map((p) => {
+        const n = numerosGerais(resolvePeriod(p.value));
+        return { label: p.label, vendas: n.vendas, agendamento: n.agendamento };
+      });
+
+      const rows = store.sellers
+        .map((seller) => ({ seller, ...numeros(range, seller.id) }))
+        .sort((a, b) => b.total - a.total || b.agendamentos - a.agendamentos);
+
+      const pct = current.total > 0 ? Math.round((current.agendamento / current.total) * 1000) / 10 : 0;
+
+      document.getElementById("content").innerHTML = `
+        <div class="space-y">
+          <div class="row-between">
+            <h1 class="page-title">Ligações</h1>
+            <div class="header-actions">
+              <div id="period-filter"></div>
+              <button type="button" class="icon-btn" aria-label="Calendário">${ICONS.meeting}</button>
+            </div>
+          </div>
+
+          <div class="card card-p kpi-hero" id="kpi-row"></div>
+
+          <div class="card card-p table-scroll">
+            <div class="row-between" style="margin-bottom:0.7rem">
+              <h2 style="margin:0">Ligações por colaborador</h2>
+              ${
+                podeEditar
+                  ? podeLancarAgora
+                    ? `<span class="text-xs">Lançando <strong>${esc(range.start.toLocaleDateString("pt-BR"))}</strong> — clique em Editar na linha</span>`
+                    : `<span class="text-xs">${
+                        umDiaSo
+                          ? `Lançamento manual vale a partir de ${new Date(LANCAMENTOS_INICIO + "T12:00:00").toLocaleDateString("pt-BR")}`
+                          : "Escolha um único dia (Hoje, Ontem ou uma data no calendário) para lançar"
+                      }</span>`
+                  : ""
+              }
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Colaborador</th>
+                  <th class="cell-num">Ligações de vendas</th>
+                  <th class="cell-num">Ligações de agendamento</th>
+                  <th class="cell-num">Total de ligações</th>
+                  <th class="cell-num">Agendamentos</th>
+                  ${podeLancarAgora ? `<th class="cell-num"></th>` : ""}
+                </tr>
+              </thead>
+              <tbody id="corpo-colaboradores">
+                ${rows.map((r) => linhaHtml(r, podeLancarAgora, diaSelecionado)).join("")}
+                ${rows.length === 0 ? `<tr><td colspan="${podeLancarAgora ? 6 : 5}" class="text-empty">Nenhum vendedor cadastrado ainda.</td></tr>` : ""}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="grid-3 reverse">
+            <div class="card card-p">
+              <h2>Ligações por tipo</h2>
+              <div class="chart-with-legend">
+                <div class="chart-canvas-wrap">
+                  <canvas id="chart-calls-donut"></canvas>
+                  <div class="donut-center" id="donut-center"></div>
+                </div>
+                <div class="chart-legend" id="chart-calls-legend"></div>
+              </div>
+              <div class="insight-box">
+                <span class="insight-icon">${ICONS.info}</span>
+                <p>${
+                  current.total > 0
+                    ? `As ligações de agendamento representam <strong>${pct.toLocaleString("pt-BR")}%</strong> do total de ligações realizadas.`
+                    : "Sem ligações realizadas no período selecionado."
+                }</p>
+              </div>
+            </div>
+            <div class="card card-p">
+              <h2>Evolução de ligações</h2>
+              <div style="position:relative"><canvas id="chart-calls-evo"></canvas></div>
+              <div class="summary-strip">
+                <div class="summary-left">
+                  <span class="summary-icon">${ICONS.sales}</span>
+                  <span>Total de ligações ${esc(periodLabel)}: <strong>${current.total}</strong></span>
+                </div>
+                <span class="trend-pill ${totalChange == null ? "neutral" : totalChange >= 0 ? "up" : "down"}">
+                  ${
+                    totalChange == null
+                      ? "sem período anterior"
+                      : `${totalChange >= 0 ? "↑" : "↓"} ${Math.abs(totalChange).toFixed(0)}% vs. ${PREV_LABEL[period] || "período anterior"}`
+                  }
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      renderPeriodFilter(document.getElementById("period-filter"), store.sellers, render, { defaultPeriod: "this_week", showSellerFilter: false });
+      setupCalendarPicker(render);
+
+      {
+        const kpiRow = document.getElementById("kpi-row");
+        const cls = vendasChange == null ? "neutral" : vendasChange >= 0 ? "up" : "down";
+        const txt = vendasChange == null ? "sem período anterior" : `${vendasChange >= 0 ? "↑" : "↓"} ${Math.abs(vendasChange).toFixed(0)}%`;
+        kpiRow.innerHTML = `
+          <div class="kpi-hero-icon">${ICONS.phone}</div>
+          <div class="kpi-hero-body">
+            <p class="kpi-label">Ligações de vendas realizadas</p>
+            <p class="kpi-value">${current.vendas.toLocaleString("pt-BR")}</p>
+          </div>
+          <div class="kpi-hero-chart"><canvas id="chart-vendas-trend"></canvas></div>
+          <div class="kpi-hero-trend">
+            <span class="pill ${cls}">${txt}</span>
+            <span class="sub">vs. período anterior</span>
+          </div>
+        `;
+        renderTrendLineChart("chart-vendas-trend", vendasPorDiaDaSemana(range), "#4f46e5");
+      }
+
+      renderCallsTypeDonut("chart-calls-donut", { vendas: current.vendas, agendamento: current.agendamento }, "chart-calls-legend", "donut-center");
+      renderCallsEvolutionChart("chart-calls-evo", evoRows);
+
+      if (podeLancarAgora) ligarBotoesDeEdicao(diaSelecionado);
+    }
+
+    // -----------------------------------------------------------------------
+    // A linha do colaborador — em modo leitura ou em modo edição.
+    // -----------------------------------------------------------------------
+    function linhaHtml(r, podeLancarAgora, dia) {
+      const lancado = lancamentoDoDia(lancamentos, r.seller.id, dia);
+      if (editando === r.seller.id) return linhaEdicaoHtml(r, lancado);
+
+      return `
+        <tr data-seller="${r.seller.id}">
+          <td>
+            <div class="person-cell">
+              <span class="avatar avatar-sm">${initials(r.seller.name)}</span>${esc(r.seller.name)}
+            </div>
+          </td>
+          <td class="cell-num cell-blue">${r.vendas}</td>
+          <td class="cell-num cell-green">${r.agendamento}</td>
+          <td class="cell-num">${r.total}</td>
+          <td class="cell-num${r.agendamentos > 0 ? " cell-blue" : ""}">${r.agendamentos || "—"}</td>
+          ${podeLancarAgora ? `<td class="cell-num"><button type="button" class="btn-ghost btn-editar" data-seller="${r.seller.id}">Editar</button></td>` : ""}
+        </tr>`;
+    }
+
+    function linhaEdicaoHtml(r, lancado) {
+      const v = lancado ? lancado.sales_calls : r.vendas;
+      const a = lancado ? lancado.scheduling_calls : r.agendamento;
+      const g = lancado ? lancado.scheduled : r.agendamentos;
+      const campo = (id, valor) =>
+        `<input type="number" min="0" step="1" id="ed-${id}" value="${valor}" style="width:5.5rem;text-align:right" />`;
+      return `
+        <tr class="linha-edicao" data-seller="${r.seller.id}">
+          <td><div class="person-cell"><span class="avatar avatar-sm">${initials(r.seller.name)}</span>${esc(r.seller.name)}</div></td>
+          <td class="cell-num">${campo("vendas", v)}</td>
+          <td class="cell-num">${campo("agendamento", a)}</td>
+          <td class="cell-num" id="ed-total">${v + a}</td>
+          <td class="cell-num">${campo("agendamentos", g)}</td>
+          <td class="cell-num" style="white-space:nowrap">
+            <button type="button" class="btn-small" id="ed-salvar">Salvar</button>
+            <button type="button" class="btn-ghost" id="ed-cancelar">Cancelar</button>
+            ${lancado ? `<button type="button" class="btn-ghost" id="ed-apagar" title="Volta a usar o número do RD Station">Usar o RD</button>` : ""}
+          </td>
+        </tr>
+        <tr><td colspan="6"><p class="error-text" id="ed-erro" style="display:none"></p></td></tr>`;
+    }
+
+    function ligarBotoesDeEdicao(dia) {
+      document.querySelectorAll(".btn-editar").forEach((b) =>
+        b.addEventListener("click", () => {
+          editando = b.dataset.seller;
+          render();
+        })
+      );
+
+      const salvar = document.getElementById("ed-salvar");
+      if (!salvar) return;
+
+      // O total é sempre vendas + agendamento. Ele acompanha a digitação em vez
+      // de ser um campo separado: total digitado à parte poderia não bater com
+      // as partes, e aí ninguém saberia qual dos três está certo.
+      const atualizaTotal = () => {
+        const v = Number(document.getElementById("ed-vendas").value) || 0;
+        const a = Number(document.getElementById("ed-agendamento").value) || 0;
+        document.getElementById("ed-total").textContent = v + a;
+      };
+      ["ed-vendas", "ed-agendamento"].forEach((id) => document.getElementById(id).addEventListener("input", atualizaTotal));
+
+      document.getElementById("ed-cancelar").addEventListener("click", () => {
+        editando = null;
+        render();
+      });
+
+      salvar.addEventListener("click", async () => {
+        const erro = document.getElementById("ed-erro");
+        salvar.disabled = true;
+        erro.style.display = "none";
+        try {
+          await salvarLancamento({
+            sellerId: editando,
+            dia,
+            vendas: document.getElementById("ed-vendas").value,
+            agendamento: document.getElementById("ed-agendamento").value,
+            agendamentos: document.getElementById("ed-agendamentos").value,
+            autor: usuario?.email || null,
+          });
+          lancamentos = await carregarLancamentos(JANELA_LANCAMENTOS());
+          editando = null;
+          render();
+        } catch (e) {
+          erro.textContent = e.message || "Não foi possível salvar.";
+          erro.style.display = "";
+          salvar.disabled = false;
+        }
+      });
+
+      const apagar = document.getElementById("ed-apagar");
+      if (apagar)
+        apagar.addEventListener("click", async () => {
+          const erro = document.getElementById("ed-erro");
+          apagar.disabled = true;
+          try {
+            await apagarLancamento(editando, dia);
+            lancamentos = await carregarLancamentos(JANELA_LANCAMENTOS());
+            editando = null;
+            render();
+          } catch (e) {
+            erro.textContent = e.message || "Não foi possível apagar.";
+            erro.style.display = "";
+            apagar.disabled = false;
+          }
+        });
+    }
+
+    // Os lançamentos são poucos (uma linha por vendedor por dia), então vale
+    // buscar uma janela larga de uma vez: a tela compara vários períodos ao
+    // mesmo tempo no gráfico de evolução, e assim não há uma ida ao banco por
+    // período.
+    const JANELA_LANCAMENTOS = () => {
+      const hoje = new Date();
+      return { start: new Date(hoje.getFullYear() - 1, 0, 1), end: new Date(hoje.getFullYear() + 1, 0, 1) };
+    };
+
+    (async () => {
+      try {
+        const dados = loadAllInstantaneo((novo) => {
+          store = novo;
+          render();
+        }).catch((e) => e);
+
+        const auth = await requireAuth();
+        if (!auth) return;
+        usuario = auth.user;
+        renderShell(auth.profile);
+
+        const resultado = await dados;
+        if (resultado instanceof Error) throw resultado;
+        store = resultado;
+        lancamentos = await carregarLancamentos(JANELA_LANCAMENTOS());
+        render();
+
+        startPageLoadSync(async () => {
+          [store, lancamentos] = await Promise.all([loadAll({ fresh: true }), carregarLancamentos(JANELA_LANCAMENTOS())]);
+          render();
+        });
+      } catch (err) {
+        console.error(err);
+        showFatalError(err);
+      }
+    })();
+  </script>
+</body>
+</html>

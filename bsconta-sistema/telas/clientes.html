@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BSconta + Marketing</title>
+  <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
+  <link rel="stylesheet" href="../css/styles.css?v=20260914" />
+</head>
+<body>
+  <div class="app-shell">
+    <div id="app-header"></div>
+    <div class="app-content">
+      <main class="main">
+        <div id="content"><div class="loading-wrap"><div class="spinner"></div></div></div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="../js/config.js?v=20260914"></script>
+  <script src="../js/supabaseClient.js?v=20260914"></script>
+  <script src="../js/auth.js?v=20260914"></script>
+  <script src="../js/data.js?v=20260914"></script>
+  <script src="../js/calc.js?v=20260914"></script>
+  <script src="../js/ui.js?v=20260914"></script>
+  <script src="../js/clientes.js?v=20260914"></script>
+  <script src="../js/sync.js?v=20260914"></script>
+  <script src="../js/charts.js?v=20260914"></script>
+  <script>
+    let store = null;      // vendedores (e o resto do sistema, já em cache)
+    let carteira = null;   // { clients, events, issues }
+    let perfil = null;
+
+    // Filtros da tela. Ficam fora do HTML que é redesenhado, senão o campo de
+    // busca perderia o foco a cada letra digitada.
+    const filtro = { texto: "", health: "", status: "", seller: "" };
+
+    const nomeVendedor = (id) => store.sellers.find((s) => s.id === id)?.name || "";
+
+    function clientesFiltrados() {
+      const texto = filtro.texto.trim().toLowerCase();
+      return carteira.clients
+        .filter((c) => {
+          if (filtro.health && c.health !== filtro.health) return false;
+          if (filtro.status && c.status !== filtro.status) return false;
+          if (!filtro.status && c.status === "CHURNED") return false; // encerrados só sob demanda
+          if (filtro.seller && c.seller_id !== filtro.seller) return false;
+          if (!texto) return true;
+          return `${c.name} ${c.company_name || ""} ${nomeVendedor(c.seller_id)}`.toLowerCase().includes(texto);
+        })
+        .sort((a, b) => {
+          // Quem precisa de ação primeiro: problema, atenção, depois o resto.
+          const peso = { RED: 0, YELLOW: 1, BLUE: 2, UNSET: 3, GREEN: 4 };
+          return (peso[a.health] ?? 9) - (peso[b.health] ?? 9) || Number(b.contract_value) - Number(a.contract_value);
+        });
+    }
+
+    // Frase curta que resume a situação do atendimento — é o "indicador de
+    // possíveis problemas ou pendências" do card. Um problema que ninguém
+    // resolveu há semanas é o sinal mais importante da tela, então ele ganha
+    // destaque próprio em vez de virar mais um número.
+    function pendenciaHtml(c) {
+      const abertos = problemasAbertos(carteira.issues, c.id);
+      if (abertos.length === 0) return `<p class="client-card-ok">Sem pendências em aberto</p>`;
+      const maisAntigo = abertos.reduce((a, p) => (p.opened_at < a.opened_at ? p : a));
+      const dias = Math.floor((Date.now() - maisAntigo.opened_at) / 86400000);
+      const grave = dias >= RISCO_DIAS;
+      return `<p class="client-card-alert${grave ? " grave" : ""}">
+        ${abertos.length} problema${abertos.length > 1 ? "s" : ""} em aberto${dias > 0 ? ` — o mais antigo há ${dias} dia${dias > 1 ? "s" : ""}` : ""}
+      </p>`;
+    }
+
+    function cardHtml(c) {
+      const h = healthInfo(c.health);
+      const st = statusInfo(c.status);
+      const atualizado = (c.updated_at || c.created_at);
+      return `
+        <a class="client-card tone-${h.tone}" href="cliente.html?id=${encodeURIComponent(c.id)}">
+          <div class="client-card-top">
+            <span class="avatar avatar-sm">${initials(c.name)}</span>
+            <div class="client-card-id">
+              <strong>${esc(c.name)}</strong>
+              <span>${esc(c.company_name) || "—"}</span>
+            </div>
+            <span class="health-dot" style="background:${h.cor}" title="${esc(h.label)}"></span>
+          </div>
+          <p class="client-card-value">${brl(c.contract_value)}<span>contratado${c.is_recurring ? " · recorrente" : ""}</span></p>
+          <div class="client-card-badges">
+            <span class="badge badge-${st.tone === "green" ? "green" : "neutral"}">${st.label}</span>
+            <span class="health-pill tone-${h.tone}">${h.curto}</span>
+          </div>
+          ${pendenciaHtml(c)}
+          <div class="client-card-foot">
+            <span>${esc(nomeVendedor(c.seller_id)) || "sem responsável"}</span>
+            <span>cliente há ${tempoDeCliente(c.started_at)}</span>
+          </div>
+        </a>`;
+    }
+
+    function renderLista() {
+      const lista = clientesFiltrados();
+      document.getElementById("clients-grid").innerHTML =
+        lista.length === 0
+          ? `<p class="text-empty" style="grid-column:1/-1">Nenhum cliente com esses filtros.</p>`
+          : lista.map(cardHtml).join("");
+      document.getElementById("clients-count").textContent =
+        `${lista.length} de ${carteira.clients.length} cliente${carteira.clients.length === 1 ? "" : "s"}`;
+    }
+
+    function render() {
+      const m = metricasCarteira(carteira.clients, carteira.issues);
+      const problemas = principaisProblemas(carteira.issues);
+      const evolucao = evolucaoSatisfacao(carteira.clients, carteira.events);
+
+      const chipsHtml = [{ k: "", rotulo: "Todos" }, ...HEALTH_ORDEM.map((k) => ({ k, rotulo: HEALTH[k].curto }))]
+        .map(
+          (c) =>
+            `<button type="button" class="health-chip${filtro.health === c.k ? " active" : ""}" data-health="${c.k}">
+               ${c.k ? `<span class="health-dot sm" style="background:${HEALTH[c.k].cor}"></span>` : ""}${c.rotulo}
+               ${c.k ? `<b>${m.porSituacao[c.k] || 0}</b>` : `<b>${m.total}</b>`}
+             </button>`
+        )
+        .join("");
+
+      document.getElementById("content").innerHTML = `
+        <div class="space-y">
+          <div class="row-between">
+            <h1 class="page-title">Clientes</h1>
+            <button type="button" class="btn-small" id="btn-novo">+ Cliente manual</button>
+          </div>
+
+          <div class="kpi-grid kpi-grid-6">
+            ${[
+              { rotulo: "Clientes ativos", valor: m.total, tone: "indigo", icon: ICONS.users },
+              { rotulo: "Satisfeitos", valor: m.satisfeitos, tone: "green", icon: ICONS.checkCircle },
+              { rotulo: "Precisam de atenção", valor: m.atencao, tone: "amber", icon: ICONS.bell },
+              { rotulo: "Com problema", valor: m.comProblema, tone: "red", icon: ICONS.info },
+              { rotulo: "Em risco", valor: m.clientesEmRisco, tone: "red", icon: ICONS.shield, sub: m.valorEmRisco > 0 ? brl(m.valorEmRisco) + " em jogo" : "" },
+              { rotulo: "Valor da carteira", valor: brl(m.valorCarteira), tone: "green", icon: ICONS.dollarSign },
+            ]
+              .map(
+                (k) => `
+              <div class="card card-p kpi-card">
+                <div class="kpi-card-top"><div class="kpi-icon tone-${k.tone}">${k.icon}</div></div>
+                <p class="kpi-label">${k.rotulo}</p>
+                <p class="kpi-value">${typeof k.valor === "number" ? k.valor.toLocaleString("pt-BR") : k.valor}</p>
+                ${k.sub ? `<p class="kpi-sub">${k.sub}</p>` : ""}
+              </div>`
+              )
+              .join("")}
+          </div>
+
+          <div id="novo-cliente-wrap" style="display:none"></div>
+
+          <div class="card card-p">
+            <div class="row-between" style="margin-bottom:0.7rem">
+              <h2 style="margin:0">Carteira</h2>
+              <span class="text-xs" id="clients-count"></span>
+            </div>
+            <div class="client-filters">
+              <input type="text" id="f-texto" placeholder="Buscar por nome, empresa ou responsável" />
+              <select id="f-status">
+                <option value="">Ativos (todos os status)</option>
+                ${Object.entries(CLIENT_STATUS).map(([k, v]) => `<option value="${k}">${v.label}</option>`).join("")}
+              </select>
+              <select id="f-seller">
+                <option value="">Todos os responsáveis</option>
+                ${store.sellers.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join("")}
+              </select>
+            </div>
+            <div class="health-chips">${chipsHtml}</div>
+          </div>
+
+          <div class="client-grid" id="clients-grid"></div>
+
+          <div class="grid-2">
+            <div class="card card-p">
+              <h2>Evolução da satisfação</h2>
+              <div style="position:relative;height:230px"><canvas id="chart-satisfacao"></canvas></div>
+              <div class="insight-box">
+                <span class="insight-icon">${ICONS.info}</span>
+                <p>${
+                  m.semAvaliacao > 0
+                    ? `<strong>${m.semAvaliacao}</strong> cliente${m.semAvaliacao > 1 ? "s ainda não foram avaliados" : " ainda não foi avaliado"} — o gráfico só mostra quem já recebeu uma situação.`
+                    : "Todos os clientes da carteira já têm uma situação registrada."
+                }</p>
+              </div>
+            </div>
+            <div class="card card-p">
+              <h2>Principais problemas</h2>
+              ${
+                problemas.length === 0
+                  ? `<p class="text-empty">Nenhum problema registrado ainda.</p>`
+                  : `<ul class="problem-list">${problemas
+                      .map(
+                        (p) => `<li>
+                          <span class="problem-name">${esc(p.assunto)}</span>
+                          <span class="problem-counts">
+                            ${p.abertos > 0 ? `<b class="aberto">${p.abertos} aberto${p.abertos > 1 ? "s" : ""}</b>` : `<b class="ok">resolvido</b>`}
+                            <span>${p.total} no total</span>
+                          </span>
+                        </li>`
+                      )
+                      .join("")}</ul>`
+              }
+              <div class="summary-strip">
+                <div class="summary-left">
+                  <span class="summary-icon">${ICONS.checkCircle}</span>
+                  <span>${m.problemasResolvidos} resolvido${m.problemasResolvidos === 1 ? "" : "s"}${
+                    m.diasMedioResolucao != null ? `, em média ${m.diasMedioResolucao} dia${m.diasMedioResolucao === 1 ? "" : "s"}` : ""
+                  }</span>
+                </div>
+                <span class="trend-pill ${m.problemasAbertos > 0 ? "down" : "up"}">${m.problemasAbertos} em aberto</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      renderLista();
+      renderSatisfacaoEvolucaoChart("chart-satisfacao", evolucao);
+
+      document.getElementById("f-texto").addEventListener("input", (e) => { filtro.texto = e.target.value; renderLista(); });
+      document.getElementById("f-status").addEventListener("change", (e) => { filtro.status = e.target.value; renderLista(); });
+      document.getElementById("f-seller").addEventListener("change", (e) => { filtro.seller = e.target.value; renderLista(); });
+      document.querySelectorAll(".health-chip").forEach((b) =>
+        b.addEventListener("click", () => {
+          filtro.health = b.dataset.health;
+          document.querySelectorAll(".health-chip").forEach((o) => o.classList.toggle("active", o === b));
+          renderLista();
+        })
+      );
+      document.getElementById("btn-novo").addEventListener("click", abrirFormularioNovo);
+    }
+
+    // -----------------------------------------------------------------------
+    // Cadastro manual — para quem entrou antes do RD ou veio por indicação e
+    // nunca virou card. Quem veio de negociação ganha já entra sozinho.
+    // -----------------------------------------------------------------------
+    function abrirFormularioNovo() {
+      const wrap = document.getElementById("novo-cliente-wrap");
+      if (wrap.style.display !== "none") { wrap.style.display = "none"; wrap.innerHTML = ""; return; }
+      wrap.style.display = "";
+      wrap.innerHTML = `
+        <div class="card card-p">
+          <h2>Novo cliente</h2>
+          <form id="form-novo" class="goal-form">
+            <div class="field-inline"><label>Nome *</label><input type="text" id="n-nome" required style="width:13rem" /></div>
+            <div class="field-inline"><label>Empresa</label><input type="text" id="n-empresa" style="width:12rem" /></div>
+            <div class="field-inline"><label>Responsável</label>
+              <select id="n-seller"><option value="">—</option>${store.sellers.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join("")}</select>
+            </div>
+            <div class="field-inline"><label>Valor contratado</label><input type="number" id="n-valor" step="0.01" value="0" style="width:8rem" /></div>
+            <div class="field-inline"><label>Cliente desde</label><input type="date" id="n-desde" value="${isoDate(new Date())}" /></div>
+            <button type="submit" class="btn-small" id="n-submit">Cadastrar</button>
+          </form>
+          <p class="error-text" id="n-erro" style="display:none"></p>
+        </div>`;
+      document.getElementById("form-novo").addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        const botao = document.getElementById("n-submit");
+        const erro = document.getElementById("n-erro");
+        botao.disabled = true;
+        erro.style.display = "none";
+        try {
+          await criarClienteManual({
+            name: document.getElementById("n-nome").value.trim(),
+            company_name: document.getElementById("n-empresa").value.trim() || null,
+            seller_id: document.getElementById("n-seller").value || null,
+            contract_value: Number(document.getElementById("n-valor").value || 0),
+            contract_value_manual: true,
+            started_at: new Date(`${document.getElementById("n-desde").value}T12:00:00`).toISOString(),
+          });
+          carteira = await loadClientes({ fresh: true });
+          render();
+        } catch (e) {
+          erro.textContent = e.message || "Não foi possível cadastrar.";
+          erro.style.display = "";
+          botao.disabled = false;
+        }
+      });
+    }
+
+    (async () => {
+      try {
+        const dados = loadAllInstantaneo().catch((e) => e);
+        const daCarteira = loadClientesInstantaneo((novo) => { carteira = novo; render(); }).catch((e) => e);
+
+        const auth = await requireAuth();
+        if (!auth) return;
+        perfil = auth.profile;
+        renderShell(perfil);
+
+        const [s, c] = await Promise.all([dados, daCarteira]);
+        if (s instanceof Error) throw s;
+        if (c instanceof Error) throw c;
+        store = s;
+        carteira = c;
+        render();
+
+        startPageLoadSync(async () => {
+          [store, carteira] = await Promise.all([loadAll({ fresh: true }), loadClientes({ fresh: true })]);
+          render();
+        });
+      } catch (err) {
+        console.error(err);
+        showFatalError(err);
+      }
+    })();
+  </script>
+</body>
+</html>

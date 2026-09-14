@@ -1,0 +1,22 @@
+{
+  "name": "bsconta-sgcmp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "SGCMP — sistema comercial da BSconta. HTML/CSS/JS puro + Supabase.",
+  "scripts": {
+    "teste": "npm run teste:estrutura && npm run teste:calc && npm run teste:telas && npm run teste:ligacoes && npm run teste:exclusoes && npm run teste:paginacao && npm run teste:responsivo",
+    "teste:estrutura": "node test/verify-estrutura.mjs",
+    "teste:calc": "node test/verify-calc.mjs",
+    "teste:telas": "node test/verify-telas.mjs",
+    "teste:ligacoes": "node test/verify-ligacoes.mjs",
+    "teste:exclusoes": "node test/verify-exclusoes.mjs",
+    "teste:paginacao": "node test/verify-paginacao.mjs",
+    "teste:responsivo": "node test/verify-responsivo.mjs",
+    "medir": "node test/medir-velocidade.mjs"
+  },
+  "devDependencies": {
+    "chart.js": "4.5.1",
+    "chartjs-plugin-datalabels": "2.2.0",
+    "playwright": "1.63.0"
+  }
+}

@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BSconta + Marketing</title>
+  <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
+  <link rel="stylesheet" href="../css/styles.css?v=20260914" />
+</head>
+<body>
+  <div class="app-shell">
+    <div id="app-header"></div>
+    <div class="app-content">
+      <main class="main">
+        <div id="content"><div class="loading-wrap"><div class="spinner"></div></div></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- VELOCIDADE: estas bibliotecas ficavam no <head>, onde travam a
+       pintura da tela até terminarem de baixar. Aqui embaixo o HTML
+       aparece primeiro e elas carregam em seguida, antes dos nossos
+       scripts — que é a única ordem que importa. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="../js/config.js?v=20260914"></script>
+  <script src="../js/supabaseClient.js?v=20260914"></script>
+  <script src="../js/auth.js?v=20260914"></script>
+  <script src="../js/data.js?v=20260914"></script>
+  <script src="../js/calc.js?v=20260914"></script>
+  <script src="../js/ui.js?v=20260914"></script>
+  <script src="../js/sync.js?v=20260914"></script>
+  <script src="../js/charts.js?v=20260914"></script>
+  <script>
+    let store = null;
+
+    const PREV_LABEL = { today: "ontem", this_week: "semana passada", this_month: "mês passado" };
+
+    // Botões "Sim/Não" para o vendedor (ou admin) confirmar manualmente se a
+    // reunião realmente aconteceu. Fica salvo em activities.meeting_confirmed
+    // (ver 09_meeting_confirmation.sql) e passa a valer no lugar do status
+    // automático da Agenda/RD para o cálculo de "Reuniões realizadas"
+    // (ver isMeetingRealized em calc.js).
+    function meetingConfirmHtml(m) {
+      const yesActive = m.meeting_confirmed === true;
+      const noActive = m.meeting_confirmed === false;
+      return `
+        <div class="meeting-confirm" data-activity-id="${m.id}">
+          <button type="button" class="meeting-confirm-btn ${yesActive ? "active yes" : ""}" data-value="true">Sim</button>
+          <button type="button" class="meeting-confirm-btn ${noActive ? "active no" : ""}" data-value="false">Não</button>
+        </div>`;
+    }
+
+    function bindMeetingConfirmButtons() {
+      document.querySelectorAll(".meeting-confirm-btn").forEach((btn) => {
+        btn.addEventListener("click", async () => {
+          const wrap = btn.closest(".meeting-confirm");
+          const activityId = wrap.dataset.activityId;
+          const confirmed = btn.dataset.value === "true";
+          const buttons = wrap.querySelectorAll("button");
+          buttons.forEach((b) => (b.disabled = true));
+          try {
+            await setMeetingConfirmation(activityId, confirmed);
+            // O cache de sessão guardaria a confirmação antiga na próxima
+            // troca de aba — descarta.
+            invalidateStoreCache();
+            const activity = store.activities.find((a) => a.id === activityId);
+            if (activity) {
+              activity.meeting_confirmed = confirmed;
+              activity.meeting_confirmed_at = new Date();
+            }
+            render();
+          } catch (err) {
+            console.error(err);
+            alert("Não foi possível salvar: " + (err.message || err));
+            buttons.forEach((b) => (b.disabled = false));
+          }
+        });
+      });
+    }
+
+    function render() {
+      // A pedido do usuário (03/09/2026): esta página não distingue mais
+      // Marlon x Uriel — as reuniões dos dois aparecem juntas, como um só
+      // "time comercial", sem filtro por vendedor/colaborador. O Marlon
+      // agenda e convida o Uriel (mesma reunião nas duas agendas) e o Uriel
+      // também agenda algumas por conta própria — deduplicamos por evento
+      // (ver dedupeCalendarMeetings em calc.js) para cada reunião real
+      // contar/aparecer uma única vez, seja de quem for.
+      const { period } = currentPeriodFromUrl("this_week");
+      const range = resolvePeriod(period);
+      const prevRange = previousRange(range);
+
+      // Só reuniões reais da Agenda (source = CALENDAR). Tasks "meeting" do
+      // RD Station (source = RD_STATION) são tarefas do CRM, não reuniões de
+      // verdade da Agenda — não entram aqui (ver calc.js/getKpis).
+      // Ligação nunca entra aqui: classifyActivities (calc.js) aplica a regra
+      // de nomenclatura — só "Reunião"/"Reunião x ..."/"BSconta x ..." conta
+      // como reunião — e já remove as cópias duplicadas da Agenda.
+      const meetingsIn = (r) =>
+        classifyActivities(store.activities.filter((a) => inRange(a.scheduled_at, r)), store.sellers).meetings;
+
+      const base = meetingsIn(range);
+      const basePrev = meetingsIn(prevRange);
+
+      const agendadas = base.length;
+      const realizadas = base.filter(isMeetingRealized).length;
+      const agendadasPrev = basePrev.length;
+      const realizadasPrev = basePrev.filter(isMeetingRealized).length;
+      const agendadasChange = pctChange(agendadas, agendadasPrev);
+      const realizadasChange = pctChange(realizadas, realizadasPrev);
+
+      // Distribuição por dia da semana (dom..sáb) dentro do período
+      // selecionado — alimenta a linha de tendência ao lado de cada KPI.
+      const byWeekday = (list) => {
+        const counts = [0, 0, 0, 0, 0, 0, 0];
+        list.forEach((m) => counts[m.scheduled_at.getDay()]++);
+        return counts;
+      };
+      const agendadasByDay = byWeekday(base);
+      const realizadasByDay = byWeekday(base.filter(isMeetingRealized));
+
+      const dealById = new Map(store.deals.map((d) => [d.id, d]));
+      const list = [...base].sort((a, b) => a.scheduled_at - b.scheduled_at);
+
+      document.getElementById("content").innerHTML = `
+        <div class="space-y">
+          <div class="row-between">
+            <h1 class="page-title">Reuniões</h1>
+            <div class="header-actions">
+              <div id="period-filter"></div>
+              <button type="button" class="icon-btn" aria-label="Calendário">${ICONS.meeting}</button>
+            </div>
+          </div>
+
+          <div class="grid-2">
+            <div class="card card-p trend-card" id="trend-agendadas"></div>
+            <div class="card card-p trend-card tone-green" id="trend-realizadas"></div>
+          </div>
+
+          <div class="card card-p table-scroll">
+            <h2>Reuniões do período</h2>
+            <table>
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Título</th>
+                  <th>Cliente</th>
+                  <th>Tipo</th>
+                  <th>Reunião aconteceu?</th>
+                  <th class="col-chevron"></th>
+                </tr>
+              </thead>
+              <tbody>
+                ${list
+                  .map(
+                    (m) => `<tr>
+                      <td><div class="date-cell">${ICONS.meeting}${m.scheduled_at.toLocaleDateString("pt-BR")}</div></td>
+                      <td>${esc(m.title) || "—"}</td>
+                      <td>${esc(dealById.get(m.deal_id)?.client_name) || "—"}</td>
+                      <td>${esc(meetingTypeLabel(m))}</td>
+                      <td>${meetingConfirmHtml(m)}</td>
+                      <td class="col-chevron"><span class="row-chevron">${ICONS.chevronRight}</span></td>
+                    </tr>`
+                  )
+                  .join("")}
+                ${list.length === 0 ? `<tr><td colspan="6" class="text-empty">Nenhuma reunião no período selecionado.</td></tr>` : ""}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `;
+
+      renderPeriodFilter(document.getElementById("period-filter"), store.sellers, render, { defaultPeriod: "this_week", showSellerFilter: false });
+      setupCalendarPicker(render);
+
+      const trendHtml = (icon, label, value, change) => {
+        const cls = change == null ? "neutral" : change >= 0 ? "" : "down";
+        const text = change == null ? "sem período anterior" : `${change >= 0 ? "↑" : "↓"}${Math.abs(change).toFixed(0)}% vs. ${PREV_LABEL[period] || "período anterior"}`;
+        return `
+          <div class="trend-card-info">
+            <div class="trend-card-icon">${icon}</div>
+            <p class="kpi-label">${label}</p>
+            <p class="kpi-value">${value.toLocaleString("pt-BR")}</p>
+            <span class="trend-card-pill ${cls}">${text}</span>
+          </div>
+          <div class="trend-card-chart"><canvas id="chart-${label === "Agendadas" ? "agendadas" : "realizadas"}"></canvas></div>
+        `;
+      };
+      document.getElementById("trend-agendadas").innerHTML = trendHtml(ICONS.meeting, "Agendadas", agendadas, agendadasChange);
+      document.getElementById("trend-realizadas").innerHTML = trendHtml(ICONS.checkCircle, "Realizadas", realizadas, realizadasChange);
+
+      renderTrendLineChart("chart-agendadas", agendadasByDay, "#4f46e5");
+      renderTrendLineChart("chart-realizadas", realizadasByDay, "#16a34a");
+
+      bindMeetingConfirmButtons();
+    }
+
+    (async () => {
+      try {
+        // VELOCIDADE: a busca dos dados COMEÇA JÁ, sem esperar o perfil.
+        // Antes era uma fila: perguntava quem é o usuário, esperava a resposta
+        // do servidor, e só então começava a carregar os dados — uma ida e
+        // volta inteira (~250 ms) parada no caminho. As duas coisas não
+        // dependem uma da outra, então agora andam juntas.
+        const dados = loadAllInstantaneo((novo) => {
+          store = novo;
+          render();
+        }).catch((e) => e); // guardado para ser relançado depois do login
+
+        const auth = await requireAuth();
+        if (!auth) return; // sem sessão: já foi redirecionado para o login
+        renderShell(auth.profile);
+
+        const resultado = await dados;
+        if (resultado instanceof Error) throw resultado;
+        store = resultado;
+        render();
+        // Sincroniza com RD/Agenda ao abrir a página (não trava a tela: os
+        // dados atuais já apareceram acima e a tela se atualiza sozinha
+        // quando a sincronização terminar).
+        startPageLoadSync(async () => {
+          store = await loadAll({ fresh: true });
+          render();
+        });
+      } catch (err) {
+        console.error(err);
+        showFatalError(err);
+      }
+    })();
+  </script>
+</body>
+</html>

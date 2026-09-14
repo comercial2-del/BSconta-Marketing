@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BSconta + Marketing</title>
+  <link rel="icon" type="image/png" href="assets/bsconta-icon.png" />
+  <link rel="stylesheet" href="css/styles.css?v=20260914" />
+</head>
+<body>
+  <div class="loading-wrap"><div class="spinner"></div></div>
+
+  <!-- VELOCIDADE: estas bibliotecas ficavam no <head>, onde travam a
+       pintura da tela até terminarem de baixar. Aqui embaixo o HTML
+       aparece primeiro e elas carregam em seguida, antes dos nossos
+       scripts — que é a única ordem que importa. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/config.js?v=20260914"></script>
+  <script src="js/supabaseClient.js?v=20260914"></script>
+  <script>
+    (async () => {
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        window.location.replace(session ? "telas/dashboard.html" : "telas/login.html");
+      } catch {
+        window.location.replace("telas/login.html");
+      }
+    })();
+  </script>
+</body>
+</html>

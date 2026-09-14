@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BSconta + Marketing</title>
+  <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
+  <link rel="stylesheet" href="../css/styles.css?v=20260914" />
+</head>
+<body>
+  <main class="login-wrap">
+    <div class="login-blobs"><span></span><span></span><span></span></div>
+
+    <div class="login-shell">
+      <section class="login-promo">
+        <div class="brand-row">
+          <img class="logo-mark" src="../assets/bsconta-icon.png" alt="" />
+          <div>
+            <h2>BSConta<sup>+</sup></h2>
+            <p>Contabilidade Digital</p>
+          </div>
+        </div>
+
+        <h1 class="login-hero-title">Gestão inteligente,<span>resultados reais.</span></h1>
+        <p class="login-hero-sub">O sistema completo para gestão comercial, marketing e performance da sua empresa.</p>
+
+        <ul class="login-features">
+          <li>
+            <span class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21V10M16 21V3M12 21v-6"/></svg></span>
+            Indicadores em tempo real
+          </li>
+          <li>
+            <span class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+            Performance da equipe
+          </li>
+          <li>
+            <span class="feat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg></span>
+            Metas e resultados
+          </li>
+        </ul>
+      </section>
+
+      <div class="card login-card">
+        <div class="brand-row login-card-brand">
+          <img class="login-logo" src="../assets/bsconta-icon.png" alt="" />
+          <strong>BSConta<sup>+</sup></strong>
+        </div>
+        <h1 class="login-title">SGCMP — BSconta</h1>
+        <p class="login-subtitle">Sistema de Gestão Comercial, Marketing e Performance</p>
+
+        <form id="login-form">
+          <div class="field">
+            <label for="email">E-mail</label>
+            <div class="input-icon-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              <input type="email" id="email" required placeholder="admin@bsconta.com.br" autocomplete="username" />
+            </div>
+          </div>
+          <div class="field">
+            <label for="password">Senha</label>
+            <div class="input-icon-wrap">
+              <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M7.5 10V7a4.5 4.5 0 0 1 9 0v3"/></svg>
+              <input type="password" id="password" class="has-toggle" required placeholder="••••••••" autocomplete="current-password" />
+              <button type="button" class="input-icon-btn" id="toggle-password" aria-label="Mostrar senha">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="login-row-aux">
+            <label class="checkbox-inline"><input type="checkbox" id="remember-me" /> Lembrar-me</label>
+            <a href="#" class="login-link" id="forgot-password">Esqueci minha senha</a>
+          </div>
+          <p class="login-hint-text" id="forgot-hint" style="display: none">Fale com o administrador do sistema para redefinir sua senha de acesso.</p>
+
+          <p class="error-text" id="error-text" style="display: none"></p>
+          <button type="submit" class="btn-primary" id="btn-submit">Entrar</button>
+        </form>
+
+        <div class="demo-box login-secure-box">
+          <span class="secure-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 3.5V11c0 5-3.4 8.5-8 9.5-4.6-1-8-4.5-8-9.5V5.5z"/><path d="M8.5 12l2.5 2.5L15.5 9.5"/></svg></span>
+          <div>
+            <p class="lbl">Acesso seguro</p>
+            <p>Use o e-mail e senha da conta criada no Supabase para este sistema.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- VELOCIDADE: estas bibliotecas ficavam no <head>, onde travam a
+       pintura da tela até terminarem de baixar. Aqui embaixo o HTML
+       aparece primeiro e elas carregam em seguida, antes dos nossos
+       scripts — que é a única ordem que importa. -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../js/config.js?v=20260914"></script>
+  <script src="../js/supabaseClient.js?v=20260914"></script>
+  <script src="../js/auth.js?v=20260914"></script>
+  <script src="../js/ui.js?v=20260914"></script>
+  <script>
+    (async () => {
+      try {
+        if (window.SGCMP_CONFIG_MISSING) {
+          const err = new Error("O arquivo js/config.js ainda não foi configurado com a URL e a chave do Supabase (veja o Passo 5 do GUIA.md).");
+          err.isConfigError = true;
+          throw err;
+        }
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) window.location.href = "dashboard.html";
+      } catch (err) {
+        console.error(err);
+        showFatalError(err);
+      }
+    })();
+
+    const form = document.getElementById("login-form");
+    const errorText = document.getElementById("error-text");
+    const btnSubmit = document.getElementById("btn-submit");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorText.style.display = "none";
+      btnSubmit.disabled = true;
+      btnSubmit.textContent = "Entrando...";
+      try {
+        const email = document.getElementById("email").value;
+        const password = document.getElementById("password").value;
+        await login(email, password);
+        window.location.href = "dashboard.html";
+      } catch (err) {
+        errorText.textContent = err.message === "Invalid login credentials" ? "E-mail ou senha inválidos." : (err.message || "Erro ao entrar.");
+        errorText.style.display = "block";
+      } finally {
+        btnSubmit.disabled = false;
+        btnSubmit.textContent = "Entrar";
+      }
+    });
+
+    // Mostrar/ocultar senha — só troca o type do campo, nada de dados.
+    const togglePasswordBtn = document.getElementById("toggle-password");
+    const passwordInput = document.getElementById("password");
+    const eyeIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const eyeOffIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c6.5 0 10 7 10 7a17.5 17.5 0 0 1-2.94 3.9M6.1 6.1A17.5 17.5 0 0 0 2 11s3.5 7 10 7a10.9 10.9 0 0 0 4.24-.85M9.9 9.9a3 3 0 1 0 4.2 4.2"/><path d="M2 2l20 20"/></svg>';
+    togglePasswordBtn.addEventListener("click", () => {
+      const isHidden = passwordInput.type === "password";
+      passwordInput.type = isHidden ? "text" : "password";
+      togglePasswordBtn.innerHTML = isHidden ? eyeOffIcon : eyeIcon;
+      togglePasswordBtn.setAttribute("aria-label", isHidden ? "Ocultar senha" : "Mostrar senha");
+    });
+
+    // "Esqueci minha senha" — contas aqui são criadas direto no Supabase
+    // (ver caixa "Acesso seguro" abaixo), sem fluxo de autoatendimento por
+    // e-mail ainda, então só mostramos a orientação de contato.
+    document.getElementById("forgot-password").addEventListener("click", (e) => {
+      e.preventDefault();
+      document.getElementById("forgot-hint").style.display = "block";
+    });
+  </script>
+</body>
+</html>
