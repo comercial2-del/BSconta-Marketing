@@ -1,104 +1,136 @@
 # Colocar o sistema no ar
 
-> **Resumo:** repositório privado **publica normalmente**. O site fica público
-> no endereço; o código continua fechado. É assim que a maioria das empresas
-> trabalha, e não custa nada a mais.
+Do computador ao endereço na internet, em seis passos. O código fica num
+repositório **privado** no GitHub; a Netlify lê esse repositório e publica o
+site. O que vai para o ar é o site — o código continua fechado.
+
+**Antes de começar:** a pasta do projeto conferida, conta no GitHub
+(`comercial2-del`) e conta na Netlify (dá para entrar com o próprio GitHub).
 
 ---
 
-## O mal-entendido que quase nos custou caro (14/09/2026)
+## 1. Mostrar os arquivos ocultos no Windows
 
-Durante a montagem do repositório, a ideia que circulou foi: *"não consigo
-publicar um sistema e deixar ele no ar se o repositório é privado"*. Por causa
-disso, quase deixamos público um repositório com o histórico de faturamento da
-BSconta dentro.
+No Explorer, aba **Exibir** → marque **Itens ocultos**.
 
-**Não é verdade.** Netlify, Vercel e Cloudflare Pages leem repositórios
-privados sem problema — você autoriza o aplicativo uma vez no GitHub e ele
-passa a enxergar o repositório. O que vai para o ar é o *site gerado*; o
-código-fonte continua fechado.
+**Não pule.** O `.gitignore` começa com ponto, então o Windows esconde ele. Com
+os itens ocultos desligados, o `Ctrl+A` não pega esse arquivo e ele não sobe —
+foi exatamente o que aconteceu na primeira tentativa (14/09/2026). É o arquivo
+que impede o `node_modules` e os dados reais de irem parar no repositório.
+
+## 2. Criar o repositório
+
+No GitHub: **New repository**. Nome `BSconta-Marketing`, visibilidade
+**Private**, e **não** marque "Add a README file" — o projeto já tem o dele.
+**Create repository**.
+
+### Privado publica normalmente
+
+Repositório privado **de conta pessoal** funciona na Netlify em **todos os
+planos**, inclusive o gratuito. Você autoriza o aplicativo uma vez no GitHub e
+ele passa a enxergar o repositório.
+
+Isso precisa estar escrito porque, durante a montagem, circulou a ideia de que
+"não dá para publicar com repositório privado" — e por causa disso quase
+deixamos público um repositório com o histórico de faturamento da BSconta
+dentro.
 
 Fontes oficiais, conferidas em 14/09/2026:
 
-- **Netlify** — repositórios privados **de conta pessoal** funcionam em
-  **todos os planos**, inclusive o gratuito. Só repositórios privados de
-  *organização* exigem o plano Core Pro.
-  → https://docs.netlify.com/git/overview/
-- **GitHub Pages** — esta é a única exceção relevante: publicar a partir de
-  repositório privado exige **GitHub Pro** (pago). No plano gratuito, o Pages
-  só serve repositório público.
+- **Netlify** — privados de conta pessoal em todos os planos; só os de
+  *organização* exigem o Core Pro. → https://docs.netlify.com/git/overview/
+- **GitHub Pages** — a única exceção relevante: publicar a partir de
+  repositório privado exige GitHub Pro (pago).
   → https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages
 
-O repositório da BSconta está na conta pessoal `comercial2-del`, não numa
-organização. **Ou seja: Netlify no plano gratuito, com o repositório privado,
-resolve.**
+## 3. Enviar os arquivos
+
+Na tela do repositório vazio, clique em **uploading an existing file**. Abra a
+pasta do projeto, **entre nela**, dê `Ctrl+A` e arraste tudo. Mensagem do
+commit: `Sistema comercial BSconta (SGCMP)`.
+
+Antes de confirmar, a lista tem que começar assim:
+
+```
+.gitignore · 404.html · assets/ · banco/ · css/ …
+```
+
+**Se aparecer o nome da pasta na frente** (`bsconta-sistema/css/styles.css`),
+cancele e refaça **entrando** na pasta antes do `Ctrl+A`. Arrastando a pasta
+inteira, tudo vai parar um nível abaixo e o site não encontra nada.
+
+## 4. Conectar a Netlify
+
+**Add new site → Import an existing project → GitHub**. Na autorização, escolha
+**Only select repositories** e marque só este — assim a Netlify não enxerga mais
+nada da sua conta. Depois, as configurações de build:
+
+| Campo             | Valor          |
+| ----------------- | -------------- |
+| Base directory    | **deixe vazio** |
+| Build command     | deixe vazio    |
+| Publish directory | `.`            |
+
+**Deploy site.** Em menos de um minuto sai um endereço `.netlify.app`.
+
+### As duas armadilhas
+
+**Base directory precisa ficar vazio.** Apontado para uma subpasta, a Netlify
+procura o site no lugar errado e serve "Page not found".
+
+**Nunca aponte o publish para `telas`.** É o engano mais fácil de cometer,
+porque é lá que ficam as telas. Mas aí elas sobem para a raiz do site e os
+caminhos `../css` e `../js` passam a apontar para fora — tudo abre sem estilo e
+sem funcionar. A raiz tem que ser a pasta com o `index.html`, que é quem manda o
+visitante para `telas/login.html`.
+
+## 5. Deixar o site público
+
+Em **Site configuration**, confirme que o site não está protegido por senha. O
+repositório é privado; o *site* precisa ser público, senão quem abrir o endereço
+leva um erro `401` em vez da tela de login.
+
+Aproveite e troque o endereço aleatório em **Site configuration → Change site
+name**.
+
+## 6. Avisar o Supabase do endereço novo
+
+No painel do Supabase: **Authentication → URL Configuration**. Coloque o
+endereço do site em **Site URL** e acrescente em **Redirect URLs**.
+
+Sintoma de quem esquece: o site abre, a tela de login aparece, a senha está
+certa — e a sessão é recusada. O Supabase só aceita login vindo de endereços que
+ele conhece.
 
 ---
 
-## Por que isto importa aqui
+## Quando você mudar alguma coisa depois
 
-Deixar este repositório público expõe três coisas, e nenhuma delas precisa
-ficar exposta:
+Todo commit no GitHub dispara uma publicação automática na Netlify. É bom — e é
+caro:
 
-1. **O endereço do banco no Supabase** (`js/config.js`). A chave ali é a
-   pública, que vai no navegador de qualquer visitante de qualquer forma, e as
-   regras de acesso (RLS) do `banco/01_schema.sql` é que protegem os dados —
-   mas publicar é entregar o mapa de onde bater.
-2. **Os e-mails internos** (`comercial@`, `comercial2@`, `admin@`,
-   `gestor@bsconta.com.br`), que viram alvo de phishing.
-3. **O desenho da segurança** — as políticas de acesso, escritas e comentadas.
+- **15 créditos** por publicação
+- **300 créditos** por mês no plano gratuito
 
-O histórico de faturamento já está de fora: o `banco/02_seed_dados_reais.sql`
-está no `.gitignore` e nunca sobe. Quem instala do zero usa o
-`banco/02_seed_exemplo.sql`.
+Ou seja: **20 publicações por mês**. Por isso vale juntar várias mudanças num
+commit só, em vez de subir arquivo por arquivo.
 
----
+## O que nunca sobe
 
-## Publicando na Netlify (repositório privado)
+O `banco/02_seed_dados_reais.sql` — faturamento, ticket e desempenho por
+vendedor. Está no `.gitignore` e fica só no computador de quem administra. Quem
+instala do zero usa o `banco/02_seed_exemplo.sql`.
 
-1. Entre em **https://app.netlify.com** com a conta do GitHub
-   (`comercial2-del`).
-2. **Add new site → Import an existing project → GitHub**.
-3. O GitHub vai pedir autorização. Escolha **Only select repositories** e
-   marque só o repositório do sistema — assim a Netlify não enxerga mais nada
-   da sua conta.
-4. Selecione o repositório.
-5. Nas configurações de build, **deixe tudo em branco**:
-   - *Build command*: vazio (não existe build, são páginas prontas)
-   - *Publish directory*: vazio, ou `.` — **a pasta raiz**, a que tem o
-     `index.html`
-6. **Deploy site**.
+Uma vez commitado, um arquivo fica no histórico **para sempre**, mesmo depois de
+apagado. Por isso a ordem importa: conferir antes de subir, nunca subir e limpar
+depois.
 
-Em menos de um minuto sai um endereço tipo
-`https://nome-aleatorio.netlify.app`. Dá para trocar por um nome melhor em
-**Site configuration → Change site name**, ou apontar um domínio da BSconta.
+## O que o netlify.toml já resolve
 
-### O erro que quebra tudo
+Ele está na raiz do projeto e cuida sozinho de:
 
-**Não aponte o *publish directory* para `telas`.** É o engano mais fácil de
-cometer, porque é lá que ficam as telas. Mas se você fizer isso, as páginas
-sobem para a raiz do site e os caminhos `../css` e `../js` passam a apontar
-para fora — resultado: tudo abre sem estilo e sem funcionar.
-
-A raiz tem que ser a pasta com o `index.html`, que é quem manda o visitante
-para `telas/login.html`.
-
-### Depois de publicar
-
-No painel do Supabase, em **Authentication → URL Configuration**, acrescente o
-endereço do site em **Site URL** e em **Redirect URLs**. Sem isso o login pode
-recusar a sessão vinda do domínio novo.
-
----
-
-## E se mesmo assim quiser público
-
-É uma decisão legítima — portfólio, por exemplo. Nesse caso, antes de subir:
-
-- confirme que o `banco/02_seed_dados_reais.sql` continua no `.gitignore`;
-- troque os e-mails de exemplo no `banco/03_promover_admins.sql`;
-- e saiba que o `js/config.js` vai junto, porque sem ele o site não conecta.
-
-Só nunca faça o caminho inverso: subir com os dados e apagar depois. O Git
-guarda tudo o que já foi enviado, para sempre, mesmo depois de o arquivo ser
-removido.
+- bloquear `banco/`, `docs/`, `test/` e `supabase/` no ar (ficam no
+  repositório, mas não são servidos);
+- apontar a página de erro para o `404.html`;
+- mandar o navegador sempre revalidar o HTML, para não misturar uma tela antiga
+  em cache com um `js/` novo.
