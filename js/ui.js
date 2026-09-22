@@ -38,6 +38,9 @@ const ICONS = {
 // pouco mais de 70 px: "Visão geral" não caberia sem cortar no meio.
 const NAV_ITEMS = [
   { href: "dashboard.html", label: "Visão geral", curto: "Geral", icon: ICONS.overview },
+  { href: "marketing.html", label: "Marketing", curto: "Marketing", icon: ICONS.overview },
+  { href: "sdr.html", label: "SDR", curto: "SDR", icon: ICONS.userCheck },
+  { href: "graficos.html", label: "Gráficos", curto: "Gráficos", icon: ICONS.ranking, navClass: "nav-subitem" },
   { href: "ligacoes.html", label: "Ligações", curto: "Ligações", icon: ICONS.phone },
   { href: "reunioes.html", label: "Reuniões", curto: "Reuniões", icon: ICONS.meeting },
   { href: "vendas.html", label: "Vendas", curto: "Vendas", icon: ICONS.sales },
@@ -140,7 +143,8 @@ function renderPeriodFilter(container, sellers, onChange, opts = {}) {
   const sellerParam = params.get("sellerId");
   const sellerId = sellerParam !== null ? sellerParam : (opts.defaultSellerId || "");
 
-  const buttonsHtml = PERIODS.map(
+  const periodOptions = opts.periods || PERIODS;
+  const buttonsHtml = periodOptions.map(
     (p) => `<button type="button" data-period="${p.value}" class="${p.value === period ? "active" : ""}">${p.label}</button>`
   ).join("");
 
@@ -149,7 +153,7 @@ function renderPeriodFilter(container, sellers, onChange, opts = {}) {
   const customRange = period === "custom" ? customRangeFromUrl() : null;
   const customChipHtml = customRange
     ? `<button type="button" class="active cal-chip" data-open-calendar title="Alterar período no calendário">${ICONS.meeting}<span>${rangeLabel(customRange)}</span></button>`
-    : "";
+    : `<button type="button" class="cal-open" data-open-calendar title="Selecionar um intervalo de datas">${ICONS.meeting}<span>Personalizado</span></button>`;
 
   const sellerOptionsHtml = sellers
     .map((s) => `<option value="${s.id}" ${s.id === sellerId ? "selected" : ""}>${s.name}</option>`)
@@ -214,9 +218,10 @@ function sameDay(a, b) {
   return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 }
 
-/** Rótulo curto do intervalo escolhido: "15/09" ou "15/09 – 21/09". */
+/** Rótulo do intervalo escolhido, com ano para não gerar ambiguidade. */
 function rangeLabel(range) {
-  return sameDay(range.start, range.end) ? shortDate(range.start) : `${shortDate(range.start)} – ${shortDate(range.end)}`;
+  const fmt = (d) => `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")}/${d.getFullYear()}`;
+  return sameDay(range.start, range.end) ? fmt(range.start) : `${fmt(range.start)} – ${fmt(range.end)}`;
 }
 
 const calState = { viewMonth: null, mode: "week", onChange: null, anchor: null };
@@ -277,24 +282,34 @@ function renderCalendar() {
     })
     .join("");
 
+  const customStart = selected ? isoDate(selected.start) : "";
+  const customEnd = selected ? isoDate(selected.end) : "";
+  const customHtml = calState.mode === "custom" ? `
+    <div class="cal-custom-form">
+      <label>Data inicial<input id="cal-start" type="date" value="${customStart}" /></label>
+      <label>Data final<input id="cal-end" type="date" value="${customEnd}" /></label>
+      <button type="button" class="cal-apply" data-apply-custom>Aplicar período</button>
+      <p class="cal-custom-hint" data-custom-hint>Selecione uma data inicial e uma data final.</p>
+    </div>` : "";
+
   el.innerHTML = `
     <div class="cal-head">
-      <button type="button" class="cal-nav" data-nav="-1" aria-label="Mês anterior">${ICONS.chevronLeft}</button>
-      <span class="cal-title">${CAL_MONTHS[view.getMonth()]} ${view.getFullYear()}</span>
-      <button type="button" class="cal-nav" data-nav="1" aria-label="Próximo mês">${ICONS.chevronRight}</button>
+      ${calState.mode === "custom" ? `<span class="cal-title">Período personalizado</span>` : `<button type="button" class="cal-nav" data-nav="-1" aria-label="Mês anterior">${ICONS.chevronLeft}</button><span class="cal-title">${CAL_MONTHS[view.getMonth()]} ${view.getFullYear()}</span><button type="button" class="cal-nav" data-nav="1" aria-label="Próximo mês">${ICONS.chevronRight}</button>`}
     </div>
     <div class="cal-modes">
       <button type="button" class="${calState.mode === "day" ? "active" : ""}" data-mode="day">Dia</button>
       <button type="button" class="${calState.mode === "week" ? "active" : ""}" data-mode="week">Semana</button>
+      <button type="button" class="${calState.mode === "custom" ? "active" : ""}" data-mode="custom">Personalizado</button>
     </div>
-    <div class="cal-grid ${calState.mode === "week" ? "mode-week" : "mode-day"}">
-      <div class="cal-week cal-dow">${CAL_WEEKDAYS.map((d) => `<span>${d}</span>`).join("")}</div>
-      ${weeksHtml}
-    </div>
-    <div class="cal-foot">
-      <span class="cal-hint">${calState.mode === "week" ? "Clique para filtrar a semana inteira" : "Clique para filtrar o dia"}</span>
-      <button type="button" class="cal-clear" data-clear>Limpar</button>
-    </div>
+    ${calState.mode === "custom" ? `${customHtml}<div class="cal-foot"><span class="cal-hint">O período será aplicado em todas as métricas da tela.</span><button type="button" class="cal-clear" data-clear>Limpar</button></div>` : `
+      <div class="cal-grid ${calState.mode === "week" ? "mode-week" : "mode-day"}">
+        <div class="cal-week cal-dow">${CAL_WEEKDAYS.map((d) => `<span>${d}</span>`).join("")}</div>
+        ${weeksHtml}
+      </div>
+      <div class="cal-foot">
+        <span class="cal-hint">${calState.mode === "week" ? "Clique para filtrar a semana inteira" : "Clique para filtrar o dia"}</span>
+        <button type="button" class="cal-clear" data-clear>Limpar</button>
+      </div>`}
   `;
 
   el.querySelectorAll("[data-nav]").forEach((b) =>
@@ -313,10 +328,24 @@ function renderCalendar() {
     b.addEventListener("click", () => {
       const d = new Date(`${b.dataset.date}T00:00:00`);
       if (calState.mode === "week") applyCalendarRange(startOfWeek(d), endOfWeek(d));
-      else applyCalendarRange(startOfDay(d), endOfDay(d));
+      else if (calState.mode === "day") applyCalendarRange(startOfDay(d), endOfDay(d));
     })
   );
-  el.querySelector("[data-clear]").addEventListener("click", () => {
+  el.querySelector("[data-apply-custom]")?.addEventListener("click", () => {
+    const start = el.querySelector("#cal-start")?.value;
+    const end = el.querySelector("#cal-end")?.value;
+    const hint = el.querySelector("[data-custom-hint]");
+    if (!start || !end) {
+      if (hint) hint.textContent = "Informe a data inicial e a data final.";
+      return;
+    }
+    if (end < start) {
+      if (hint) hint.textContent = "A data final deve ser igual ou posterior à data inicial.";
+      return;
+    }
+    applyCalendarRange(new Date(`${start}T00:00:00`), new Date(`${end}T23:59:59.999`));
+  });
+  el.querySelector("[data-clear]")?.addEventListener("click", () => {
     const p = new URLSearchParams(window.location.search);
     p.delete("start");
     p.delete("end");

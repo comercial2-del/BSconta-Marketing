@@ -205,6 +205,12 @@ function resolvePeriod(period, now = new Date(), custom) {
       const lm = subMonths(now, 1);
       return { start: startOfMonth(lm), end: endOfMonth(lm) };
     }
+    case "last_3_months": {
+      const first = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+      return { start: startOfMonth(first), end: endOfMonth(now) };
+    }
+    case "this_year":
+      return { start: new Date(now.getFullYear(), 0, 1), end: new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999) };
     case "custom": {
       // Período escolhido no calendário (?period=custom&start=&end=). Quando
       // a página chama resolvePeriod("custom") sem passar o intervalo, ele é
@@ -394,6 +400,7 @@ function getKpis(store, { range, sellerId }) {
   // acima (Reunião de proposta + Follow-up + Prováveis fechamentos), a
   // pedido do usuário — não a soma de todas as etapas abertas.
   const opportunitiesValue = reuniaoProposta.value + followUpStage.value + probable.value;
+  const clientsEntered = store.deals.filter((d) => d.created_at && inRange(d.created_at, range) && (!sellerId || d.seller_id === sellerId)).length;
 
   return {
     callsDone, salesCallsDone, meetingsScheduled, meetingsDone, meetingsConfirmed,
@@ -405,6 +412,7 @@ function getKpis(store, { range, sellerId }) {
     perdas,
     salesCount, revenue, margin, ticketMedio,
     opportunitiesValue,
+    clientsEntered,
     meetingRealizationRate: meetingsScheduled > 0 ? (meetingsDone / meetingsScheduled) * 100 : null,
   };
 }
@@ -424,6 +432,39 @@ function getKpis(store, { range, sellerId }) {
  * em setembro conta como perdido aqui sem ter chegado aqui. O cartão compara
  * dois fluxos do período, não o destino de uma safra.
  */
+/**
+ * CLIENTES QUE ENTRARAM — safra criada no período.
+ * A data de entrada é deals.created_at (nascimento do lead no RD), não a
+ * data da sincronização. A lista é usada diretamente na Visão geral.
+ */
+function getClientEntries(store, { range, sellerId }) {
+  const sellers = new Map((store.sellers || []).map((s) => [s.id, s.name]));
+  const stages = new Map((store.stages || []).map((s) => [s.id, s.name]));
+  const deals = new Map((store.deals || []).map((d) => [d.id, d]));
+
+  // Esta seção da Visão Geral deve mostrar SOMENTE clientes com venda
+  // efetivamente registrada no período selecionado. A fonte da verdade é
+  // a tabela `sales`, exatamente como o card "Vendas realizadas".
+  return (store.sales || [])
+    .filter((sale) => sale.closed_at && inRange(sale.closed_at, range) && (!sellerId || sale.seller_id === sellerId))
+    .sort((a, b) => b.closed_at - a.closed_at)
+    .map((sale) => {
+      const d = deals.get(sale.deal_id) || {};
+      return {
+        id: sale.id,
+        clientName: d.client_name || "Sem nome",
+        companyName: d.company_name || "—",
+        enteredAt: sale.closed_at,
+        value: Number(sale.value || 0),
+        status: "WON",
+        stage: stages.get(d.stage_id) || "Vendido",
+        sellerName: sellers.get(sale.seller_id || d.seller_id) || "—",
+        campaign: d.origin || "Não informado",
+      };
+    });
+}
+
+
 function getLeads(store, { range, sellerId }) {
   const meu = (d) => !sellerId || d.seller_id === sellerId;
   const chegaram = store.deals.filter((d) => d.created_at && inRange(d.created_at, range) && meu(d));

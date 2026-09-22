@@ -122,6 +122,38 @@ function renderCallsEvolutionChart(canvasId, rows) {
  * da página "Reuniões" — mostra a distribuição por dia da semana (domingo a
  * sábado) das reuniões dentro do período selecionado, ao lado do KPI.
  */
+
+function renderDashboardLineChart(canvasId, labels, datasets) {
+  destroyIfExists(canvasId);
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  chartInstances[canvasId] = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: datasets.map((d) => ({
+        label: d.label, data: d.data, borderColor: d.color, backgroundColor: d.color,
+        borderWidth: 2.5, tension: .38, pointRadius: 3, pointHoverRadius: 5,
+        pointBackgroundColor: d.color, pointBorderColor: "#fff", pointBorderWidth: 1.5, fill: false
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode: "index", intersect: false },
+      animation: { duration: 420, easing: "easeOutQuart" },
+      scales: {
+        y: { beginAtZero: true, grace: "10%", ticks: { precision: 0, color: "#64748b" }, grid: { color: "rgba(148,163,184,.16)" } },
+        x: { grid: { display: false }, ticks: { color: "#64748b" } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { displayColors: false, callbacks: { label: (c) => `${c.dataset.label}: ${Number(c.parsed.y || 0).toLocaleString("pt-BR")}` } }
+      }
+    }
+  });
+}
+
 const DOW_LABELS = ["DOM", "SEG", "TER", "QUA", "QUI", "SEX", "SÁB"];
 
 function renderTrendLineChart(canvasId, values, color) {
@@ -709,3 +741,4 @@ function renderLeadsChegaramPerdidos(canvasId, { chegaram, perdidos }) {
     },
   });
 }
+window.chartInstances = chartInstances;

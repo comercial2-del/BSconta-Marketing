@@ -126,18 +126,26 @@ function explainSyncError(msg) {
   return m.slice(0, 160);
 }
 
+const SYNC_REQUEST_TIMEOUT_MS = 60_000;
+
 async function callSyncFunction(name, token) {
   let res;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), SYNC_REQUEST_TIMEOUT_MS);
   try {
     res = await fetch(`${window.SGCMP_CONFIG.SUPABASE_URL}/functions/v1/${name}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: "{}",
+      signal: controller.signal,
     });
   } catch (err) {
     // fetch só rejeita por rede/CORS — a mensagem do navegador é vaga, então
     // deixamos claro o que costuma ser.
+    if (err?.name === "AbortError") throw new Error(`tempo limite de ${Math.round(SYNC_REQUEST_TIMEOUT_MS / 1000)}s excedido`);
     throw new Error(`Failed to fetch (${err?.message || "rede/CORS"})`);
+  } finally {
+    clearTimeout(timer);
   }
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body?.error ? `${res.status}: ${body.error}` : `${name} respondeu ${res.status}`);
@@ -151,7 +159,10 @@ async function callSyncFunction(name, token) {
  */
 async function startPageLoadSync(reload) {
   if (window.SGCMP_CONFIG_MISSING) return;
-  if (Date.now() - lastSyncTrigger() < SYNC_THROTTLE_MS) return;
+  if (Date.now() - lastSyncTrigger() < SYNC_THROTTLE_MS) {
+    syncToast("Sincronização recente ✓", "ok", "Os dados já foram atualizados nos últimos 60 segundos");
+    return;
+  }
   markSyncTrigger();
 
   let token = window.SGCMP_CONFIG.SUPABASE_ANON_KEY;
@@ -187,7 +198,10 @@ async function startPageLoadSync(reload) {
   // Mantém o aviso de andamento informando o que ainda falta.
   const pendentes = new Set(SYNC_FUNCTIONS.map((n) => SYNC_LABELS[n] || n));
   const mostrarAndamento = () => {
-    if (pendentes.size > 0) syncToast("Sincronizando...", "loading", `Aguardando ${[...pendentes].join(" e ")}`);
+    const concluidas = SYNC_FUNCTIONS.length - pendentes.size;
+    if (pendentes.size > 0) {
+      syncToast("Sincronizando...", "loading", `${concluidas}/${SYNC_FUNCTIONS.length} concluída${concluidas === 1 ? "" : "s"} · Aguardando ${[...pendentes].join(" e ")}`);
+    }
   };
   mostrarAndamento();
 
@@ -195,9 +209,6 @@ async function startPageLoadSync(reload) {
     SYNC_FUNCTIONS.map(async (name) => {
       try {
         const body = await callSyncFunction(name, token);
-        // Atualiza a tela assim que ESTA fonte termina, sem esperar a outra
-        // (a Agenda costuma responder em segundos; o RD pode demorar mais).
-        await safeReload();
         return body;
       } finally {
         pendentes.delete(SYNC_LABELS[name] || name);
@@ -205,6 +216,10 @@ async function startPageLoadSync(reload) {
       }
     })
   );
+
+  // Uma única recarga após as duas fontes terminarem evita duas consultas
+  // completas ao Supabase durante a sincronização e acelera o fluxo.
+  await safeReload();
 
   // ---------------------------------------------------------------------
   // Resultado: nada é escondido. Sucesso mostra quantos registros vieram;
@@ -239,15 +254,15 @@ async function startPageLoadSync(reload) {
 
   if (falhas.length === SYNC_FUNCTIONS.length) {
     // Nenhuma fonte respondeu. A tela segue com o que já estava no banco.
-    syncToast("Falha na sincronização", "error", falhas.map((f) => `${f.fonte}: ${f.motivo}`).join(" · "), detalheTecnico);
+    syncToast("Não foi possível sincronizar ✕", "error", falhas.map((f) => `${f.fonte}: ${f.motivo}`).join(" · "), detalheTecnico);
     return;
   }
 
   if (falhas.length > 0 || avisos.length > 0) {
     const partes = [...falhas, ...avisos].map((f) => `${f.fonte}: ${f.motivo}`);
-    syncToast("Sincronização parcial", "warn", partes.join(" · "), detalheTecnico);
+    syncToast("Sincronização parcial ⚠", "warn", partes.join(" · "), detalheTecnico);
     return;
   }
 
-  syncToast("Sincronização concluída", "ok", registros > 0 ? `${registros} registro${registros === 1 ? "" : "s"} atualizado${registros === 1 ? "" : "s"}` : "Nenhuma novidade");
+  syncToast("Sincronização concluída com sucesso ✓", "ok", registros > 0 ? `${registros} registro${registros === 1 ? "" : "s"} atualizado${registros === 1 ? "" : "s"}` : "Nenhuma novidade");
 }
