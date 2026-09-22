@@ -319,15 +319,13 @@ Deno.serve(async (req: Request) => {
         // título mudado para algo que não é reunião nem ligação). Marcamos —
         // some da tela — sem apagar do banco.
         //
-        // Quatro travas antes de marcar qualquer coisa:
+        // Travas antes de marcar qualquer coisa:
         //   1. a coluna deleted_at precisa existir;
         //   2. a paginação precisa ter trazido a janela inteira;
-        //   3. o Google precisa ter devolvido ALGUMA coisa. Uma resposta
-        //      vazia é quase sempre falha/permissão revogada, e marcar tudo
-        //      nesse caso esvaziaria a agenda do sistema de uma vez;
-        //   4. PERÍODO DE CARÊNCIA (ver abaixo).
+        //   3. a chamada ao Google precisa ter terminado com sucesso — erros
+        //      abortam a sincronização antes desta etapa.
         // -----------------------------------------------------------------
-        if (suportaExclusao && janelaCompleta && items.length > 0) {
+        if (suportaExclusao && janelaCompleta) {
           const { data: gravados, error: readErr } = await supabase
             .from("activities")
             .select("id, external_id, deleted_at, updated_at")
@@ -337,35 +335,16 @@ Deno.serve(async (req: Request) => {
             .lte("scheduled_at", timeMax);
           if (readErr) throw new Error(`Erro ao conferir exclusões: ${readErr.message}`);
 
-          // PERÍODO DE CARÊNCIA — aprendido na prática em 06/09/2026.
-          // Quatro eventos "Ligação Vendas" foram criados na Agenda, importados
-          // normalmente e marcados como apagados MINUTOS depois. Ninguém apaga
-          // um compromisso um minuto depois de criar: o que houve foi o Google
-          // deixar de devolvê-los numa resposta (evento recém-criado leva um
-          // tempo até aparecer de forma estável na API).
-          //
-          // Agora um registro só pode ser marcado depois de sobreviver algumas
-          // horas. Como toda sincronização carimba `updated_at` nos eventos que
-          // o Google devolveu, um registro "fresco" tem updated_at recente e
-          // fica protegido; um evento apagado de verdade para de ser carimbado,
-          // envelhece e é marcado no ciclo seguinte à carência.
-          const CARENCIA_MS = 3 * 60 * 60_000; // 3 horas
-          const carenciaCorte = Date.now() - CARENCIA_MS;
-          const recemVistos = (gravados ?? []).filter(
-            (a) => !vistosAgora.has(a.external_id) && !a.deleted_at && new Date(a.updated_at).getTime() > carenciaCorte,
-          );
-          if (recemVistos.length > 0) {
-            console.log(
-              `[sync-calendar] ${row.google_email}: ${recemVistos.length} evento(s) sumiram da resposta mas foram vistos há pouco — dentro da carência, não marcados.`,
-            );
-          }
+          // EXCLUSÃO IMEDIATA — uma ausência na resposta completa do Google
+          // já é suficiente para marcar o registro. A API foi chamada com
+          // sucesso e a paginação terminou; não há motivo para segurar a
+          // alteração por horas.
 
           const sumiram = (gravados ?? [])
             .filter(
               (a) =>
                 !vistosAgora.has(a.external_id) &&
-                !a.deleted_at &&
-                new Date(a.updated_at).getTime() <= carenciaCorte,
+                !a.deleted_at,
             )
             .map((a) => a.id);
           const voltaram = (gravados ?? [])
@@ -433,6 +412,9 @@ Deno.serve(async (req: Request) => {
       })
       .eq("id", logId);
 
+    // A exclusão é marcada no mesmo ciclo em que uma resposta completa do
+    // Google deixa de conter o evento. O frontend faz um reload fresh após a
+    // função terminar, então a Agenda não depende de esperar o próximo ciclo.
     console.log("[sync-calendar] concluído:", counts);
     return new Response(JSON.stringify({ ok: true, counts, errors, avisos, registros: counts.eventos }), {
       headers: JSON_HEADERS,
