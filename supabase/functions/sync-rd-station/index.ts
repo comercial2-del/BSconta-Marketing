@@ -393,6 +393,10 @@ Deno.serve(async (req: Request) => {
         const status = deal.win === true ? "WON" : deal.win === false ? "LOST" : "OPEN";
         const clientName =
           deal.contacts?.[0]?.name || deal.organization?.name || deal.name || "Sem nome";
+        const dealOrigin =
+          typeof deal.origin === "string" ? deal.origin :
+          deal.origin?.name ?? deal.source?.name ?? deal.source ??
+          deal.custom_fields?.origin ?? deal.custom_fields?.campanha ?? null;
 
         // Valor: negociação só com mensalidade (recorrente) vinha como 0 —
         // agora a mensalidade entra como último recurso.
@@ -405,6 +409,7 @@ Deno.serve(async (req: Request) => {
           rd_deal_id: String(deal.id ?? deal._id),
           client_name: clientName,
           company_name: deal.organization?.name ?? null,
+          origin: dealOrigin,
           seller_id: sellerId,
           stage_id: stageId,
           value: dealValue,
