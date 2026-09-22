@@ -59,6 +59,7 @@
       const wonInPeriod = saleRows.length;
 
       const perSeller = store.sellers
+        .filter((seller) => /uriel/i.test(seller.name))
         .map((seller) => {
           const rows = saleRows.filter((s) => s.sellerName === seller.name);
           return { name: seller.name, count: rows.length, value: rows.reduce((a, s) => a + Number(s.value), 0) };

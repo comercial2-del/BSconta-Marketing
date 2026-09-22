@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>BSconta + Marketing</title>
   <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
-  <link rel="stylesheet" href="../css/styles.css?v=20260914" />
+  <link rel="stylesheet" href="../css/styles.css?v=20260916.2" />
 </head>
 <body>
   <div class="app-shell">
@@ -22,19 +22,109 @@
        aparece primeiro e elas carregam em seguida, antes dos nossos
        scripts — que é a única ordem que importa. -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-  <script src="../js/config.js?v=20260914"></script>
-  <script src="../js/supabaseClient.js?v=20260914"></script>
-  <script src="../js/auth.js?v=20260914"></script>
-  <script src="../js/data.js?v=20260914"></script>
-  <script src="../js/calc.js?v=20260914"></script>
-  <script src="../js/ui.js?v=20260914"></script>
-  <script src="../js/lancamentos.js?v=20260914"></script>
-  <script src="../js/sync.js?v=20260914"></script>
-  <script src="../js/charts.js?v=20260914"></script>
+  <script src="../js/config.js?v=20260916"></script>
+  <script src="../js/supabaseClient.js?v=20260916"></script>
+  <script src="../js/auth.js?v=20260916"></script>
+  <script src="../js/data.js?v=20260916"></script>
+  <script src="../js/calc.js?v=20260916"></script>
+  <script src="../js/ui.js?v=20260916.3"></script>
+  <script src="../js/lancamentos.js?v=20260916"></script>
+  <script src="../js/sync.js?v=20260916"></script>
+  <script src="../js/charts.js?v=20260916.2"></script>
   <script>
     let store = null;
     let lancamentos = []; // lançamento manual de ligações (js/lancamentos.js)
+    let dashboardChartTab = null;
+
+    function trendBuckets(range, count = 7) {
+      const start = new Date(range.start);
+      const end = new Date(range.end);
+      const total = Math.max(1, end - start);
+      const buckets = [];
+      for (let i = 0; i < count; i++) {
+        const a = new Date(start.getTime() + total * (i / count));
+        const b = i === count - 1 ? new Date(end) : new Date(start.getTime() + total * ((i + 1) / count));
+        buckets.push({ start: a, end: b, label: a.toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit" }) });
+      }
+      return buckets;
+    }
+
+    function valueInBucket(dateValue, bucket) {
+      if (!dateValue) return false;
+      const d = new Date(dateValue);
+      return d >= bucket.start && d <= bucket.end;
+    }
+
+    function buildDashboardTrend(tab, range, sellerId) {
+      if (tab === "marketing") {
+        const rows = MARKETING_SDR_DATA.filter(r => r.period >= `${range.start.getFullYear()}-${String(range.start.getMonth()+1).padStart(2,"0")}` && r.period <= `${range.end.getFullYear()}-${String(range.end.getMonth()+1).padStart(2,"0")}`);
+        return {
+          labels: rows.map(r => r.label),
+          datasets: [
+            { label: "Leads", data: rows.map(r => r.leads), color: "#2563eb" },
+            { label: "Contratos", data: rows.map(r => r.contratos), color: "#16a34a" },
+          ]
+        };
+      }
+      const buckets = trendBuckets(range, 7);
+      const activities = (store.activities || []).filter(a => (!sellerId || a.seller_id === sellerId));
+      const sales = (store.sales || []).filter(a => (!sellerId || a.seller_id === sellerId));
+      const sellerFilter = { sellerId };
+      return {
+        labels: buckets.map(b => b.label),
+        datasets: tab === "sdr"
+          ? [
+              { label: "Reuniões agendadas", data: buckets.map(b => getKpis({ ...store, activities: activities.filter(a => valueInBucket(a.scheduled_at, b)) }, sellerFilter).meetingsScheduled), color: "#4f46e5" },
+              { label: "Reuniões realizadas", data: buckets.map(b => getKpis({ ...store, activities: activities.filter(a => valueInBucket(a.scheduled_at, b)) }, sellerFilter).meetingsDone), color: "#16a34a" },
+            ]
+          : [
+              { label: "Reuniões realizadas", data: buckets.map(b => getKpis({ ...store, activities: activities.filter(a => valueInBucket(a.scheduled_at, b)) }, sellerFilter).meetingsDone), color: "#4f46e5" },
+              { label: "Vendas realizadas", data: buckets.map(b => sales.filter(a => valueInBucket(a.closed_at, b)).length), color: "#059669" },
+            ]
+      };
+    }
+
+    function ensureChartJs() {
+      if (window.Chart) return Promise.resolve();
+      if (window.__chartJsPromise) return window.__chartJsPromise;
+      window.__chartJsPromise = new Promise((resolve, reject) => {
+        const script = document.createElement("script");
+        script.src = "https://cdn.jsdelivr.net/npm/chart.js@4";
+        script.onload = resolve;
+        script.onerror = () => reject(new Error("Não foi possível carregar o componente de gráficos."));
+        document.head.appendChild(script);
+      });
+      return window.__chartJsPromise;
+    }
+
+    function renderDashboardChartsArea(range, sellerId) {
+      const host = document.getElementById("dashboard-charts-area");
+      if (!host) return;
+      const tabs = [
+        ["marketing", "Marketing", "Gráficos - Marketing"],
+        ["sdr", "SDR", "Gráficos - SDR"],
+        ["overview", "Visão geral", "Gráficos - Visão geral"]
+      ];
+      const tabHtml = tabs.map(([key, label]) => `<button type="button" class="dashboard-tab ${dashboardChartTab === key ? "active" : ""}" data-dashboard-tab="${key}"><span class="dashboard-tab-icon" aria-hidden="true">${key === "marketing" ? ICONS.send : key === "sdr" ? ICONS.user : ICONS.overview}</span><span>${label}</span></button>`).join("");
+      if (!dashboardChartTab) {
+        host.innerHTML = `<div class="dashboard-tabs-card"><aside class="dashboard-tabs-sidebar" aria-label="Navegação de gráficos"><div class="dashboard-tabs-sidebar-title">Gráficos</div><nav class="dashboard-tabs-nav">${tabHtml}</nav></aside><section class="dashboard-tab-panel"><div class="dashboard-tab-empty"><strong>Nenhuma área selecionada</strong><span>Escolha Marketing, SDR ou Visão geral no menu ao lado para visualizar os gráficos.</span></div></section></div>`;
+      } else {
+        const active = tabs.find(t => t[0] === dashboardChartTab) || tabs[0];
+        const trend = buildDashboardTrend(dashboardChartTab, range, sellerId);
+        const legends = trend.datasets.map(d => `<span><i style="background:${d.color}"></i>${esc(d.label)}</span>`).join("");
+        host.innerHTML = `<div class="dashboard-tabs-card"><aside class="dashboard-tabs-sidebar" aria-label="Navegação de gráficos"><div class="dashboard-tabs-sidebar-title">Gráficos</div><nav class="dashboard-tabs-nav">${tabHtml}</nav></aside><section class="dashboard-tab-panel"><div class="dashboard-chart-head"><div><h3 class="dashboard-chart-title">${active[2]}</h3><p class="dashboard-chart-sub">Evolução no período selecionado · use os filtros acima para alterar o recorte.</p></div><div class="dashboard-chart-legend">${legends}</div></div><div class="dashboard-chart-wrap" id="dashboard-chart-host"><div class="dashboard-tab-empty" style="min-height:260px"><strong>Carregando gráfico...</strong><span>Preparando a visualização do período.</span></div></div></section></div>`;
+        ensureChartJs().then(() => {
+          const chartHost = document.getElementById("dashboard-chart-host");
+          if (!chartHost) return;
+          chartHost.innerHTML = '<canvas id="dashboard-trend-chart"></canvas>';
+          renderDashboardLineChart("dashboard-trend-chart", trend.labels, trend.datasets);
+        }).catch((err) => {
+          const chartHost = document.getElementById("dashboard-chart-host");
+          if (chartHost) chartHost.innerHTML = `<div class="dashboard-tab-empty" style="min-height:260px"><strong>Não foi possível carregar o gráfico</strong><span>${esc(err.message)}</span></div>`;
+        });
+      }
+      host.querySelectorAll("[data-dashboard-tab]").forEach(btn => btn.addEventListener("click", () => { dashboardChartTab = btn.dataset.dashboardTab; renderDashboardChartsArea(range, sellerId); }));
+    }
 
     function performanceLabel(kpis) {
       const rate = kpis.meetingRealizationRate ?? 0;
@@ -44,13 +134,68 @@
       return { label: "Ruim", tone: "red" };
     }
 
+    function clientStatusBadge(status) {
+      const map = { WON: ["Ganho", "client-status-won"], OPEN: ["Em andamento", "client-status-open"], LOST: ["Perdido", "client-status-lost"] };
+      const [label, cls] = map[status] || [status || "—", "client-status-neutral"];
+      return `<span class="client-status ${cls}">${esc(label)}</span>`;
+    }
+
+    function formatDateTimePt(d) {
+      if (!d) return "—";
+      const date = new Date(d);
+      if (Number.isNaN(date.getTime())) return "—";
+      return `${date.toLocaleDateString("pt-BR")} <span class="client-time">${date.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})}</span>`;
+    }
+
+    function renderClientEntries(store, range, sellerId) {
+      const rows = getClientEntries(store, { range, sellerId });
+      const wrap = document.getElementById("client-entries");
+      if (!wrap) return;
+      wrap.innerHTML = `
+        <div class="section-head client-entries-head">
+          <div>
+            <h2>Clientes das vendas realizadas no período</h2>
+            <p>Somente clientes com venda efetivamente registrada no período selecionado.</p>
+          </div>
+          <span class="client-count-pill">${rows.length} cliente${rows.length === 1 ? "" : "s"}</span>
+        </div>
+        <div class="table-scroll client-table-wrap">
+          <table class="client-entries-table">
+            <thead><tr>
+              <th>Cliente</th><th>Data da venda</th><th>Valor</th><th>Status</th><th>Etapa</th><th>Vendedor</th><th>Campanha / origem</th>
+            </tr></thead>
+            <tbody>
+              ${rows.length ? rows.slice(0, 100).map((r) => `
+                <tr>
+                  <td><div class="client-primary">${esc(r.clientName)}</div><div class="client-secondary">${esc(r.companyName)}</div></td>
+                  <td>${formatDateTimePt(r.enteredAt)}</td>
+                  <td class="client-value">${brl(r.value)}</td>
+                  <td>${clientStatusBadge(r.status)}</td>
+                  <td>${esc(r.stage)}</td>
+                  <td>${esc(r.sellerName)}</td>
+                  <td>${esc(r.campaign)}</td>
+                </tr>`).join("") : `<tr><td colspan="7" class="text-empty">Nenhuma venda registrada no período selecionado.</td></tr>`}
+            </tbody>
+          </table>
+        </div>
+        ${rows.length > 100 ? `<p class="client-table-note">Exibindo os 100 clientes mais recentes do período.</p>` : ""}
+      `;
+    }
+
     function render() {
       const { period, sellerId } = currentPeriodFromUrl("this_week");
+      const vendedores = store.sellers
+        .filter((s) => /^(Uriel Coelho|Gabriel Balbino Soares de Souza)$/i.test(s.name))
+        .sort((a, b) => {
+          const ordem = { "Uriel Coelho": 0, "Gabriel Balbino Soares de Souza": 1 };
+          return (ordem[a.name] ?? 99) - (ordem[b.name] ?? 99);
+        });
+      const allowedSellerId = sellerId && vendedores.some((s) => s.id === sellerId) ? sellerId : undefined;
       const range = resolvePeriod(period);
       const prevRange = previousRange(range);
 
-      const kpis = getKpis(store, { range, sellerId });
-      const prevKpis = getKpis(store, { range: prevRange, sellerId });
+      const kpis = getKpis(store, { range, sellerId: allowedSellerId });
+      const prevKpis = getKpis(store, { range: prevRange, sellerId: allowedSellerId });
 
       // LIGAÇÕES: vêm de js/lancamentos.js, a mesma fonte da tela de Ligações.
       // O getKpis olha só as atividades do RD e não conhece o lançamento
@@ -98,47 +243,48 @@
         <div id="kpi-grid"></div>
         <div id="kpi-wide-grid" class="kpi-wide-grid"></div>
 
-        <div class="grid-2">
-          <div class="card card-p">
-            <h2>Reuniões por status</h2>
-            <div class="chart-with-legend">
-              <div class="chart-canvas-wrap"><canvas id="chart-donut"></canvas></div>
-              <div class="chart-legend" id="chart-donut-legend"></div>
+        <div class="card card-p sales-highlight-card">
+          <div class="sales-highlight-main">
+            <div class="kpi-icon tone-green">${ICONS.sales}</div>
+            <div>
+              <p class="kpi-label">Valor total de vendas realizadas</p>
+              <p class="sales-highlight-value">${brl(kpis.revenue)}</p>
+              <p class="kpi-change neutral">Considera somente vendas com fechamento dentro do período selecionado.</p>
             </div>
           </div>
-          <div class="card card-p">
-            <h2>Leads no período</h2>
-            <div style="position:relative;height:118px"><canvas id="chart-leads"></canvas></div>
+          <div class="sales-highlight-meta">
+            <span>${kpis.salesCount} venda${kpis.salesCount === 1 ? "" : "s"} no período</span>
+            <strong>${pctChange(kpis.revenue, prevKpis.revenue) == null ? "—" : `${pctChange(kpis.revenue, prevKpis.revenue) >= 0 ? "↑" : "↓"} ${Math.abs(pctChange(kpis.revenue, prevKpis.revenue)).toFixed(0)}%`}</strong>
+            <small>vs. período anterior</small>
           </div>
         </div>
       `;
 
-      renderPeriodFilter(document.getElementById("period-filter"), store.sellers, render, { defaultPeriod: "this_week" });
+      const clientEntriesHost = document.createElement("div");
+      clientEntriesHost.id = "client-entries";
+      clientEntriesHost.className = "card card-p client-entries-card";
+      content.appendChild(clientEntriesHost);
+
+      renderPeriodFilter(document.getElementById("period-filter"), vendedores, render, { defaultPeriod: "this_week", defaultSellerId: allowedSellerId || "" });
       setupCalendarPicker(render);
 
       renderKpiGrid(document.getElementById("kpi-grid"), [
         { label: "Ligações de agendamento", value: ligacoes.agendamento, change: pctChange(ligacoes.agendamento, ligacoesAntes.agendamento), tone: "blue", icon: ICONS.phone },
-        { label: "Reuniões agendadas", value: kpis.meetingsScheduled, change: pctChange(kpis.meetingsScheduled, prevKpis.meetingsScheduled), tone: "indigo", icon: ICONS.meeting },
-        { label: "Reuniões realizadas", value: kpis.meetingsDone, change: pctChange(kpis.meetingsDone, prevKpis.meetingsDone), tone: "teal", icon: ICONS.users },
-        { label: "Perdas", value: kpis.perdas.total, sub: resumoDasPerdas(kpis.perdas), tone: "red", icon: ICONS.xCircle },
+        { label: "Reuniões agendadas × realizadas", value: kpis.meetingsScheduled, sub: [`Realizadas: ${kpis.meetingsDone}`, `Taxa de realização: ${(kpis.meetingRealizationRate ?? 0).toFixed(0)}%`], change: pctChange(kpis.meetingsScheduled, prevKpis.meetingsScheduled), tone: "indigo", icon: ICONS.meeting },
+        { label: "No Show", value: kpis.meetingsNoShow, change: pctChange(kpis.meetingsNoShow, prevKpis.meetingsNoShow ?? 0), tone: "red", icon: ICONS.xCircle },
         { label: "Reunião de proposta", value: kpis.reuniaoPropostaCount, sub: brl(kpis.reuniaoPropostaValue), tone: "orange", icon: ICONS.handshake },
         { label: "Follow-up", value: kpis.followUpCount, sub: brl(kpis.followUpValue), tone: "blue", icon: ICONS.userCheck },
         { label: "Prováveis fechamentos", value: kpis.probableClosures, sub: brl(kpis.probableClosuresValue), tone: "violet", icon: ICONS.checkCircle },
         { label: "Vendas realizadas", value: kpis.salesCount, change: pctChange(kpis.salesCount, prevKpis.salesCount), tone: "green", icon: ICONS.dollarSign },
+        { label: "Clientes que entraram", value: kpis.clientsEntered, change: pctChange(kpis.clientsEntered, prevKpis.clientsEntered), tone: "indigo", icon: ICONS.users },
       ]);
 
       document.getElementById("kpi-wide-grid").innerHTML = [
         kpiWideCardHtml({ label: "Valor em oportunidades abertas", value: kpis.opportunitiesValue, tone: "blue", icon: ICONS.dollarSign }),
-        kpiWideCardHtml({ label: "Valor de vendas realizadas", value: kpis.revenue, change: pctChange(kpis.revenue, prevKpis.revenue), tone: "green", icon: ICONS.sales }),
       ].join("");
 
-      renderMeetingStatusDonut("chart-donut", {
-        done: kpis.meetingsDone,
-        canceled: kpis.meetingsCanceled,
-        noShow: kpis.meetingsNoShow,
-        scheduled: Math.max(kpis.meetingsScheduled - kpis.meetingsDone - kpis.meetingsCanceled - kpis.meetingsNoShow, 0),
-      }, "chart-donut-legend");
-      renderLeadsChegaramPerdidos("chart-leads", leads);
+      renderClientEntries(store, range, allowedSellerId);
+
     }
 
     // Mesma janela larga usada na tela de Ligações: os lançamentos são poucos
@@ -185,3 +331,5 @@
   </script>
 </body>
 </html>
+
+

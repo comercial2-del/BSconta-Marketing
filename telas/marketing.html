@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BSconta + Marketing — Marketing</title>
+  <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" />
+  <link rel="preconnect" href="https://zqhuhaqothpxusnaijog.supabase.co" crossorigin />
+  <link rel="stylesheet" href="../css/styles.css?v=20260916c" />
+</head>
+<body>
+  <div class="app-shell">
+    <div id="app-header"></div>
+    <div class="app-content">
+      <main class="main">
+        <div id="content"><div class="loading-wrap"><div class="spinner"></div></div></div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../js/config.js?v=20260916"></script>
+  <script src="../js/supabaseClient.js?v=20260916"></script>
+  <script src="../js/auth.js?v=20260916"></script>
+  <script src="../js/data.js?v=20260916"></script>
+  <script src="../js/calc.js?v=20260916"></script>
+  <script src="../js/ui.js?v=20260916.3"></script>
+  <script src="../js/marketingData.js?v=20260916b"></script>
+  <script>
+    function marketingPerformance(m) {
+      const qual = pct(m.qualificados, m.leads);
+      const meeting = pct(m.reunioes, m.qualificados);
+      const contract = pct(m.contratos, m.reunioes);
+      if (m.contratos > 0 && contract >= 20) return { label: "Excelente", tone: "green", desc: "Boa conversão até contratos no período selecionado." };
+      if (m.reunioes > 0 && meeting >= 20) return { label: "Boa", tone: "blue", desc: "Fluxo de aquisição com reuniões geradas no período selecionado." };
+      if (m.leads > 0 && qual >= 70) return { label: "Atenção", tone: "amber", desc: "Há geração de leads, mas a conversão para as próximas etapas merece acompanhamento." };
+      return { label: "Atenção", tone: "amber", desc: "Acompanhe a evolução do funil para identificar gargalos no período selecionado." };
+    }
+
+    const pct = (a, b) => b > 0 ? (a / b) * 100 : 0;
+    const brl0 = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+    const num = (v) => Number(v || 0).toLocaleString("pt-BR");
+
+    function marketingCard(label, value, sub, tone, icon) {
+      return `
+        <div class="kpi-card kpi-card--icon tone-${tone}">
+          <div class="kpi-card-top">
+            <div class="kpi-icon tone-${tone}">${icon}</div>
+            <p class="kpi-label">${label}</p>
+          </div>
+          <p class="kpi-value">${value}</p>
+          <p class="kpi-change neutral">${sub}</p>
+        </div>`;
+    }
+
+    const MARKETING_PERIODS = [
+      { value: "last_month", label: "Mês passado" },
+      { value: "last_3_months", label: "Últimos 3 meses" },
+      { value: "this_year", label: "Este ano" },
+    ];
+
+    function monthRange(period) {
+      const range = resolvePeriod(period);
+      return { start: new Date(range.start.getFullYear(), range.start.getMonth(), 1), end: new Date(range.end.getFullYear(), range.end.getMonth(), 1) };
+    }
+
+    function aggregateMarketing(range) {
+      const monthly = MARKETING_SDR_DATA.filter((row) => {
+        const d = new Date(`${row.period}-01T00:00:00`);
+        return d >= new Date(range.start.getFullYear(), range.start.getMonth(), 1) && d <= new Date(range.end.getFullYear(), range.end.getMonth(), 1);
+      });
+      return monthly.reduce((acc, row) => {
+        for (const k of ["investimento","impressoes","cliques","leads","qualificados","reunioes","contratos"]) acc[k] += Number(row[k] || 0);
+        return acc;
+      }, { investimento:0, impressoes:0, cliques:0, leads:0, qualificados:0, reunioes:0, contratos:0 });
+    }
+
+    function formatMarketingRange(range) {
+      const f = (d) => d.toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric" });
+      return `${f(range.start)} até ${f(range.end)}`;
+    }
+
+    function periodKey(value) {
+      return String(value).slice(0, 7);
+    }
+
+    function aggregateCampaignRows(range) {
+      const startKey = periodKey(range.start.toISOString());
+      const endKey = periodKey(range.end.toISOString());
+      let rows = MARKETING_CAMPAIGN_DATA.filter((row) => row.period >= startKey && row.period <= endKey);
+      let sourceLabel = "Período selecionado";
+
+      // O detalhamento por campanha começou em jul/2026. Em períodos anteriores,
+      // mostramos o último recorte disponível, deixando isso explícito no cabeçalho.
+      if (!rows.length) {
+        const latestPeriod = [...new Set(MARKETING_CAMPAIGN_DATA.map((r) => r.period))].sort().at(-1);
+        rows = MARKETING_CAMPAIGN_DATA.filter((row) => row.period === latestPeriod);
+        sourceLabel = `Último recorte disponível (${new Date(`${latestPeriod}-01T00:00:00`).toLocaleDateString("pt-BR", { month:"2-digit", year:"numeric" })})`;
+      }
+
+      const byCampaign = new Map();
+      for (const row of rows) {
+        const current = byCampaign.get(row.campaign) || {
+          campaign: row.campaign,
+          investimento:0,
+          impressoes:0,
+          cliques:0,
+          leads:0,
+          qualificados:0,
+          reunioes:0,
+          contratos:0,
+          vendas:0,
+        };
+        for (const k of ["investimento","impressoes","cliques","leads","qualificados","reunioes","contratos"]) {
+          current[k] += Number(row[k] || 0);
+        }
+        byCampaign.set(row.campaign, current);
+      }
+
+      const list = [...byCampaign.values()].map((row) => {
+        const qualRate = pct(row.qualificados, row.leads);
+        const meetingRate = pct(row.reunioes, row.qualificados);
+        const contractRate = pct(row.contratos, row.reunioes);
+        const vendasRate = pct(row.vendas, row.reunioes);
+        return {
+          ...row,
+          valorAtualRodando: Number(row.valorAtualRodando ?? row.valor_atual_rodando ?? 0),
+          qualRate,
+          meetingRate,
+          contractRate,
+          vendasRate,
+          cpl: row.leads > 0 ? row.investimento / row.leads : 0,
+          cpq: row.qualificados > 0 ? row.investimento / row.qualificados : 0,
+          cpr: row.reunioes > 0 ? row.investimento / row.reunioes : 0,
+          cpc: row.contratos > 0 ? row.investimento / row.contratos : 0,
+          hasActivity: [row.investimento,row.leads,row.qualificados,row.reunioes,row.vendas,row.contratos].some((value) => Number(value) > 0),
+        };
+      });
+
+      // Campanhas com resultado/atividade ficam no topo; em seguida, as sem movimentação.
+      list.sort((a, b) =>
+        Number(b.hasActivity) - Number(a.hasActivity) ||
+        b.contratos - a.contratos ||
+        b.reunioes - a.reunioes ||
+        b.leads - a.leads ||
+        b.investimento - a.investimento ||
+        a.campaign.localeCompare(b.campaign, "pt-BR")
+      );
+
+      return { list, sourceLabel };
+    }
+
+    function aggregateCampaigns(range) {
+      const { list, sourceLabel } = aggregateCampaignRows(range);
+      const best = list.find((row) => row.reunioes > 0 || row.contratos > 0) || list.find((row) => row.hasActivity) || list[0] || null;
+      if (!best) return null;
+
+      const totalMeetings = list.reduce((sum, row) => sum + row.reunioes, 0);
+      const totalContracts = list.reduce((sum, row) => sum + row.contratos, 0);
+      return {
+        ...best,
+        sourceLabel,
+        meetingShare: totalMeetings > 0 ? (best.reunioes / totalMeetings) * 100 : 0,
+        contractShare: totalContracts > 0 ? (best.contratos / totalContracts) * 100 : 0,
+      };
+    }
+
+    function render() {
+      const params = new URLSearchParams(window.location.search);
+      const period = params.get("period") || "last_month";
+      const range = resolvePeriod(period);
+      const m = aggregateMarketing(range);
+      const cpl = m.leads > 0 ? m.investimento / m.leads : 0;
+      const cpq = m.qualificados > 0 ? m.investimento / m.qualificados : 0;
+      const cpr = m.reunioes > 0 ? m.investimento / m.reunioes : 0;
+      const cpc = m.contratos > 0 ? m.investimento / m.contratos : 0;
+      const qualRate = pct(m.qualificados, m.leads);
+      const meetingRate = pct(m.reunioes, m.qualificados);
+      const contractRate = pct(m.contratos, m.reunioes);
+      const campaignData = aggregateCampaignRows(range);
+      const campaignRows = campaignData.list;
+      const bestCampaign = aggregateCampaigns(range);
+
+      document.getElementById("content").className = "space-y";
+      document.getElementById("content").innerHTML = `
+        <div class="row-between">
+          <div>
+            <h1 class="page-title">Marketing</h1>
+            <p class="page-sub">Aquisição, mídia e eficiência com base no Controle Gestão Marketing.</p>
+          </div>
+          <div class="header-actions"><button type="button" class="icon-btn" aria-label="Calendário">${ICONS.meeting}</button></div>
+        </div>
+
+        <div id="period-filter"></div>
+
+        <div class="card card-p marketing-performance ${marketingPerformance(m).tone}">
+          <div class="marketing-performance-icon">${ICONS.sales}</div>
+          <div class="marketing-performance-text">
+            <p class="marketing-performance-label">Performance de Marketing do período</p>
+            <p class="marketing-performance-title">${marketingPerformance(m).label} <span aria-hidden="true">✨</span></p>
+          </div>
+          <p class="marketing-performance-desc">${marketingPerformance(m).desc}</p>
+          <div class="marketing-performance-illustration">${ICONS.rocket}</div>
+        </div>
+
+        <div class="card card-p marketing-source-note">
+          <div><strong>Período analisado:</strong> ${formatMarketingRange(range)}<small class="marketing-period-note">A base da planilha é mensal; no período personalizado, são consolidados os meses abrangidos.</small></div>
+        </div>
+
+        <div class="kpi-grid cols-4 marketing-kpis">
+          ${marketingCard("Investimento", brl0(m.investimento), "Verba registrada na planilha", "blue", ICONS.dollarSign)}
+          ${marketingCard("Impressões", num(m.impressoes), "Alcance acumulado", "indigo", ICONS.eye)}
+          ${marketingCard("Leads gerados", num(m.leads), `${pct(m.leads, m.cliques).toFixed(1)}% dos cliques`, "teal", ICONS.userCheck)}
+          ${marketingCard("Qualificados", num(m.qualificados), `${qualRate.toFixed(1)}% dos leads`, "green", ICONS.users)}
+        </div>
+
+        <div class="kpi-grid cols-4 marketing-kpis">
+          ${marketingCard("Cliques", num(m.cliques), "Cliques no link", "blue", ICONS.send)}
+          ${marketingCard("Reuniões", num(m.reunioes), `${meetingRate.toFixed(1)}% dos qualificados`, "violet", ICONS.meeting)}
+          ${marketingCard("Contratos", num(m.contratos), `${contractRate.toFixed(1)}% das reuniões`, "green", ICONS.handshake)}
+          ${marketingCard("Custo por contrato", brl0(cpc), "Investimento ÷ contratos", "orange", ICONS.sales)}
+        </div>
+
+        <div class="grid-2 marketing-main-grid">
+          <div class="card card-p marketing-campaign-funnel-card">
+            <div class="row-between marketing-card-head">
+              <div>
+                <h2>Canais de Aquisição</h2>
+                <p class="card-sub">Veja o que cada canal está gerando no período, do investimento aos contratos e custos por etapa.</p>
+              </div>
+              <span class="mini-badge">${campaignData.sourceLabel}</span>
+            </div>
+
+            <div class="marketing-campaign-list">
+              ${campaignRows.map((campaign) => `
+                <article class="marketing-campaign-card ${campaign.hasActivity ? "" : "is-empty"}">
+                  <div class="marketing-channel-row">
+                    <div class="marketing-channel-identity">
+                    <div class="marketing-campaign-card-title-wrap">
+                      <span class="marketing-campaign-dot" aria-hidden="true"></span>
+                      <div>
+                        <h3>${campaign.campaign}</h3>
+                        <span class="marketing-campaign-card-meta">${campaign.hasActivity ? "Com movimentação no período" : "Sem movimentação no período"}</span>
+                      </div>
+                    </div>
+                    <div class="marketing-channel-status"><span></span>${campaign.hasActivity ? "Ativo no período" : "Sem movimentação"}</div>
+                  </div>
+                  <div class="marketing-channel-metric marketing-channel-metric--investment">
+                    <span>Investimento</span>
+                    <strong>${brl0(campaign.investimento)}</strong>
+                  </div>
+                  <div class="marketing-channel-metric">
+                    <span>Leads</span>
+                    <strong>${num(campaign.leads)}</strong>
+                  </div>
+                  <div class="marketing-channel-metric">
+                    <span>Qualificados</span>
+                    <strong>${num(campaign.qualificados)}</strong>
+                    <small>${campaign.qualRate.toFixed(1)}%</small>
+                  </div>
+                  <div class="marketing-channel-metric">
+                    <span>Reuniões</span>
+                    <strong>${num(campaign.reunioes)}</strong>
+                    <small>${campaign.meetingRate.toFixed(1)}%</small>
+                  </div>
+                  <div class="marketing-channel-metric marketing-channel-metric--sales">
+                    <span>Vendas</span>
+                    <strong>${num(campaign.vendas)}</strong>
+                    <small>${campaign.vendasRate.toFixed(1)}%</small>
+                  </div>
+                  <div class="marketing-channel-result-group">
+                    <div class="marketing-channel-metric marketing-channel-metric--contract">
+                      <span>Contratos</span>
+                      <strong>${num(campaign.contratos)}</strong>
+                      <small>${campaign.contractRate.toFixed(1)}%</small>
+                    </div>
+                    <div class="marketing-channel-metric marketing-channel-metric--running">
+                      <span>Valor atual rodando</span>
+                      <strong>${brl0(Number(campaign.valorAtualRodando || 0))}</strong>
+                      <small>valor recorrente atual</small>
+                    </div>
+                  </div>
+                  <div class="marketing-channel-costs-inline">
+                    <div><span>CPL</span><strong>${brl0(campaign.cpl)}</strong></div>
+                    <div><span>CPQ</span><strong>${brl0(campaign.cpq)}</strong></div>
+                    <div><span>CPR</span><strong>${brl0(campaign.cpr)}</strong></div>
+                    <div><span>CPC</span><strong>${brl0(campaign.cpc)}</strong></div>
+                  </div>
+                  </div>
+                </article>
+              `).join("")}
+            </div>
+          </div>
+
+          <div class="card card-p">
+            <div class="row-between marketing-card-head">
+              <div>
+                <h2>Eficiência de aquisição</h2>
+                <p class="card-sub">Investimento e custo médio em cada etapa do funil.</p>
+              </div>
+            </div>
+
+            <div class="marketing-efficiency-list">
+              <div class="marketing-efficiency-item marketing-efficiency-item--primary">
+                <div class="marketing-efficiency-copy">
+                  <span>Valor investido</span>
+                  <small>Verba aplicada no período selecionado</small>
+                </div>
+                <strong>${brl0(m.investimento)}</strong>
+              </div>
+
+              <div class="marketing-efficiency-item">
+                <div class="marketing-efficiency-stage">
+                  <span class="marketing-efficiency-label">CPL</span>
+                  <span class="marketing-efficiency-stage-name">Custo por Lead</span>
+                </div>
+                <div class="marketing-efficiency-value">
+                  <strong>${brl0(cpl)}</strong>
+                  <small>${num(m.leads)} ${m.leads === 1 ? 'lead' : 'leads'}</small>
+                </div>
+              </div>
+
+              <div class="marketing-efficiency-item">
+                <div class="marketing-efficiency-stage">
+                  <span class="marketing-efficiency-label">CPQ</span>
+                  <span class="marketing-efficiency-stage-name">Custo por Qualificado</span>
+                </div>
+                <div class="marketing-efficiency-value">
+                  <strong>${brl0(cpq)}</strong>
+                  <small>${num(m.qualificados)} qualificados · ${qualRate.toFixed(1)}% dos leads</small>
+                </div>
+              </div>
+
+              <div class="marketing-efficiency-item">
+                <div class="marketing-efficiency-stage">
+                  <span class="marketing-efficiency-label">CPR</span>
+                  <span class="marketing-efficiency-stage-name">Custo por Reunião</span>
+                </div>
+                <div class="marketing-efficiency-value">
+                  <strong>${brl0(cpr)}</strong>
+                  <small>${num(m.reunioes)} reuniões · ${meetingRate.toFixed(1)}% dos qualificados</small>
+                </div>
+              </div>
+
+              <div class="marketing-efficiency-item">
+                <div class="marketing-efficiency-stage">
+                  <span class="marketing-efficiency-label">CPC</span>
+                  <span class="marketing-efficiency-stage-name">Custo por Contrato</span>
+                </div>
+                <div class="marketing-efficiency-value">
+                  <strong>${brl0(cpc)}</strong>
+                  <small>${num(m.contratos)} contratos · ${contractRate.toFixed(1)}% das reuniões</small>
+                </div>
+              </div>
+            </div>
+
+            ${bestCampaign ? `
+            <div class="marketing-campaign-highlight">
+              <div class="marketing-campaign-highlight-head">
+                <div>
+                  <span class="marketing-campaign-eyebrow">Melhor campanha em desenvolvimento</span>
+                  <strong class="marketing-campaign-name">${bestCampaign.campaign}</strong>
+                </div>
+                <span class="marketing-campaign-rate">${bestCampaign.contractRate.toFixed(0)}% conversão</span>
+              </div>
+              <div class="marketing-campaign-metrics">
+                <span><strong>${bestCampaign.contratos}</strong> contratos</span>
+                <span><strong>${bestCampaign.reunioes}</strong> reuniões</span>
+                <span><strong>${bestCampaign.meetingShare.toFixed(1)}%</strong> das reuniões</span>
+                <span><strong>${bestCampaign.contractShare.toFixed(1)}%</strong> dos contratos</span>
+              </div>
+              <small class="marketing-campaign-source">${bestCampaign.sourceLabel}</small>
+            </div>` : ""}
+          </div>
+        </div>
+
+      `;
+
+      renderPeriodFilter(document.getElementById("period-filter"), [], render, { periods: MARKETING_PERIODS, defaultPeriod: "last_month", showSellerFilter: false });
+      setupCalendarPicker(render);
+    }
+
+    (async () => {
+      try {
+        const auth = await requireAuth();
+        if (!auth) return;
+        renderShell(auth.profile);
+        render();
+      } catch (err) {
+        console.error(err);
+        showFatalError(err);
+      }
+    })();
+  </script>
+</body>
+</html>

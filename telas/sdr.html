@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BSconta + Marketing — SDR</title>
+  <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
+  <link rel="stylesheet" href="../css/styles.css?v=20260915" />
+</head>
+<body>
+  <div class="app-shell"><div id="app-header"></div><div class="app-content"><main class="main"><div id="content"><div class="loading-wrap"><div class="spinner"></div></div></div></main></div></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <script src="../js/config.js?v=20260915"></script>
+  <script src="../js/supabaseClient.js?v=20260915"></script>
+  <script src="../js/auth.js?v=20260915"></script>
+  <script src="../js/data.js?v=20260915"></script>
+  <script src="../js/calc.js?v=20260915"></script>
+  <script src="../js/ui.js?v=20260915"></script>
+  <script src="../js/lancamentos.js?v=20260915"></script>
+  <script src="../js/sync.js?v=20260915"></script>
+  <script>
+    let store = null;
+    let lancamentos = [];
+    function performanceLabel(kpis) {
+      const rate = kpis.meetingRealizationRate ?? 0;
+      if (kpis.salesCount >= 3 && rate >= 70) return { label: "Excelente", tone: "green" };
+      if (kpis.salesCount >= 1 && rate >= 50) return { label: "Boa", tone: "blue" };
+      if (rate >= 30) return { label: "Atenção", tone: "amber" };
+      return { label: "Ruim", tone: "red" };
+    }
+    const JANELA_LANCAMENTOS = () => { const hoje = new Date(); return { start: new Date(hoje.getFullYear() - 1, 0, 1), end: new Date(hoje.getFullYear() + 1, 0, 1) }; };
+    function render() {
+      const { period, sellerId } = currentPeriodFromUrl("this_week");
+      const range = resolvePeriod(period);
+      const prevRange = previousRange(range);
+      const sdrNames = [/^Dayane Silva$/i, /^Marlon$/i];
+      const sdrs = sdrNames.map((re) => store.sellers.find((s) => re.test(s.name))).filter(Boolean);
+      const effectiveSellerId = sellerId && sdrs.some((s) => s.id === sellerId) ? sellerId : undefined;
+      const kpis = getKpis(store, { range, sellerId: effectiveSellerId });
+      const prev = getKpis(store, { range: prevRange, sellerId: effectiveSellerId });
+      const lig = numerosDeLigacoesGeral(store, lancamentos, range);
+      const perf = performanceLabel(kpis);
+      document.getElementById("content").className = "space-y";
+      document.getElementById("content").innerHTML = `
+        <div class="row-between"><div><h1 class="page-title">SDR</h1><p class="page-sub">Operação de pré-vendas, reuniões, follow-up e conversão comercial.</p></div><div class="header-actions"><button type="button" class="icon-btn" aria-label="Calendário">${ICONS.meeting}</button></div></div>
+        <div id="period-filter"></div>
+        <div class="card card-p perf-banner ${perf.tone}"><div class="perf-icon">${ICONS.sales}</div><div class="perf-text"><p class="perf-label-small">Performance SDR do período</p><p class="perf-label-big">${perf.label} <span aria-hidden="true">✨</span></p></div><p class="perf-desc">Baseado na realização das reuniões e no volume de vendas fechadas dentro do período.</p><div class="perf-illustration">${ICONS.rocket}</div></div>
+        <div class="kpi-grid cols-3">
+          ${kpiCardHtml({label:"Ligações de agendamento", value:lig.agendamento, change:pctChange(lig.agendamento, numerosDeLigacoesGeral(store,lancamentos,prevRange).agendamento), tone:"blue", icon:ICONS.phone})}
+          ${kpiCardHtml({label:"Reuniões agendadas", value:kpis.meetingsScheduled, sub:[`Realizadas: ${kpis.meetingsDone}`, `Realização: ${(kpis.meetingRealizationRate ?? 0).toFixed(0)}%`], tone:"indigo", icon:ICONS.meeting})}
+          ${kpiCardHtml({label:"No Show", value:kpis.meetingsNoShow, change:pctChange(kpis.meetingsNoShow, prev.meetingsNoShow), tone:"red", icon:ICONS.xCircle})}
+        </div>
+        <div class="card card-p table-scroll">
+          <h2>SDR</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>SDR</th>
+                <th class="cell-num">Ligações</th>
+                <th class="cell-num">Reuniões agendadas</th>
+                <th class="cell-num">Realizadas</th>
+                <th class="cell-num">No Show</th>
+              </tr>
+            </thead>
+            <tbody id="sdr-team-rows"></tbody>
+          </table>
+        </div>
+      `;
+      const sdrRows = document.getElementById("sdr-team-rows");
+      if (sdrRows) {
+        sdrRows.innerHTML = sdrs.map((s) => {
+          const sk = getKpis(store, { range, sellerId: s.id });
+          const calls = numerosDeLigacoes(store, lancamentos, range, s.id);
+          return `<tr>
+            <td><div class="person-cell"><span class="avatar avatar-sm">${initials(s.name)}</span>${esc(s.name)}</div></td>
+            <td class="cell-num cell-blue">${calls.agendamento}</td>
+            <td class="cell-num">${sk.meetingsScheduled}</td>
+            <td class="cell-num">${sk.meetingsDone}</td>
+            <td class="cell-num cell-red">${sk.meetingsNoShow}</td>
+          </tr>`;
+        }).join("");
+      }
+      renderPeriodFilter(document.getElementById("period-filter"), sdrs, render, { defaultPeriod: "this_week", defaultSellerId: effectiveSellerId || "" });
+      setupCalendarPicker(render);
+    }
+    (async()=>{ try { const dados=loadAllInstantaneo((novo)=>{store=novo;render();}).catch(e=>e); const auth=await requireAuth(); if(!auth)return; renderShell(auth.profile); const resultado=await dados; if(resultado instanceof Error)throw resultado; store=resultado; lancamentos=await carregarLancamentos(JANELA_LANCAMENTOS()); render(); startPageLoadSync(async()=>{ [store,lancamentos]=await Promise.all([loadAll({fresh:true}),carregarLancamentos(JANELA_LANCAMENTOS())]); render(); }); } catch(err){ console.error(err); showFatalError(err); }})();
+  </script>
+</body>
+</html>

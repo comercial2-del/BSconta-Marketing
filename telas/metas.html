@@ -50,7 +50,7 @@
     }
 
     function goalFormHtml(sellers) {
-      const sellerOptions = sellers.map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join("");
+      const sellerOptions = sellers.filter((s) => /gabriel balbino/i.test(s.name)).map((s) => `<option value="${s.id}">${esc(s.name)}</option>`).join("");
       return `
         <div class="card card-p">
           <h2>Nova meta</h2>
