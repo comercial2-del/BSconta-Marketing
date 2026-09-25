@@ -13,6 +13,26 @@ function isMeetingRealized(a) {
   return a.status === "DONE";
 }
 
+// NO SHOW — reunião que NÃO aconteceu (pedido do usuário, 25/09/2026: "No show
+// é quantas reuniões que não foram realizadas").
+//
+// Antes o cartão contava só status === "NO_SHOW", mas nenhuma sincronização
+// grava esse status (a Agenda só manda confirmada/cancelada), então o No Show
+// ficava sempre em 0. Agora conta:
+// 1. reunião marcada "Não" na página Reuniões (meeting_confirmed = false);
+// 2. status NO_SHOW, se algum dia vier da origem;
+// 3. reunião cujo horário JÁ PASSOU e que não consta como realizada (nem
+//    cancelada/remarcada — essas não são falta do cliente).
+// Reunião marcada "Sim" nunca é No Show. Reunião futura também não.
+function isMeetingNoShow(a, agora = new Date()) {
+  if (a.meeting_confirmed === true) return false;
+  if (a.meeting_confirmed === false) return true;
+  if (a.status === "NO_SHOW") return true;
+  if (a.status === "CANCELED" || a.status === "RESCHEDULED") return false;
+  const quando = a.scheduled_at instanceof Date ? a.scheduled_at : new Date(a.scheduled_at);
+  return quando < agora && !isMeetingRealized(a);
+}
+
 // O Google Calendar grava uma cópia do MESMO evento para cada vendedor
 // envolvido: o Marlon, como SDR, agenda a reunião e convida o Uriel (que é
 // quem de fato a realiza) — as duas cópias têm o mesmo `external_id`. O
@@ -307,7 +327,7 @@ function getKpis(store, { range, sellerId }) {
   const meetingsDone = meetingsPool.filter(isMeetingRealized).length;
   const meetingsConfirmed = meetingsPool.filter((a) => a.subtype === "CONFIRMED_MEETING").length;
   const meetingsCanceled = meetingsPool.filter((a) => a.status === "CANCELED").length;
-  const meetingsNoShow = meetingsPool.filter((a) => a.status === "NO_SHOW").length;
+  const meetingsNoShow = meetingsPool.filter((a) => isMeetingNoShow(a)).length;
   const proposalMeetings = meetingsPool.filter((a) => a.subtype === "PROPOSAL_MEETING").length;
   const followUps = count((a) => a.subtype === "FOLLOW_UP");
 
@@ -527,7 +547,7 @@ function generateWeeklyReport(store, range) {
     store.sellers
   ).meetings;
   const agendadas = meetings.length;
-  const noShow = meetings.filter((a) => a.status === "NO_SHOW").length;
+  const noShow = meetings.filter((a) => isMeetingNoShow(a)).length;
   const realizadas = meetings.filter(isMeetingRealized).length;
 
   const dealById = new Map(store.deals.map((d) => [d.id, d]));

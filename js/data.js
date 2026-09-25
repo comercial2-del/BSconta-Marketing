@@ -28,7 +28,7 @@ const COLS = {
   // (o mesmo evento aparece na agenda do organizador e de cada convidado).
   activities:
     "id,type,subtype,source,external_id,deal_id,seller_id,title,scheduled_at,status,meeting_confirmed,meeting_confirmed_at,deleted_at",
-  deals: "id,client_name,company_name,seller_id,stage_id,value,status,probability,origin,created_at,closed_at,is_recurring,updated_at,deleted_at",
+  deals: "id,client_name,company_name,seller_id,stage_id,value,status,probability,origin,created_at,closed_at,is_recurring,updated_at,deleted_at,last_interaction_at",
   sales: "id,deal_id,seller_id,value,margin,is_recurring,closed_at",
 };
 // sellers (4 linhas, 589 bytes), stages (25 linhas, 2,6 kB) e goals continuam
@@ -177,7 +177,7 @@ async function setMeetingConfirmation(activityId, confirmed) {
 // sessionStorage e não localStorage de propósito: o cache morre quando a aba
 // é fechada, então nunca fica um dado velho de ontem escondido.
 // ---------------------------------------------------------------------------
-const STORE_CACHE_KEY = "sgcmp:store:v4"; // v3: guarda menos colunas (ver COLS)
+const STORE_CACHE_KEY = "sgcmp:store:v5"; // v5: deals.last_interaction_at (tela Leads) // v3: guarda menos colunas (ver COLS)
 const STORE_CACHE_TTL_MS = 60_000; // dentro disso, nem consulta o banco
 // Acima do TTL, o cache ainda serve para DESENHAR A TELA NA HORA, enquanto os
 // dados novos vêm por trás. Meia hora é o limite do que vale mostrar antes de
@@ -190,7 +190,7 @@ const STORE_CACHE_MAX_CHARS = 3_500_000; // acima disso nem tenta guardar (limit
 // converter data que ninguém lê é trabalho jogado fora — são milhares de
 // objetos Date criados a cada carregamento.
 const STORE_DATE_FIELDS = {
-  deals: ["created_at", "closed_at", "updated_at"],
+  deals: ["created_at", "closed_at", "updated_at", "last_interaction_at"],
   activities: ["scheduled_at", "meeting_confirmed_at"],
   sales: ["closed_at"],
   goals: ["period_start", "created_at"],

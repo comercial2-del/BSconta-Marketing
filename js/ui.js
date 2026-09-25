@@ -21,6 +21,7 @@ const ICONS = {
   checkCircle: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 5-5"/></svg>',
   dollarSign: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5.5c-.8-1-2.5-1.8-5-1.8-3 0-5 1.5-5 3.8s2 3.2 5 3.8c3 .6 5 1.7 5 3.9 0 2.3-2 3.8-5 3.8-2.5 0-4.2-.8-5-1.8"/></svg>',
   rocket: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>',
+  userPlus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>',
   user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
   lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M7.5 10V7a4.5 4.5 0 0 1 9 0v3"/></svg>',
   eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>',
@@ -40,11 +41,13 @@ const NAV_ITEMS = [
   { href: "dashboard.html", label: "Visão geral", curto: "Geral", icon: ICONS.overview },
   { href: "marketing.html", label: "Marketing", curto: "Marketing", icon: ICONS.overview },
   { href: "sdr.html", label: "SDR", curto: "SDR", icon: ICONS.userCheck },
+  { href: "leads.html", label: "Leads", curto: "Leads", icon: ICONS.userPlus },
   { href: "graficos.html", label: "Gráficos", curto: "Gráficos", icon: ICONS.ranking, navClass: "nav-subitem" },
   { href: "ligacoes.html", label: "Ligações", curto: "Ligações", icon: ICONS.phone },
   { href: "reunioes.html", label: "Reuniões", curto: "Reuniões", icon: ICONS.meeting },
   { href: "vendas.html", label: "Vendas", curto: "Vendas", icon: ICONS.sales },
   { href: "metas.html", label: "Metas", curto: "Metas", icon: ICONS.goal },
+  { href: "onboarding.html", label: "Onboarding", curto: "Onboard.", icon: ICONS.handshake },
 ];
 
 function initials(name) {
