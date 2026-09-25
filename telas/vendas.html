@@ -28,7 +28,7 @@
   <script src="../js/auth.js?v=20260914"></script>
   <script src="../js/data.js?v=20260914"></script>
   <script src="../js/calc.js?v=20260914"></script>
-  <script src="../js/ui.js?v=20260914"></script>
+  <script src="../js/ui.js?v=20260926"></script>
   <script src="../js/charts.js?v=20260914"></script>
   <script src="../js/sync.js?v=20260914"></script>
   <script>
@@ -75,7 +75,8 @@
               <button type="button" class="icon-btn" aria-label="Calendário">${ICONS.meeting}</button>
             </div>
           </div>
-          <div id="kpi-grid"></div>
+          ${(() => { const antes = previousRange(range); const valorAntes = store.sales.filter((s) => inRange(s.closed_at, antes)).reduce((a, s) => a + Number(s.value), 0); const variacao = pctChange(totalValue, valorAntes); return perfBannerHtml({ titulo: "Performance de Vendas do período", nota: saleRows.length === 0 ? NOTAS_PERF.ruim : notaPorVariacao(variacao), desc: `${saleRows.length} venda${saleRows.length === 1 ? "" : "s"} · ${brl(totalValue)} no período · ${variacao == null ? "sem período anterior para comparar" : `${variacao >= 0 ? "↑" : "↓"} ${Math.abs(variacao).toFixed(0)}% vs. período anterior`}` }); })()}
+<div id="kpi-grid"></div>
 
           <div class="card card-p table-scroll">
             <h2>Vendas por vendedor</h2>

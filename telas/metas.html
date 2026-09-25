@@ -27,7 +27,7 @@
   <script src="../js/auth.js?v=20260914"></script>
   <script src="../js/data.js?v=20260914"></script>
   <script src="../js/calc.js?v=20260914"></script>
-  <script src="../js/ui.js?v=20260914"></script>
+  <script src="../js/ui.js?v=20260926"></script>
   <script src="../js/lancamentos.js?v=20260914"></script>
   <script src="../js/sync.js?v=20260914"></script>
   <script>
@@ -237,6 +237,8 @@
             </div>
             ${podeMexer ? `<button type="button" class="btn-small" id="abrir-form">${formAberto ? "Fechar" : "+ Nova meta"}</button>` : ""}
           </div>
+
+          ${perfBannerHtml({ titulo: "Performance das Metas", nota: semMetas ? NOTAS_PERF.atencao : precisamAtencao === 0 ? (batidas.length ? NOTAS_PERF.excelente : NOTAS_PERF.boa) : precisamAtencao <= ativas.length / 2 ? NOTAS_PERF.atencao : NOTAS_PERF.ruim, desc: semMetas ? "Nenhuma meta cadastrada ainda." : `${ativas.length} em andamento, ${precisamAtencao} pedindo atenção e ${batidas.length} batida${batidas.length === 1 ? "" : "s"}.` })}
 
           ${
             batidas.length === 0

@@ -28,7 +28,7 @@
   <script src="../js/auth.js?v=20260914"></script>
   <script src="../js/data.js?v=20260914"></script>
   <script src="../js/calc.js?v=20260914"></script>
-  <script src="../js/ui.js?v=20260914"></script>
+  <script src="../js/ui.js?v=20260926"></script>
   <script src="../js/sync.js?v=20260914"></script>
   <script src="../js/charts.js?v=20260914"></script>
   <script>
@@ -133,7 +133,9 @@
             </div>
           </div>
 
-          <div class="grid-2">
+          ${(() => { const passadas = base.filter((m) => m.scheduled_at <= new Date()); const feitas = passadas.filter(isMeetingRealized).length; const taxa = passadas.length ? (feitas / passadas.length) * 100 : null; return perfBannerHtml({ titulo: "Performance de Reuniões do período", nota: taxa === null ? NOTAS_PERF.boa : notaPorTaxa(taxa, [80, 60, 40]), desc: taxa === null ? `${agendadas} reuniões agendadas no período, nenhuma com horário já passado.` : `${feitas} de ${passadas.length} reuniões já passadas foram realizadas (${taxa.toFixed(0)}%) · ${agendadas} agendadas no período.` }); })()}
+
+<div class="grid-2">
             <div class="card card-p trend-card" id="trend-agendadas"></div>
             <div class="card card-p trend-card tone-green" id="trend-realizadas"></div>
           </div>

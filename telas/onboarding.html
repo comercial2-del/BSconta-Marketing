@@ -321,6 +321,8 @@
           </div>
         </section>
 
+        <div id="onbBanner"></div>
+
         <section class="sales-kpis" aria-label="Resumo das vendas">
           <article class="sales-kpi">
             <div class="sales-kpi-icon indigo"><span data-icon="trend"></span></div>
@@ -501,7 +503,7 @@
   <script src="../js/auth.js?v=20260925"></script>
   <script src="../js/data.js?v=20260925"></script>
   <script src="../js/calc.js?v=20260925"></script>
-  <script src="../js/ui.js?v=20260925"></script>
+  <script src="../js/ui.js?v=20260926"></script>
   <script src="../js/sync.js?v=20260925"></script>
   <script>
     // ---------------------------------------------------------------------
@@ -800,6 +802,10 @@
       document.getElementById('kpiRevenue').textContent = formatBRL(total);
       document.getElementById('kpiActive').textContent = list.filter(s=>s.status!=='Concluído').length;
       document.getElementById('kpiDone').textContent = list.filter(s=>s.status==='Concluído').length;
+      // Faixa de performance: progresso médio do onboarding das vendas.
+      const medio = list.length ? Math.round(list.reduce((soma,s)=>soma+onboardingProgress(s).percent,0)/list.length) : 0;
+      const semInicio = list.filter(s=>onboardingProgress(s).completed===0).length;
+      document.getElementById('onbBanner').innerHTML = perfBannerHtml({ titulo: 'Performance do Onboarding', nota: list.length ? notaPorTaxa(medio,[70,40,15]) : NOTAS_PERF.boa, desc: `${list.length} venda${list.length===1?'':'s'} · progresso médio de ${medio}% · ${semInicio} sem nenhuma etapa concluída.` });
     }
 
     function renderSales(){

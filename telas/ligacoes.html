@@ -25,7 +25,7 @@
   <script src="../js/auth.js?v=20260914"></script>
   <script src="../js/data.js?v=20260914"></script>
   <script src="../js/calc.js?v=20260914"></script>
-  <script src="../js/ui.js?v=20260914"></script>
+  <script src="../js/ui.js?v=20260926"></script>
   <script src="../js/lancamentos.js?v=20260914"></script>
   <script src="../js/sync.js?v=20260914"></script>
   <script src="../js/charts.js?v=20260914"></script>
@@ -93,7 +93,9 @@
             </div>
           </div>
 
-          <div class="card card-p kpi-hero" id="kpi-row"></div>
+          ${perfBannerHtml({ titulo: "Performance de Ligações do período", nota: notaPorVariacao(totalChange), desc: `${current.total} ligações no período — ${current.agendamento} de agendamento e ${current.vendas} de vendas · ${totalChange == null ? "sem período anterior para comparar" : `${totalChange >= 0 ? "↑" : "↓"} ${Math.abs(totalChange).toFixed(0)}% vs. período anterior`}` })}
+
+<div class="card card-p kpi-hero" id="kpi-row"></div>
 
           <div class="card card-p table-scroll">
             <div class="row-between" style="margin-bottom:0.7rem">

@@ -121,7 +121,7 @@
   <script src="../js/auth.js?v=20260916"></script>
   <script src="../js/data.js?v=20260916"></script>
   <script src="../js/calc.js?v=20260916"></script>
-  <script src="../js/ui.js?v=20260916.3"></script>
+  <script src="../js/ui.js?v=20260926"></script>
   <script src="../js/lancamentos.js?v=20260916"></script>
   <script src="../js/sync.js?v=20260916"></script>
   <script src="../js/marketingData.js?v=20260916"></script>
@@ -387,10 +387,13 @@
     function renderPage(){
       const content=document.getElementById("content");
       content.className="analytics-shell";
-      content.innerHTML=`<div class="analytics-header"><div><h1 class="page-title">Gráficos</h1><p class="analytics-sub">Central de análise dos principais indicadores comerciais.</p></div></div><div id="analytics-filters" class="analytics-filters"></div><div class="analytics-tabs-card"><div id="analytics-tabs" class="analytics-tabs" role="tablist" aria-label="Categorias de análise"></div><div id="analytics-content"></div></div>`;
+      content.innerHTML=`<div class="analytics-header"><div><h1 class="page-title">Gráficos</h1><p class="analytics-sub">Central de análise dos principais indicadores comerciais.</p></div></div><div id="analytics-banner"></div><div id="analytics-filters" class="analytics-filters"></div><div class="analytics-tabs-card"><div id="analytics-tabs" class="analytics-tabs" role="tablist" aria-label="Categorias de análise"></div><div id="analytics-content"></div></div>`;
       renderFilters();
       renderTabs();
       renderAnalytics();
+      const kb=getKpis(store,{range:selectedGraphRange()});
+      const bannerHost=document.getElementById("analytics-banner");
+      if(bannerHost) bannerHost.innerHTML=perfBannerHtml({titulo:"Performance Comercial do período analisado",nota:notaComercial(kb),desc:`${kb.meetingsDone} reuniões realizadas de ${kb.meetingsScheduled} agendadas e ${kb.salesCount} venda${kb.salesCount===1?"":"s"} (${brl(kb.revenue)}) no período.`});
     }
 
     (async()=>{
