@@ -45,7 +45,9 @@ function getOrigensDosLeads(store, { range }) {
   for (const l of painel.chegaram) {
     const d = porId.get(l.id) || {};
     const canal = canalDaFonte(d.origin);
-    const campanha = (d.campaign || "").trim() || "Sem campanha";
+    // "Sem Campanha" (valor do RD) e campanha vazia são a mesma coisa.
+    const campanhaRd = (d.campaign || "").trim();
+    const campanha = !campanhaRd || /^sem campanha$/i.test(campanhaRd) ? "Sem campanha" : campanhaRd;
     const alvoCanal = canais.get(canal.id);
     if (!campanhas.has(campanha)) campanhas.set(campanha, novo({ nome: campanha, canais: new Map() }));
     const alvoCampanha = campanhas.get(campanha);
