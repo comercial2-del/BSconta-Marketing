@@ -69,7 +69,7 @@
     .perda-track span{display:block;height:100%;border-radius:999px}
     .perdas-nota{font-size:.65rem;color:var(--text-faint);line-height:1.45;margin:0}
 
-    .leads-filters{padding:.75rem 1.1rem;display:grid;grid-template-columns:2fr 1.2fr 1fr;gap:.55rem;border-bottom:1px solid var(--surface-2)}
+    .leads-filters{padding:.75rem 1.1rem;display:grid;grid-template-columns:2fr 1fr;gap:.55rem;border-bottom:1px solid var(--surface-2)}
     .field{position:relative}
     .field input,.field select{width:100%;height:40px;border:1px solid var(--border);border-radius:9px;background:var(--surface);padding:0 .72rem;font-size:.78rem;color:var(--text-soft);outline:none;font-family:inherit}
     .field input:focus,.field select:focus{border-color:var(--indigo-500);box-shadow:0 0 0 3px rgba(99,102,241,.08)}
@@ -114,6 +114,23 @@
 
     
     @media (max-width:900px){.leads-grid-2{grid-template-columns:1fr}}
+    /* Visual alinhado à Visão geral (25/09/2026) */
+    .lead-kpi-btn{all:unset;display:block;cursor:pointer;border-radius:var(--radius);min-width:0}
+    .lead-kpi-btn .kpi-card{height:100%;transition:border-color .12s, box-shadow .12s}
+    .lead-kpi-btn:hover .kpi-card{box-shadow:var(--shadow-md)}
+    .lead-kpi-btn.ativo .kpi-card{border-color:var(--indigo-500);box-shadow:0 0 0 3px rgba(99,102,241,.12)}
+    .lead-kpi-btn:focus-visible .kpi-card{outline:2px solid var(--indigo-500);outline-offset:2px}
+    .safra-bar{display:flex;height:14px;border-radius:999px;overflow:hidden;background:var(--surface-2);border:1px solid var(--border);margin-top:.9rem}
+    .safra-bar span{display:block;height:100%}
+    .safra-legenda{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.75rem;margin-top:1rem}
+    .safra-item{display:flex;gap:.55rem;align-items:flex-start;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:.7rem .8rem}
+    .safra-item i{width:10px;height:10px;border-radius:50%;margin-top:.35rem;flex:0 0 auto}
+    .safra-item strong{font-size:1.15rem;font-weight:850;letter-spacing:-.02em}
+    .safra-item span{font-size:.8rem;font-weight:700;color:var(--text-soft);margin-left:.2rem}
+    .safra-item small{display:block;font-size:.68rem;color:var(--text-faint);margin-top:.1rem}
+    .lead-lista-card{padding:0;overflow:hidden}
+    .lead-lista-card .section-head{padding:1.05rem 1.15rem .6rem}
+    @media (max-width:760px){.safra-legenda{grid-template-columns:1fr}}
     @media (max-width:760px){
       .leads-kpis{grid-template-columns:1fr 1fr}
       .lead-funnel{grid-template-columns:1fr 1fr}
@@ -295,55 +312,85 @@
       };
       const rotuloPeriodo = (PERIODOS_LEADS.find((x) => x.value === period) || {}).label || "Período personalizado";
 
+      // Resumo da safra do período (quem chegou e onde está agora).
+      const saf = painel.safra;
+      const emAndamento = saf.andamento + saf.vendido;
+      const totalSafra = painel.chegaram.length;
+      const partes = [
+        { rotulo: "Sem contato", n: saf.semContato, cor: "var(--indigo-500)", nota: "ainda sem contato" },
+        { rotulo: "Em andamento", n: emAndamento, cor: "var(--amber-500)", nota: "pré-vendas, negociação ou vendidos" },
+        { rotulo: "Perdidos", n: saf.perdido, cor: "var(--red-500)", nota: "já foram para o funil Perdidos" },
+      ];
+      const pctDe = (v) => (totalSafra ? (v / totalSafra) * 100 : 0);
+      const cartaoClicavel = (visao, cfg) => `<button type="button" class="lead-kpi-btn ${tabela.visao === visao ? "ativo" : ""}" data-visao="${visao}" title="Ver a lista">${kpiCardHtml(cfg)}</button>`;
+
       const content = document.getElementById("content");
       content.className = "space-y";
       content.innerHTML = `
-        <div class="page-head">
+        <div class="row-between">
           <div>
-            <div class="eyebrow">${ICON_USER_PLUS} Central comercial · Leads</div>
             <h1 class="page-title">Leads</h1>
-            <p class="page-sub">Quantos leads chegaram, o que aconteceu com eles e quantos foram perdidos — direto do RD Station.</p>
+            <p class="page-sub">Quantos leads chegaram, em que pé estão e quantos foram perdidos — direto do RD Station.</p>
           </div>
-          <div class="head-actions">
+          <div class="header-actions">
             <button type="button" class="icon-btn" aria-label="Calendário">${ICONS.meeting}</button>
-            <button type="button" class="ghost-btn" id="lead-refresh">${ICON_REFRESH}Atualizar</button>
+            <button type="button" class="icon-btn" id="lead-refresh" aria-label="Atualizar dados" title="Atualizar dados">${ICON_REFRESH}</button>
           </div>
         </div>
 
         <div id="period-filter"></div>
 
-        <section class="leads-kpis" aria-label="Resumo dos leads">
-          ${kpiHtml({ id: "chegaram", label: "Leads que chegaram", value: n(painel.chegaram.length), foot: `Entraram em "Sem contato" · ${esc(rotuloPeriodo)}${variacao(painel.chegaram.length, prev?.chegaram.length)}`, tone: "indigo", icon: ICON_USER_PLUS })}
-          ${kpiHtml({ id: "perdidos", label: "Leads perdidos", value: n(p.periodo.total.n), foot: `<strong>${brl(p.periodo.total.valor)}</strong> em valor perdido · ${n(p.atual.total.n)} no funil Perdidos hoje`, tone: "red", icon: ICONS.xCircle })}
-        </section>
-
-        <div class="leads-grid-2">
-          <section class="leads-board">
-            <div class="leads-board-head">
-              <div><div class="sales-kicker">Chegadas</div><h2>Leads que chegaram</h2><p>O que aconteceu com os leads que entraram no período.</p></div>
-              <span class="preview-pill">${n(painel.chegaram.length)} leads</span>
-            </div>
-            <div class="lead-funnel">
-              <div class="funnel-item"><div class="funnel-label">Sem contato</div><div class="funnel-value">${n(painel.safra.semContato)}</div><div class="funnel-foot">Ainda sem contato</div></div>
-              <div class="funnel-item amber"><div class="funnel-label">Em andamento</div><div class="funnel-value">${n(painel.safra.andamento + painel.safra.vendido)}</div><div class="funnel-foot">Pré-vendas, negociação ou já vendidos</div></div>
-              <div class="funnel-item red"><div class="funnel-label">Perdidos</div><div class="funnel-value">${n(painel.safra.perdido)}</div><div class="funnel-foot">Já foram perdidos</div></div>
-            </div>
-            ${graficoChegadasHtml(painel, range)}
-          </section>
+        <div class="card card-p perf-banner blue">
+          <div class="perf-icon">${ICON_USER_PLUS}</div>
+          <div class="perf-text">
+            <p class="perf-label-small">Leads do período · ${esc(rotuloPeriodo)}</p>
+            <p class="perf-label-big">${n(totalSafra)} lead${totalSafra === 1 ? "" : "s"} chegaram</p>
+          </div>
+          <p class="perf-desc">${n(emAndamento)} em andamento, ${n(saf.perdido)} já perdidos e ${n(saf.semContato)} ainda sem contato. Todo lead nasce em "Sem contato" no RD.</p>
+          <div class="perf-illustration">${ICONS.users}</div>
         </div>
 
-        <section class="leads-board">
-          <div class="leads-board-head">
-            <div><div class="sales-kicker">Gestão de leads</div><h2>Lista de leads</h2><p>Clique num cartão acima ou escolha a lista abaixo. Clique num lead para ver os detalhes.</p></div>
-            <span class="preview-pill" id="lead-count"></span>
+        <div class="kpi-grid lead-kpis">
+          ${cartaoClicavel("chegaram", { label: "Leads que chegaram", value: totalSafra, change: prev ? pctChange(totalSafra, prev.chegaram.length) : undefined, tone: "indigo", icon: ICON_USER_PLUS })}
+          ${cartaoClicavel("chegaram", { label: "Em andamento", value: emAndamento, sub: `${pctDe(emAndamento).toFixed(0)}% dos que chegaram`, tone: "orange", icon: ICONS.handshake })}
+          ${cartaoClicavel("semContatoAgora", { label: "Sem contato agora", value: painel.semContatoAgora, sub: "Aguardando o primeiro contato", tone: "blue", icon: ICONS.phone })}
+          ${cartaoClicavel("perdidos", { label: "Leads perdidos", value: p.periodo.total.n, sub: [`${brl(p.periodo.total.valor)} em valor perdido`, `${n(p.atual.total.n)} no funil Perdidos hoje`], tone: "red", icon: ICONS.xCircle })}
+        </div>
+
+        <div class="card card-p">
+          <div class="section-head">
+            <div>
+              <h2>Situação dos leads que chegaram</h2>
+              <p>Onde estão hoje os ${n(totalSafra)} leads que entraram no período.</p>
+            </div>
+          </div>
+          ${totalSafra ? `
+            <div class="safra-bar" role="img" aria-label="Distribuição dos leads que chegaram">
+              ${partes.map((x) => x.n ? `<span style="width:${pctDe(x.n)}%;background:${x.cor}" title="${x.rotulo}: ${x.n}"></span>` : "").join("")}
+            </div>
+            <div class="safra-legenda">
+              ${partes.map((x) => `
+                <div class="safra-item">
+                  <i style="background:${x.cor}"></i>
+                  <div><strong>${n(x.n)}</strong> <span>${x.rotulo}</span><small>${pctDe(x.n).toFixed(0)}% · ${x.nota}</small></div>
+                </div>`).join("")}
+            </div>` : `<p class="text-empty">Nenhum lead chegou no período selecionado.</p>`}
+        </div>
+
+        <div class="card card-p lead-lista-card">
+          <div class="section-head">
+            <div>
+              <h2>Lista de leads</h2>
+              <p>Clique num cartão acima ou escolha a lista. Clique num lead para ver os detalhes.</p>
+            </div>
+            <span class="client-count-pill" id="lead-count"></span>
           </div>
           <div class="leads-filters">
             <div class="field search"><input id="lead-search" type="search" placeholder="Buscar nome, empresa ou vendedor..." value="${esc(tabela.busca)}" /></div>
             <div class="field"><select id="lead-visao">${VISOES.map((v) => `<option value="${v.value}" ${v.value === tabela.visao ? "selected" : ""}>${v.label}</option>`).join("")}</select></div>
-            <div class="field"><input type="text" value="Sem contato agora: ${n(painel.semContatoAgora)}" readonly aria-label="Leads em Sem contato agora" /></div>
           </div>
           <div id="lead-table"></div>
-        </section>
+        </div>
       `;
 
       renderPeriodFilter(document.getElementById("period-filter"), store.sellers, () => { tabela.limite = 100; render(); }, {
