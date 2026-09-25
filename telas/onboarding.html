@@ -1,0 +1,1091 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BSconta + Marketing — Onboarding</title>
+  <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
+  <link rel="stylesheet" href="../css/styles.css?v=20260925" />
+  <style>
+/* ===== Tela Onboarding — visual do preview "Onboarding" aprovado pelo usuário.
+   Todo o CSS fica preso dentro de .onb para não mexer no resto do sistema. ===== */
+.onb{color:var(--text)}
+.onb button,.onb input,.onb select,.onb textarea{font:inherit}
+.onb button{cursor:pointer}
+.onb a{color:inherit;text-decoration:none}
+.onb .page-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:1rem;margin-bottom:1.05rem}
+.onb .eyebrow{display:flex;align-items:center;gap:.45rem;font-size:.71rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--indigo-600);margin-bottom:.25rem}
+.onb .page-title{font-size:1.58rem;line-height:1.15;font-weight:800;letter-spacing:-.025em;margin:0}
+.onb .page-sub{font-size:.88rem;color:var(--text-faint);margin:.28rem 0 0}
+.onb .head-actions{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+.onb .ghost-btn,.onb .primary-btn{border-radius:10px;padding:.67rem .85rem;border:1px solid var(--border);font-size:.82rem;font-weight:700;background:var(--surface);color:var(--text-soft);display:inline-flex;align-items:center;gap:.45rem;box-shadow:var(--shadow-sm)}
+.onb .ghost-btn:hover{background:var(--surface-2);color:var(--text)}
+.onb .primary-btn{background:var(--indigo-600);color:#fff;border-color:var(--indigo-600);box-shadow:0 7px 16px rgba(79,70,229,.14)}
+.onb .primary-btn:hover{background:var(--indigo-700)}
+.onb .ghost-btn svg,.onb .primary-btn svg{width:16px;height:16px}
+.onb .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm)}
+.onb .field{position:relative}
+.onb .field input,.onb .field select{width:100%;height:38px;border:1px solid var(--border);border-radius:9px;background:var(--surface);padding:0 .72rem;font-size:.78rem;color:var(--text-soft);outline:none}
+.onb .field input:focus,.onb .field select:focus{border-color:var(--indigo-500);box-shadow:0 0 0 3px rgba(99,102,241,.08)}
+.onb .field.search:before{content:"⌕";position:absolute;left:.72rem;top:50%;transform:translateY(-52%);font-size:1.05rem;color:var(--text-faint);pointer-events:none}
+.onb .field.search input{padding-left:2rem}
+.onb table{width:100%;border-collapse:collapse;font-size:.78rem}
+.onb th{font-size:.65rem;text-transform:uppercase;letter-spacing:.045em;color:var(--text-faint);font-weight:800;text-align:left;padding:.72rem 1rem;border-bottom:1px solid var(--border);white-space:nowrap}
+.onb td{padding:.68rem 1rem;border-bottom:1px solid var(--surface-2);vertical-align:middle}
+.onb tbody tr{cursor:pointer;transition:background .12s}
+.onb tbody tr:hover{background:#fafafe}
+.onb tbody tr.selected{background:linear-gradient(90deg,#f5f6ff,#fff)}
+.onb tbody tr.selected td:first-child{box-shadow:inset 3px 0 0 var(--indigo-500)}
+.onb .amount{font-weight:800;color:var(--text)}
+.onb .badges{display:flex;align-items:center;gap:.35rem;flex-wrap:wrap}
+.onb .badge{display:inline-flex;align-items:center;border-radius:999px;padding:.24rem .52rem;font-size:.66rem;font-weight:800;white-space:nowrap}
+.onb .b-indigo{background:var(--indigo-100);color:var(--indigo-700)}
+.onb .b-green{background:var(--emerald-100);color:var(--emerald-700)}
+.onb .b-amber{background:var(--amber-100);color:var(--amber-700)}
+.onb .b-red{background:var(--red-100);color:var(--red-700)}
+.onb .b-neutral{background:#f2f3f7;color:var(--text-soft)}
+.onb .priority{display:inline-flex;align-items:center;gap:.3rem;font-size:.67rem;font-weight:800}
+.onb .priority i{width:7px;height:7px;border-radius:50%;display:inline-block;background:#a1a1aa}
+.onb .priority.normal i{background:#94a3b8}
+.onb .priority.alta i{background:var(--amber-500)}
+.onb .priority.urgente i{background:var(--red-500)}
+.onb .detail-client{display:flex;gap:.75rem;align-items:center}
+.onb .detail-avatar{width:44px;height:44px;border-radius:13px;background:var(--indigo-50);color:var(--indigo-700);display:grid;place-items:center;font-size:.78rem;font-weight:800}
+.onb .detail-sub{font-size:.72rem;color:var(--text-faint);margin:.18rem 0 0}
+.onb .detail-progress{height:6px;background:#f0f1f6;border-radius:999px;overflow:hidden;margin-top:.78rem}
+.onb .detail-progress span{display:block;height:100%;background:linear-gradient(90deg,var(--indigo-500),var(--indigo-700));border-radius:999px;width:42%}
+.onb .section{margin-bottom:1rem}
+.onb .section:last-child{margin-bottom:0}
+.onb .section-title{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-bottom:.55rem}
+.onb .section-title h3{font-size:.76rem;text-transform:uppercase;letter-spacing:.055em;color:var(--text-soft);margin:0;font-weight:800}
+.onb .section-title span{font-size:.65rem;color:var(--text-faint)}
+.onb .info{background:var(--surface-2);border:1px solid #eef0f5;border-radius:10px;padding:.62rem .68rem;min-width:0}
+.onb .info-label{font-size:.62rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);font-weight:800}
+.onb .info-value{font-size:.74rem;color:var(--text);font-weight:700;margin-top:.19rem;overflow-wrap:anywhere}
+.onb .info-value.soft{font-weight:600;color:var(--text-soft)}
+.onb .highlight{border:1px solid var(--indigo-100);background:linear-gradient(180deg,#fafaff,#f6f7ff);padding:.75rem;border-radius:11px}
+.onb .highlight + .highlight{margin-top:.5rem}
+.onb .highlight-label{font-size:.63rem;text-transform:uppercase;letter-spacing:.05em;color:var(--indigo-600);font-weight:800}
+.onb .highlight-text{margin:.25rem 0 0;font-size:.77rem;line-height:1.45;font-weight:650}
+.onb .meeting-note{background:#fbfcff;border:1px dashed #dfe2f1;border-radius:11px;padding:.72rem;font-size:.73rem;line-height:1.5;color:var(--text-soft)}
+.onb .alerts{border:1px solid var(--amber-100);background:linear-gradient(180deg,#fffdf5,#fffbeb);border-radius:11px;padding:.74rem}
+.onb .alert-row{display:flex;align-items:flex-start;gap:.55rem;padding:.28rem 0;font-size:.72rem;color:#7a5810}
+.onb .alert-dot{width:7px;height:7px;border-radius:50%;background:var(--amber-500);margin-top:.32rem;flex:0 0 auto}
+.onb .docs{display:grid;gap:.42rem}
+.onb .doc-row{display:flex;align-items:center;justify-content:space-between;gap:.6rem;border:1px solid #eef0f5;border-radius:9px;padding:.55rem .62rem}
+.onb .doc-left{display:flex;align-items:center;gap:.55rem;min-width:0}
+.onb .doc-icon{width:29px;height:29px;border-radius:8px;background:#f2f3f8;display:grid;place-items:center;font-size:.67rem;color:var(--text-soft)}
+.onb .doc-name{font-size:.7rem;font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.onb .doc-status{font-size:.61rem;font-weight:800;border-radius:999px;padding:.2rem .45rem;white-space:nowrap}
+.onb .doc-ok{background:var(--emerald-100);color:var(--emerald-700)}
+.onb .doc-pending{background:var(--amber-100);color:var(--amber-700)}
+.onb .doc-review{background:var(--indigo-100);color:var(--indigo-700)}
+.onb .partners{display:grid;gap:.5rem}
+.onb .partner{border:1px solid #eef0f5;border-radius:11px;padding:.7rem}
+.onb .partner-top{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+.onb .partner-name{font-size:.74rem;font-weight:800}
+.onb .partner-share{font-size:.68rem;font-weight:800;color:var(--indigo-700);background:var(--indigo-50);border-radius:999px;padding:.2rem .45rem}
+.onb .partner-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.4rem .8rem;margin-top:.55rem}
+.onb .mini-label{font-size:.58rem;color:var(--text-faint);text-transform:uppercase;font-weight:800;letter-spacing:.03em}
+.onb .mini-value{font-size:.69rem;color:var(--text-soft);font-weight:650;margin-top:.08rem;overflow-wrap:anywhere}
+.onb .capital{display:grid;grid-template-columns:1fr 1.2fr;gap:.55rem}
+.onb .notes{border:1px solid #eef0f5;border-radius:11px;padding:.75rem;background:#fcfcfe;font-size:.72rem;line-height:1.55;color:var(--text-soft);min-height:92px}
+.onb .preview-pill{display:inline-flex;align-items:center;gap:.35rem;font-size:.64rem;font-weight:800;color:var(--text-faint);background:#f2f3f7;border-radius:999px;padding:.22rem .5rem}
+.onb .preview-pill:before{content:"";width:6px;height:6px;background:#a1a1aa;border-radius:50%}
+.onb .empty-row{padding:1.3rem;text-align:center;color:var(--text-faint);font-size:.8rem}
+.onb .toast{position:fixed;right:18px;bottom:18px;background:#18192d;color:white;padding:.68rem .85rem;border-radius:10px;font-size:.75rem;font-weight:700;box-shadow:var(--shadow-lg);opacity:0;transform:translateY(12px);pointer-events:none;transition:.2s;z-index:80}
+.onb .toast.show{opacity:1;transform:translateY(0)}
+@media(max-width:860px){
+.onb .page-title{font-size:1.35rem}
+.onb .head-actions{width:100%}
+.onb .head-actions>*{flex:1;justify-content:center}
+}
+@media(max-width:520px){
+.onb .page-head{align-items:flex-start}
+.onb .head-actions{display:grid;grid-template-columns:1fr 1fr}
+.onb .field input,.onb .field select{height:42px}
+.onb .partner-grid{grid-template-columns:1fr 1fr}
+.onb .capital{grid-template-columns:1fr}
+.onb th,.onb td{padding-left:.75rem;padding-right:.75rem}
+}
+.onb /* ===== Central de Vendas por Cards ===== */
+    .sales-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--gap);margin-bottom:1rem}
+.onb .sales-kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.05rem;box-shadow:var(--shadow-sm);display:flex;align-items:center;gap:.8rem}
+.onb .sales-kpi-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex:0 0 auto}
+.onb .sales-kpi-icon svg{width:20px;height:20px}
+.onb .sales-kpi-icon.indigo{background:var(--indigo-50);color:var(--indigo-700)}
+.onb .sales-kpi-icon.green{background:var(--emerald-50);color:var(--emerald-700)}
+.onb .sales-kpi-icon.amber{background:var(--amber-50);color:var(--amber-700)}
+.onb .sales-kpi-icon.violet{background:var(--violet-50);color:var(--violet-600)}
+.onb .sales-kpi-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.055em;font-weight:800;color:var(--text-faint)}
+.onb .sales-kpi-value{font-size:1.38rem;font-weight:850;letter-spacing:-.03em;margin:.16rem 0 0}
+.onb .sales-kpi-foot{font-size:.68rem;color:var(--text-faint);margin-top:.12rem}
+.onb .sales-board{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden}
+.onb .sales-board-head{padding:1rem 1.1rem .85rem;display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;border-bottom:1px solid var(--surface-2)}
+.onb .sales-kicker{font-size:.66rem;text-transform:uppercase;letter-spacing:.075em;color:var(--indigo-600);font-weight:850;margin-bottom:.18rem}
+.onb .sales-board-head h2{font-size:1rem;margin:0;font-weight:850}
+.onb .sales-board-head p{font-size:.74rem;color:var(--text-faint);margin:.2rem 0 0}
+.onb .sales-filters{padding:.75rem 1.1rem;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:.55rem;border-bottom:1px solid var(--surface-2)}
+.onb .sales-filters .field input,.onb .sales-filters .field select{height:40px}
+.onb .sales-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.9rem;padding:1rem 1.1rem 1.15rem}
+.onb .sale-card{position:relative;background:linear-gradient(180deg,#fff,#fcfcff);border:1px solid var(--border);border-radius:14px;padding:.95rem;box-shadow:0 2px 7px rgba(15,23,42,.035);cursor:pointer;transition:transform .14s,box-shadow .14s,border-color .14s}
+.onb .sale-card:hover{transform:translateY(-2px);box-shadow:0 11px 24px rgba(15,23,42,.08);border-color:var(--indigo-100)}
+.onb .sale-card:focus{outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.12),0 10px 22px rgba(15,23,42,.07)}
+.onb .sale-card-top,.onb .sale-card-bottom{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+.onb .sale-card-top{margin-bottom:.8rem}
+.onb .sale-id{font-size:.61rem;color:var(--text-faint);font-weight:850;letter-spacing:.05em}
+.onb .sale-date{font-size:.62rem;color:var(--text-faint);font-weight:700}
+.onb .sale-client-row{display:flex;align-items:center;gap:.68rem}
+.onb .sale-client-avatar{width:40px;height:40px;border-radius:11px;background:var(--indigo-50);color:var(--indigo-700);display:grid;place-items:center;font-size:.72rem;font-weight:850;flex:0 0 auto}
+.onb .sale-client-name{font-size:.82rem;font-weight:850;line-height:1.25}
+.onb .sale-client-meta{font-size:.64rem;color:var(--text-faint);margin-top:.15rem}
+.onb .sale-service{margin:.78rem 0;background:var(--surface-2);border:1px solid #eef0f5;border-radius:10px;padding:.62rem .68rem}
+.onb .sale-service-label{font-size:.58rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);font-weight:850}
+.onb .sale-service-value{font-size:.76rem;font-weight:800;margin-top:.16rem}
+.onb .sale-card-bottom{border-top:1px solid var(--surface-2);padding-top:.7rem;margin-top:.15rem}
+.onb .sale-value{font-size:1.02rem;font-weight:900;letter-spacing:-.025em}
+.onb .sale-value-label{font-size:.59rem;color:var(--text-faint);margin-top:.06rem}
+.onb .sale-closer{font-size:.62rem;color:var(--text-soft);font-weight:750;text-align:right}
+.onb .sale-closer strong{display:block;color:var(--text);font-size:.69rem;margin-top:.05rem}
+.onb .sale-arrow{display:inline-flex;align-items:center;gap:.3rem;font-size:.64rem;font-weight:850;color:var(--indigo-600);margin-top:.65rem}
+.onb .sale-arrow::after{content:"→";font-size:.8rem}
+.onb /* ===== Timeline numérica de Onboarding dentro dos Cards ===== */
+    .onboarding-box{margin-top:.72rem;padding:.7rem;border:1px solid #e8e9f3;border-radius:12px;background:#fafaff;cursor:default}
+.onb .onboarding-box-head{display:flex;align-items:center;justify-content:space-between;gap:.6rem}
+.onb .onboarding-eyebrow{font-size:.56rem;text-transform:uppercase;letter-spacing:.06em;color:var(--indigo-600);font-weight:900}
+.onb .onboarding-title{font-size:.69rem;font-weight:900;margin-top:.06rem}
+.onb .onboarding-progress{height:4px;background:#eceef5;border-radius:999px;overflow:hidden;margin-top:.48rem}
+.onb .onboarding-progress span{display:block;height:100%;background:linear-gradient(90deg,var(--indigo-500),var(--indigo-700));border-radius:999px;transition:width .2s}
+.onb .onboarding-next{margin-top:.52rem;padding:.48rem .55rem;border:1px solid var(--indigo-100);border-radius:8px;background:#fff}
+.onb .onboarding-next-label{font-size:.51rem;text-transform:uppercase;letter-spacing:.05em;color:var(--indigo-600);font-weight:900}
+.onb .onboarding-next-main{font-size:.64rem;font-weight:850;margin-top:.06rem}
+.onb .onboarding-timeline{margin-top:.68rem;display:flex;align-items:flex-start;gap:0;overflow:visible;padding:.15rem .05rem .18rem;width:100%}
+.onb .onboarding-stage{position:relative;min-width:0;flex:1 1 0;display:flex;justify-content:center;background:transparent;border:0;border-radius:0;overflow:visible}
+.onb .onboarding-stage::before{content:"";position:absolute;left:0;right:0;top:15px;height:2px;background:#e6e8f0;z-index:0}
+.onb .onboarding-stage:first-child::before{left:50%}
+.onb .onboarding-stage:last-child::before{right:50%}
+.onb .onboarding-stage.done::before{background:linear-gradient(90deg,var(--emerald-500),var(--emerald-500))}
+.onb .onboarding-stage.current::before{background:linear-gradient(90deg,var(--emerald-500) 0 50%,#e6e8f0 50%)}
+.onb .stage-head{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:.28rem;padding:0 .12rem;cursor:pointer;min-height:62px;background:transparent;border:0;width:100%}
+.onb .stage-head:hover .stage-marker{transform:translateY(-1px)}
+.onb .stage-marker{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;background:#fff;border:2px solid #dfe2eb;color:var(--text-faint);font-size:.62rem;font-weight:900;box-shadow:0 1px 2px rgba(15,23,42,.04);transition:.15s}
+.onb .stage-marker.done{background:var(--emerald-500);border-color:var(--emerald-500);color:#fff}
+.onb .stage-marker.in-progress{background:var(--indigo-600);border-color:var(--indigo-600);color:#fff;box-shadow:0 0 0 4px var(--indigo-50)}
+.onb .stage-marker.blocked{background:var(--red-500);border-color:var(--red-500);color:#fff}
+.onb .stage-copy{display:none}
+.onb .stage-title{font-size:.53rem;font-weight:900;line-height:1.2;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.onb .stage-focus{font-size:.51rem;color:var(--text-faint);line-height:1.2;margin-top:.08rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.onb .stage-focus::before{content:none}
+.onb .stage-status{font-size:.45rem;font-weight:850;border-radius:999px;padding:.11rem .3rem;white-space:nowrap;display:none}
+.onb .stage-body{display:none;border-top:1px solid #f0f1f6;padding:.62rem;background:#fcfcfe;margin-top:.18rem;border-radius:8px}
+.onb .onboarding-stage.expanded{min-width:0;display:flex}
+.onb .onboarding-stage.expanded .stage-body{display:none}
+.onb .stage-controls{display:grid;grid-template-columns:1fr 1fr;gap:.45rem}
+.onb .stage-field{display:flex;flex-direction:column;gap:.2rem}
+.onb .stage-field.full{grid-column:1/-1}
+.onb .stage-field span{font-size:.52rem;color:var(--text-faint);font-weight:850;text-transform:uppercase;letter-spacing:.04em}
+.onb .stage-field input,.onb .stage-field select,.onb .stage-field textarea{width:100%;border:1px solid var(--border);border-radius:7px;background:#fff;color:var(--text);padding:.38rem .42rem;font-size:.6rem;outline:none}
+.onb .stage-field input,.onb .stage-field select{height:31px}
+.onb .stage-field textarea{min-height:54px;resize:vertical;line-height:1.35}
+.onb .stage-field input:focus,.onb .stage-field select:focus,.onb .stage-field textarea:focus{border-color:var(--indigo-500);box-shadow:0 0 0 3px rgba(99,102,241,.08)}
+.onb .stage-checklist{display:grid;gap:.32rem;margin-top:.55rem}
+.onb .stage-check{display:flex;align-items:flex-start;gap:.38rem;font-size:.59rem;color:var(--text-soft);line-height:1.3}
+.onb .stage-check input{margin-top:.05rem;accent-color:var(--indigo-600)}
+.onb .stage-check.done{color:var(--text-faint);text-decoration:line-through}
+.onb .stage-dates{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.55rem}
+.onb .stage-date-pill{font-size:.51rem;color:var(--text-faint);background:#f2f3f7;border-radius:999px;padding:.2rem .38rem}
+.onb .stage-date-pill strong{color:var(--text-soft)}
+.onb .onboarding-hint{display:block;margin:.42rem 0 0;font-size:.51rem;color:var(--text-faint);text-align:center}
+.onb .onboarding-alert{display:none;position:fixed;inset:0;z-index:95;background:rgba(15,23,42,.26);backdrop-filter:blur(3px);align-items:center;justify-content:center;padding:1rem}
+.onb .onboarding-alert.open{display:flex}
+.onb .onboarding-alert-card{width:min(560px,calc(100vw - 2rem));max-height:min(88vh,760px);overflow:auto;background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 24px 70px rgba(15,23,42,.22);padding:1rem}
+.onb .onboarding-alert-head{display:flex;align-items:flex-start;justify-content:space-between;gap:.8rem;padding-bottom:.72rem;border-bottom:1px solid var(--surface-2)}
+.onb .onboarding-alert-kicker{font-size:.56rem;text-transform:uppercase;letter-spacing:.06em;color:var(--indigo-600);font-weight:900}
+.onb .onboarding-alert-title{font-size:.98rem;font-weight:900;margin-top:.12rem}
+.onb .onboarding-alert-sub{font-size:.67rem;color:var(--text-faint);margin-top:.18rem}
+.onb .onboarding-alert-close{width:32px;height:32px;border:1px solid var(--border);border-radius:9px;background:#fff;color:var(--text-soft);font-size:1rem;display:grid;place-items:center}
+.onb .onboarding-alert-status{display:flex;align-items:center;gap:.5rem;margin:.82rem 0}
+.onb .onboarding-alert-main{font-size:.75rem;font-weight:850;padding:.7rem .75rem;border:1px solid var(--indigo-100);background:linear-gradient(180deg,#fafaff,#f5f6ff);border-radius:11px}
+.onb .onboarding-alert-section{margin-top:.85rem}
+.onb .onboarding-alert-section-title{font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-soft);font-weight:900;margin-bottom:.48rem}
+.onb .onboarding-alert .stage-body{display:block;margin-top:0;border:0;padding:0;background:transparent}
+.onb .onboarding-alert-footer{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.85rem;padding-top:.7rem;border-top:1px solid var(--surface-2)}
+@media(max-width:860px){
+.onb .onboarding-alert-card{width:min(100%,620px);max-height:92vh}
+.onb .sales-grid{grid-template-columns:1fr}
+}
+.onb .empty-sales{padding:3rem 1rem 3.5rem;text-align:center;color:var(--text-faint)}
+.onb .empty-sales-icon{width:44px;height:44px;margin:0 auto .6rem;border-radius:14px;background:var(--surface-2);display:grid;place-items:center;font-size:1.3rem}
+.onb .empty-sales strong{display:block;color:var(--text);font-size:.84rem}
+.onb .empty-sales span{display:block;font-size:.7rem;margin-top:.18rem}
+.onb .detail-screen{display:none;position:fixed;inset:0;z-index:70;background:rgba(20,22,41,.18);backdrop-filter:blur(2px);overflow:auto;padding:1.25rem}
+.onb .detail-screen.open{display:block}
+.onb .detail-shell{max-width:1220px;margin:0 auto;background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:0 24px 70px rgba(15,23,42,.18);min-height:calc(100vh - 2.5rem);overflow:hidden}
+.onb .detail-screen-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.8rem 1rem;border-bottom:1px solid var(--border);background:rgba(255,255,255,.94);position:sticky;top:0;z-index:2}
+.onb .back-btn{box-shadow:none;padding:.55rem .7rem}
+.onb .back-btn svg{width:15px;height:15px}
+.onb .detail-hero{padding:1.2rem 1.3rem 1.05rem;display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;border-bottom:1px solid var(--surface-2)}
+.onb .detail-eyebrow{font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--indigo-600);font-weight:850;margin-bottom:.2rem}
+.onb .detail-hero h2{font-size:1.2rem;margin:0;font-weight:900;letter-spacing:-.02em}
+.onb .detail-hero .detail-sub{font-size:.68rem;color:var(--text-faint);margin-top:.2rem}
+.onb .detail-hero-right{display:flex;align-items:flex-end;flex-direction:column;gap:.35rem}
+.onb .detail-hero-value{font-size:1.35rem;font-weight:900;letter-spacing:-.03em;margin-top:.15rem}
+.onb .detail-progress-wrap{padding:0 1.3rem .95rem;border-bottom:1px solid var(--surface-2)}
+.onb .detail-progress-copy{display:flex;justify-content:space-between;font-size:.66rem;color:var(--text-faint);font-weight:750;margin-bottom:.35rem}
+.onb .detail-progress-copy strong{color:var(--indigo-700)}
+.onb .detail-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,.5fr);gap:1.05rem;align-items:start;padding:1.1rem 1.3rem 1.3rem}
+.onb .detail-main{min-width:0}
+.onb .detail-side{min-width:0;position:sticky;top:4.1rem}
+.onb .detail-section{margin-bottom:1rem}
+.onb .detail-section:last-child{margin-bottom:0}
+.onb .detail-section.side-section{background:var(--surface-2);border:1px solid #eef0f5;border-radius:13px;padding:.82rem}
+.onb .detail-info-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.55rem}
+.onb .detail-section .info{background:var(--surface-2)}
+.onb .detail-main>.detail-section .info{background:#fff;border-color:var(--border)}
+.onb .timeline{display:grid;gap:.78rem;padding:.2rem 0}
+.onb .timeline-item{position:relative;padding-left:1.1rem}
+.onb .timeline-item::before{content:"";position:absolute;left:.28rem;top:.55rem;bottom:-.9rem;width:1px;background:#dfe2ee}
+.onb .timeline-item:last-child::before{display:none}
+.onb .timeline-dot{position:absolute;left:0;top:.22rem;width:.58rem;height:.58rem;border-radius:50%;background:var(--indigo-500);box-shadow:0 0 0 3px var(--indigo-50)}
+.onb .timeline-date{font-size:.59rem;color:var(--indigo-600);font-weight:850}
+.onb .timeline-title{font-size:.7rem;font-weight:850;margin-top:.06rem}
+.onb .timeline-text{font-size:.64rem;color:var(--text-faint);line-height:1.4;margin-top:.08rem}
+.onb .detail-main .meeting-note{margin-top:.6rem}
+.onb .detail-main .notes{margin-top:.6rem;background:var(--surface-2)}
+.onb .modal-backdrop{display:none;position:fixed;inset:0;z-index:80;background:rgba(15,23,42,.42);backdrop-filter:blur(2px);padding:1rem;align-items:center;justify-content:center}
+.onb .modal-backdrop.open{display:flex}
+.onb .sale-modal{width:min(680px,100%);background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow-lg);overflow:hidden}
+.onb .sale-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1rem 1.1rem;border-bottom:1px solid var(--surface-2)}
+.onb .sale-modal-head h2{margin:0;font-size:1rem;font-weight:850}
+.onb .sale-modal-head p{font-size:.7rem;color:var(--text-faint);margin:.2rem 0 0}
+.onb .icon-btn{width:33px;height:33px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text-soft);font-size:1.2rem;line-height:1}
+.onb .sale-modal form{padding:1rem 1.1rem}
+.onb .modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+.onb .modal-field{display:flex;flex-direction:column;gap:.3rem}
+.onb .modal-field span{font-size:.62rem;color:var(--text-faint);font-weight:850;text-transform:uppercase;letter-spacing:.04em}
+.onb .modal-field input,.onb .modal-field select{height:41px;border:1px solid var(--border);border-radius:9px;background:var(--surface);padding:0 .72rem;font-size:.76rem;color:var(--text);outline:none}
+.onb .modal-field input:focus,.onb .modal-field select:focus{border-color:var(--indigo-500);box-shadow:0 0 0 3px rgba(99,102,241,.08)}
+.onb .modal-actions{display:flex;justify-content:flex-end;gap:.5rem;border-top:1px solid var(--surface-2);margin-top:1rem;padding-top:.85rem}
+@media(max-width:1180px){
+.onb .sales-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.onb .sales-filters{grid-template-columns:1.5fr 1fr 1fr}
+.onb .sales-filters .field:last-child{grid-column:1 / -1;max-width:240px}
+.onb .detail-info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:980px){
+.onb .sales-kpis{grid-template-columns:repeat(2,1fr)}
+.onb .sales-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.onb .detail-layout{grid-template-columns:1fr}
+.onb .detail-side{position:static}
+.onb .detail-screen{padding:0}
+.onb .detail-shell{min-height:100vh;border-radius:0;border:none}
+}
+@media(max-width:860px){
+.onb .sales-board-head{padding:.9rem}
+.onb .sales-filters{grid-template-columns:1fr 1fr;padding:.7rem .9rem}
+.onb .sales-grid{grid-template-columns:1fr;padding:.9rem}
+.onb .sales-kpis{gap:.6rem}
+.onb .sales-kpi{padding:.85rem}
+.onb .detail-hero{padding:1rem}
+.onb .detail-layout{padding:.9rem}
+.onb .detail-progress-wrap{padding:0 1rem .9rem}
+}
+@media(max-width:560px){
+.onb .sales-kpis{grid-template-columns:1fr}
+.onb .sales-filters{grid-template-columns:1fr}
+.onb .sales-filters .field:last-child{grid-column:auto;max-width:none}
+.onb .modal-grid{grid-template-columns:1fr}
+.onb .detail-hero{flex-direction:column}
+.onb .detail-hero-right{align-items:flex-start}
+.onb .detail-info-grid{grid-template-columns:1fr}
+.onb .detail-screen-head{padding:.7rem}
+.onb .detail-client{gap:.6rem}
+.onb .detail-hero h2{font-size:1.02rem}
+}
+  </style>
+</head>
+<body>
+  <div class="app-shell"><div id="app-header"></div><div class="app-content"><main class="main"><div id="content"><div class="loading-wrap"><div class="spinner"></div></div></div></main></div></div>
+
+  <template id="onb-template">
+
+        <section class="page-head">
+          <div>
+            <div class="eyebrow"><span data-icon="trend" style="width:14px;height:14px;display:inline-flex"></span> Central comercial · Onboarding</div>
+            <h1 class="page-title">Onboarding</h1>
+            <p class="page-sub">Toda venda marcada como ganha no RD Station vira um Card aqui automaticamente, pronta para o onboarding.</p>
+          </div>
+          <div class="head-actions">
+            <button class="ghost-btn" type="button" id="mockRefresh"><span data-icon="refresh"></span>Atualizar</button>
+            <button class="primary-btn" type="button" id="newSale"><span data-icon="plus"></span>Nova venda</button>
+          </div>
+        </section>
+
+        <section class="sales-kpis" aria-label="Resumo das vendas">
+          <article class="sales-kpi">
+            <div class="sales-kpi-icon indigo"><span data-icon="trend"></span></div>
+            <div><div class="sales-kpi-label">Vendas registradas</div><div class="sales-kpi-value" id="kpiSales">6</div><div class="sales-kpi-foot">Cards criados automaticamente</div></div>
+          </article>
+          <article class="sales-kpi">
+            <div class="sales-kpi-icon green"><span data-icon="chart"></span></div>
+            <div><div class="sales-kpi-label">Valor vendido</div><div class="sales-kpi-value" id="kpiRevenue">R$ 3.850,00</div><div class="sales-kpi-foot">Valor de entrada das vendas</div></div>
+          </article>
+          <article class="sales-kpi">
+            <div class="sales-kpi-icon amber"><span data-icon="calendar"></span></div>
+            <div><div class="sales-kpi-label">Em andamento</div><div class="sales-kpi-value" id="kpiActive">3</div><div class="sales-kpi-foot">Vendas ainda em operação</div></div>
+          </article>
+          <article class="sales-kpi">
+            <div class="sales-kpi-icon violet"><span data-icon="target"></span></div>
+            <div><div class="sales-kpi-label">Concluídas</div><div class="sales-kpi-value" id="kpiDone">1</div><div class="sales-kpi-foot">Processos finalizados</div></div>
+          </article>
+        </section>
+
+        <section class="sales-board">
+          <div class="sales-board-head">
+            <div>
+              <div class="sales-kicker">Cards de vendas</div>
+              <h2>Vendas realizadas</h2>
+              <p>Cada venda registrada gera um Card e mantém todo o histórico acessível.</p>
+            </div>
+            <span class="preview-pill" id="resultCount">6 vendas</span>
+          </div>
+
+          <div class="sales-filters">
+            <div class="field search"><input id="search" type="search" placeholder="Buscar cliente, CNPJ, produto ou vendedor..." /></div>
+            <div class="field"><select id="statusFilter"><option value="">Todos os status</option><option>Novo</option><option>Aguardando informações</option><option>Documentação pendente</option><option>Em onboarding</option><option>Concluído</option></select></div>
+            <div class="field"><select id="typeFilter"><option value="">Todos os serviços</option><option>Constituição</option><option>Regularização</option><option>Troca de contabilidade</option><option>Contabilidade</option><option>BPO Financeiro</option></select></div>
+            <div class="field"><input id="saleDateFilter" type="date" aria-label="Filtrar pela data da venda" /></div>
+          </div>
+
+          <div class="sales-grid" id="salesGrid"></div>
+          <div class="empty-sales" id="emptyState" hidden>
+            <div class="empty-sales-icon">⌕</div>
+            <strong>Nenhuma venda encontrada</strong>
+            <span>Ajuste os filtros ou registre uma nova venda.</span>
+          </div>
+        </section>
+
+        <section class="detail-screen" id="detailScreen" aria-hidden="true">
+          <div class="detail-shell">
+            <div class="detail-screen-head">
+              <button class="ghost-btn back-btn" type="button" id="closeDetail"><span data-icon="arrow-left"></span>Voltar para vendas</button>
+              <div class="detail-screen-actions">
+                <span class="preview-pill">Detalhes da venda</span>
+              </div>
+            </div>
+
+            <div class="detail-hero">
+              <div class="detail-client">
+                <div class="detail-avatar" id="detailAvatar">AM</div>
+                <div>
+                  <div class="detail-eyebrow">Venda #<span id="detailSaleId">0001</span></div>
+                  <h2 id="detailName">Alfa Minas Engenharia Ltda.</h2>
+                  <div class="detail-sub" id="detailCnpj">CNPJ 18.432.716/0001-04</div>
+                </div>
+              </div>
+              <div class="detail-hero-right">
+                <span class="badge b-indigo" id="detailStatus">Em onboarding</span>
+                <span class="badge b-neutral" id="detailType">Troca de contabilidade</span>
+                <div class="detail-hero-value" id="detailValue">R$ 650,00</div>
+              </div>
+            </div>
+
+            <div class="detail-progress-wrap">
+              <div class="detail-progress-copy"><span>Progresso da venda</span><strong id="detailProgressText">42%</strong></div>
+              <div class="detail-progress"><span id="progressBar"></span></div>
+            </div>
+
+            <div class="detail-layout">
+              <div class="detail-main">
+                <section class="detail-section">
+                  <div class="section-title"><h3>Resumo da venda</h3><span>principal</span></div>
+                  <div class="detail-info-grid" id="saleInfo"></div>
+                </section>
+
+                <section class="detail-section">
+                  <div class="section-title"><h3>Dados do cliente</h3><span>cadastro</span></div>
+                  <div class="detail-info-grid" id="companyInfo"></div>
+                </section>
+
+                <section class="detail-section">
+                  <div class="section-title"><h3>Situação atual</h3></div>
+                  <div class="detail-info-grid" id="currentInfo"></div>
+                </section>
+
+                <section class="detail-section">
+                  <div class="section-title"><h3>Necessidade e expectativa</h3></div>
+                  <div id="painBlocks"></div>
+                  <div class="meeting-note" id="meetingNote"></div>
+                </section>
+
+                <section class="detail-section">
+                  <div class="section-title"><h3>Documentos e acessos</h3><span>status atual</span></div>
+                  <div class="docs" id="docs"></div>
+                </section>
+
+                <section class="detail-section">
+                  <div class="section-title"><h3>Informações dos sócios</h3></div>
+                  <div class="partners" id="partners"></div>
+                </section>
+
+                <section class="detail-section">
+                  <div class="section-title"><h3>Capital social e observações</h3></div>
+                  <div class="detail-info-grid" id="capital"></div>
+                  <div class="notes" id="notes"></div>
+                </section>
+              </div>
+
+              <aside class="detail-side">
+                <section class="detail-section side-section">
+                  <div class="section-title"><h3>Histórico da venda</h3><span>linha do tempo</span></div>
+                  <div class="timeline" id="timeline"></div>
+                </section>
+
+                <section class="detail-section side-section">
+                  <div class="section-title"><h3>Alertas</h3><span>atenção</span></div>
+                  <div class="alerts" id="alerts"></div>
+                </section>
+              </aside>
+            </div>
+          </div>
+        </section>
+
+        <div class="modal-backdrop" id="saleModal" aria-hidden="true">
+          <div class="sale-modal" role="dialog" aria-modal="true" aria-labelledby="saleModalTitle">
+            <div class="sale-modal-head">
+              <div><div class="sales-kicker">Novo registro</div><h2 id="saleModalTitle">Cadastrar venda</h2><p>A venda será criada e exibida automaticamente como um novo Card.</p></div>
+              <button class="icon-btn" type="button" id="cancelSale" aria-label="Fechar">×</button>
+            </div>
+            <form id="saleForm">
+              <div class="modal-grid">
+                <label class="modal-field"><span>Cliente</span><input id="saleClient" required placeholder="Nome da empresa" /></label>
+                <label class="modal-field"><span>Produto / serviço</span><select id="saleService" required><option>Contabilidade</option><option>Troca de contabilidade</option><option>Constituição</option><option>Regularização</option><option>BPO Financeiro</option></select></label>
+                <label class="modal-field"><span>Valor da venda</span><input id="saleAmount" required inputmode="decimal" placeholder="650,00" /></label>
+                <label class="modal-field"><span>Data da venda</span><input id="saleDate" required type="date" /></label>
+                <label class="modal-field"><span>Status</span><select id="saleStatus" required><option>Novo</option><option>Aguardando informações</option><option>Documentação pendente</option><option>Em onboarding</option><option>Concluído</option></select></label>
+                <label class="modal-field"><span>Vendedor / closer</span><input id="saleCloser" placeholder="Responsável pela venda" value="Marlon" /></label>
+              </div>
+              <div class="modal-actions">
+                <button class="ghost-btn" type="button" id="cancelSale2">Cancelar</button>
+                <button class="primary-btn" type="submit"><span data-icon="plus"></span>Criar Card de venda</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      
+  <div class="onboarding-alert" id="onboardingAlert" aria-hidden="true">
+    <div class="onboarding-alert-card" role="dialog" aria-modal="true" aria-labelledby="onboardingAlertTitle">
+      <div class="onboarding-alert-head">
+        <div><div class="onboarding-alert-kicker">Etapa do onboarding</div><div class="onboarding-alert-title" id="onboardingAlertTitle">01 · Handoff</div><div class="onboarding-alert-sub" id="onboardingAlertSub">Cliente</div></div>
+        <button class="onboarding-alert-close" type="button" id="closeOnboardingAlert" aria-label="Fechar">×</button>
+      </div>
+      <div class="onboarding-alert-status" id="onboardingAlertStatus"></div>
+      <div class="onboarding-alert-main" id="onboardingAlertMain">Concluído — Venda recebida</div>
+      <div class="onboarding-alert-section">
+        <div class="onboarding-alert-section-title">Informações para adicionar</div>
+        <div id="onboardingAlertBody"></div>
+      </div>
+      <div class="onboarding-alert-footer"><button class="ghost-btn" type="button" id="cancelOnboardingAlert">Fechar</button></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">Ação demonstrativa do preview.</div>
+
+  
+
+  </template>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../js/config.js?v=20260925"></script>
+  <script src="../js/supabaseClient.js?v=20260925"></script>
+  <script src="../js/auth.js?v=20260925"></script>
+  <script src="../js/data.js?v=20260925"></script>
+  <script src="../js/calc.js?v=20260925"></script>
+  <script src="../js/ui.js?v=20260925"></script>
+  <script src="../js/sync.js?v=20260925"></script>
+  <script>
+    // ---------------------------------------------------------------------
+    // ONBOARDING — board de vendas.
+    //
+    // Cada venda registrada no sistema (tabela `sales`, que espelha as
+    // negociações marcadas como GANHAS no RD Station) vira um Card aqui
+    // automaticamente: o Uriel marcou como venda no RD -> na próxima
+    // sincronização o Card aparece.
+    //
+    // O que ainda é provisório (a pedido do usuário, 25/09/2026, "não precisa
+    // mexer nele agora"): o andamento das etapas do onboarding, os dados de
+    // cadastro e as vendas lançadas pelo botão "Nova venda" ficam salvos só
+    // neste navegador (localStorage). Para virar compartilhado entre a equipe,
+    // o próximo passo é uma tabela própria no Supabase.
+    // ---------------------------------------------------------------------
+    let store = null;
+
+    const dataBrOnb = (d) => { const p = (n) => String(n).padStart(2, "0"); return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`; };
+    const brlOnb = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+    function clientesDasVendas(store) {
+      const deals = new Map((store.deals || []).map((d) => [d.id, d]));
+      const sellers = new Map((store.sellers || []).map((s) => [s.id, s.name]));
+      // Ordem de fechamento (mais antiga = #0001): o número do Card não muda
+      // quando entra uma venda nova.
+      const vendas = (store.sales || []).filter((s) => s.closed_at).slice().sort((a, b) => a.closed_at - b.closed_at);
+      const lista = vendas.map((sale, i) => {
+        const d = deals.get(sale.deal_id) || {};
+        const nome = d.company_name || d.client_name || "Cliente sem nome";
+        const closer = (sellers.get(sale.seller_id || d.seller_id) || "—").split(" ")[0];
+        const data = dataBrOnb(sale.closed_at);
+        const valor = brlOnb(sale.value);
+        return {
+          id: i + 1,
+          key: `sale_${sale.id}`,
+          name: nome,
+          abbr: initials(nome),
+          cnpj: "",
+          closer,
+          sale: data,
+          amount: valor,
+          monthly: sale.is_recurring ? valor : "—",
+          discount: "—",
+          service: "A definir",
+          type: "A definir",
+          status: "Novo",
+          priority: "Normal",
+          start: data,
+          progress: 8,
+          saleInfo: { "Vendedor / closer": closer, Fechamento: data, "Valor da venda": valor, "Contato no RD": d.client_name || "—", Recorrente: sale.is_recurring ? "Sim" : "Não", Serviço: "A definir" },
+          companyInfo: { Cliente: nome, Contato: d.client_name || "—", Empresa: d.company_name || "—", CNPJ: "A informar" },
+          currentInfo: { "Processo contratado": "A definir", Situação: "Venda recebida do comercial" },
+          pain: "A preencher no handoff comercial.",
+          expectation: "A preencher no handoff comercial.",
+          meeting: "Card criado automaticamente a partir da venda registrada no RD Station.",
+          alerts: ["Completar o cadastro do cliente e os próximos passos do handoff."],
+          docs: [],
+          partners: [],
+          capital: "Não informado",
+          notes: "Card criado automaticamente a partir da venda registrada no RD Station.",
+          history: [{ date: data, title: "Venda registrada no RD Station", text: `Venda de ${valor} fechada por ${closer}.` }],
+        };
+      });
+      return lista.reverse(); // mais recentes primeiro na grade
+    }
+
+    function iniciarOnboarding(root, clientesReais, recarregar) {
+
+    const ONB_ICONS = {
+      grid:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg>',
+      send:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-11 11"/><path d="M22 2 15 22l-4-9-9-4z"/></svg>',
+      users:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+      chart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20V10M12 20V4M17 20v-7"/></svg>',
+      phone:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg>',
+      calendar:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>',
+      trend:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 6-6 4 4 8-8M15 7h6v6"/></svg>',
+      target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>',
+      handoff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12 3 7l3.5-3.5L11 8h3l2.5-2.5L20 9l-5 5"/><path d="M8 12l3 3 2-2M13 15l2 2 3-3"/></svg>',
+      refresh:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.9-4L3 10"/><path d="M3 5v5h5"/><path d="M4 13a8 8 0 0 0 14.9 4L21 14"/><path d="M21 19v-5h-5"/></svg>',
+      plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>'
+    };
+    root.querySelectorAll('[data-icon]').forEach(el => { el.innerHTML = ONB_ICONS[el.dataset.icon] || ''; });
+
+    const clients = clientesReais;
+
+    const BASE_SALES = clients.map(c => ({...c}));
+
+    const ONBOARDING_STORAGE_KEY = 'bsconta_onboarding_timeline_v1';
+    const ONBOARDING_STAGES = [
+      {title:'Handoff', items:['Venda recebida','Informações recebidas do comercial','Responsável pelo onboarding definido']},
+      {title:'Início do Onboarding', items:['Primeiro contato realizado','Mensagem de boas-vindas','Apresentação do responsável']},
+      {title:'1ª Reunião', items:['Reunião agendada','Reunião realizada','Necessidades do cliente levantadas','Pendências registradas']},
+      {title:'Configuração / Implantação', items:['Documentos recebidos','Dados conferidos','Cadastros/configurações realizados','Pendências internas','Pendências com o cliente']},
+      {title:'2ª Reunião', items:['Reunião agendada','Reunião realizada','Dúvidas esclarecidas','Próximos passos definidos']},
+      {title:'Acompanhamento', items:['Primeiro acompanhamento','Segundo acompanhamento','Verificação das pendências','Confirmação de que o cliente está sendo atendido normalmente']},
+      {title:'Onboarding Concluído', items:['Checklist final concluído','Cliente entregue oficialmente para a operação/atendimento','Data de conclusão registrada']},
+      {title:'Pesquisa de Satisfação', items:['Pesquisa enviada','Resposta recebida','Nota registrada','Comentários registrados']},
+      {title:'Avaliação no Google', items:['Solicitação de avaliação enviada','Avaliação realizada','Registro da avaliação']},
+      {title:'Indicação', items:['Solicitação de indicação enviada','Cliente realizou indicação','Novo lead/cliente indicado registrado']}
+    ];
+    const ONBOARDING_STATUS = {
+      done:{label:'Concluído', className:'done', icon:'✓'},
+      progress:{label:'Em andamento', className:'in-progress', icon:'●'},
+      pending:{label:'Pendente', className:'pending', icon:'○'},
+      blocked:{label:'Bloqueado', className:'blocked', icon:'!'}
+    };
+    let expandedStages = new Set();
+    function nowISO(){ return new Date().toISOString(); }
+    function formatDateTime(iso){
+      if(!iso) return '—';
+      const d=new Date(iso); if(Number.isNaN(d.getTime())) return String(iso);
+      return d.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'});
+    }
+    function dateInputValue(iso){ return iso ? new Date(iso).toISOString().slice(0,10) : ''; }
+    function dateLabel(iso){
+      if(!iso) return '—';
+      const d=new Date(iso); if(Number.isNaN(d.getTime())) return String(iso);
+      return d.toLocaleDateString('pt-BR');
+    }
+    function createStageTemplate(stage, status='pending', baseDate=''){
+      return {
+        title:stage.title,
+        status,
+        responsible:'',
+        createdAt: status==='pending' ? null : (baseDate ? `${baseDate}T12:00:00` : nowISO()),
+        startedAt: status==='progress' || status==='done' ? (baseDate ? `${baseDate}T12:00:00` : nowISO()) : null,
+        dueDate:'',
+        completedAt: status==='done' ? (baseDate ? `${baseDate}T12:00:00` : nowISO()) : null,
+        updatedAt: nowISO(),
+        notes:'',
+        substeps:stage.items.map(label=>({label,done:status==='done',completedAt:status==='done' ? (baseDate ? `${baseDate}T12:00:00` : nowISO()) : null}))
+      };
+    }
+    function defaultOnboarding(s){
+      const baseISO=dateToISO(s.sale || '');
+      const status=s.status;
+      let statuses=Array(ONBOARDING_STAGES.length).fill('pending');
+      if(status==='Concluído') statuses=ONBOARDING_STAGES.map(()=> 'done');
+      else if(status==='Em onboarding') statuses=['done','done','done','progress','pending','pending','pending','pending','pending','pending'];
+      else if(status==='Documentação pendente') statuses=['done','done','done','blocked','pending','pending','pending','pending','pending','pending'];
+      else if(status==='Aguardando informações') statuses=['done','progress','pending','pending','pending','pending','pending','pending','pending','pending'];
+      else statuses=['progress','pending','pending','pending','pending','pending','pending','pending','pending','pending'];
+      const stages=ONBOARDING_STAGES.map((stage,i)=>createStageTemplate(stage,statuses[i],baseISO));
+      const currentIndex=Math.max(0,statuses.findIndex(x=>x!=='done'));
+      if(currentIndex>=0 && stages[currentIndex] && !stages[currentIndex].startedAt){
+        stages[currentIndex].startedAt=nowISO();
+        stages[currentIndex].createdAt=stages[currentIndex].createdAt || nowISO();
+      }
+      return {
+        stages,
+        nextStep:ONBOARDING_STAGES[currentIndex >= 0 ? currentIndex : ONBOARDING_STAGES.length-1].title,
+        auditHistory:[{
+          at:baseISO?`${baseISO}T12:00:00`:nowISO(),title:'Timeline de onboarding criada',text:'Acompanhamento operacional adicionado automaticamente ao Card da venda.'
+        }]
+      };
+    }
+    function normalizeOnboarding(s){
+      if(s.onboarding && Array.isArray(s.onboarding.stages) && s.onboarding.stages.length===ONBOARDING_STAGES.length){
+        s.onboarding.stages=s.onboarding.stages.map((st,i)=>({...createStageTemplate(ONBOARDING_STAGES[i]),...st,substeps:Array.isArray(st.substeps)&&st.substeps.length===ONBOARDING_STAGES[i].items.length ? st.substeps : ONBOARDING_STAGES[i].items.map(label=>({label,done:false,completedAt:null}))}));
+        s.onboarding.auditHistory=Array.isArray(s.onboarding.auditHistory)?s.onboarding.auditHistory:[];
+        return s.onboarding;
+      }
+      s.onboarding=defaultOnboarding(s); return s.onboarding;
+    }
+    function onboardingProgress(s){
+      const stages=normalizeOnboarding(s).stages;
+      const completed=stages.filter(x=>x.status==='done').length;
+      const percent=Math.round(completed/ONBOARDING_STAGES.length*100);
+      const currentIndex=stages.findIndex(x=>x.status!=='done');
+      return {stages,completed,percent,currentIndex:currentIndex<0?ONBOARDING_STAGES.length-1:currentIndex};
+    }
+    function stageStatusMeta(status){ return ONBOARDING_STATUS[status] || ONBOARDING_STATUS.pending; }
+    function stageResponsible(st){ return st.responsible ? `Resp.: ${st.responsible}` : 'Responsável não definido'; }
+    function stageDue(st){ return st.dueDate ? `Prazo: ${dateLabel(st.dueDate+'T12:00:00')}` : 'Prazo não definido'; }
+    function stageFocus(st,index){
+      const firstPending = st.substeps.find(x=>!x.done);
+      if(st.status==='done') return st.substeps.at(-1)?.label || 'Etapa concluída';
+      let label = firstPending?.label || st.title;
+      if((index===2 || index===4) && label==='Reunião agendada') label='Reunião de onboarding agendada';
+      if(index===3 && label==='Cadastros/configurações realizados') label='Configuração do sistema';
+      if(index===7 && label==='Pesquisa enviada') label='Pesquisa de satisfação enviada';
+      if(index===8 && label==='Solicitação de avaliação enviada') label='Solicitação de avaliação enviada';
+      if(index===9 && label==='Solicitação de indicação enviada') label='Solicitação de indicação enviada';
+      return label;
+    }
+    function renderOnboardingCard(s){
+      const p=onboardingProgress(s); const current=p.currentIndex; const stages=p.stages;
+      const next=stages[current] || stages[stages.length-1];
+      const key=s.id;
+      const stageHtml=stages.map((st,i)=>{
+        const meta=stageStatusMeta(st.status);
+        const expanded=expandedStages.has(`${key}:${i}`);
+        const concise=stageFocus(st,i);
+        return `<div class="onboarding-stage ${meta.className==='done'?'done':''} ${meta.className==='blocked'?'blocked':''} ${i===current?'current':''}" data-sale-id="${s.id}" data-stage-index="${i}">
+          <div class="stage-head onboarding-interactive" data-action="toggle-stage" role="button" tabindex="0" aria-expanded="false" title="${esc(st.title)} — ${esc(meta.label)}">
+            <span class="stage-marker ${meta.className}">${String(i+1).padStart(2,'0')}</span>
+            <div class="stage-copy"><div class="stage-title">${esc(st.title)}</div><div class="stage-focus">${esc(concise)}</div></div>
+          </div>
+        </div>`;
+      }).join('');
+      return `<section class="onboarding-box onboarding-interactive" data-onboarding-box="${s.id}">
+        <div class="onboarding-box-head"><div><div class="onboarding-eyebrow">Onboarding do Cliente</div><div class="onboarding-title">${p.completed}/${ONBOARDING_STAGES.length} etapas concluídas · ${p.percent}%</div></div><span class="badge ${p.percent===100?'b-green':'b-indigo'}">${p.percent===100?'Concluído':'Em acompanhamento'}</span></div>
+        <div class="onboarding-progress"><span style="width:${p.percent}%"></span></div>
+        <div class="onboarding-next"><div class="onboarding-next-label">Próximo passo</div><div class="onboarding-next-main">${esc(stageFocus(next,current) || 'Onboarding finalizado')} ${next?.status==='blocked'?'· Bloqueado':''}</div></div>
+        <div class="onboarding-timeline">${stageHtml}</div>
+        <div class="onboarding-hint">Clique em um número para ver o status e adicionar informações.</div>
+      </section>`;
+    }
+
+    const STORAGE_KEY = 'bsconta_sales_cards_v1';
+    const storedSales = (() => {
+      try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+    })();
+    const storedOnboarding = (() => {
+      try { return JSON.parse(localStorage.getItem(ONBOARDING_STORAGE_KEY) || '{}'); } catch { return {}; }
+    })();
+    let sales = [];
+    let selectedId = null;
+
+    const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+    const statusClass = s => ({'Novo':'b-indigo','Aguardando informações':'b-amber','Documentação pendente':'b-amber','Em onboarding':'b-indigo','Concluído':'b-green'}[s] || 'b-neutral');
+    const priorityClass = p => ({'Normal':'normal','Alta':'alta','Urgente':'urgente'}[p] || 'normal');
+    const moneyToNumber = s => {
+      const clean = String(s || '').replace(/\./g,'').replace(',', '.').replace(/[^\d.-]/g,'');
+      const n = Number(clean);
+      return Number.isFinite(n) ? n : 0;
+    };
+    const formatBRL = n => n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+    const isoToBR = iso => iso ? iso.split('-').reverse().join('/') : '';
+    const dateToISO = br => {
+      const [d,m,y] = String(br || '').split('/');
+      return d&&m&&y ? `${y}-${m}-${d}` : '';
+    };
+    sales = [...BASE_SALES, ...storedSales].map(s => ({...s, onboarding: storedOnboarding[s.key || String(s.id)] || s.onboarding || defaultOnboarding(s)}));
+    function formatInfo(obj){
+      return Object.entries(obj || {}).map(([k,v]) =>
+        `<div class="info"><div class="info-label">${esc(k)}</div><div class="info-value ${String(v).length>38?'soft':''}">${esc(v)}</div></div>`
+      ).join('');
+    }
+    function saleStatusPercent(s){ return Math.max(0, Math.min(100, Number(s.progress || (s.status==='Concluído'?100:0)))); }
+    function generatedHistory(s){
+      const base=(Array.isArray(s.history) && s.history.length) ? [...s.history] : [
+        {date:s.sale || '—', title:'Venda registrada', text:`Venda de ${s.type || s.service} registrada por ${s.closer || 'responsável comercial'}.`},
+        {date:s.start || '—', title:'Início previsto', text:`Previsão de início do serviço para ${s.start || 'a definir'}.`},
+        {date:s.status==='Concluído' ? (s.start || s.sale) : 'Atual', title:`Status atual: ${s.status}`, text:'Acompanhamento do processo conforme as informações disponíveis nesta ficha.'}
+      ];
+      const onboarding=normalizeOnboarding(s);
+      const audit=(onboarding.auditHistory||[]).map(h=>({date:formatDateTime(h.at),title:h.title,text:h.text}));
+      return [...base,...audit];
+    }
+
+    function persistAll(){
+      const custom = sales.filter(s => !BASE_SALES.some(b => b.id===s.id));
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(custom)); } catch {}
+      const map={}; sales.forEach(s=>{map[s.key || String(s.id)]=normalizeOnboarding(s);});
+      try { localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(map)); } catch {}
+    }
+    function addOnboardingAudit(s, title, text){
+      const o=normalizeOnboarding(s); o.auditHistory.push({at:nowISO(),title,text});
+    }
+    function getStage(s,index){ return normalizeOnboarding(s).stages[index]; }
+    function updateStageStatus(s,index,nextStatus){
+      const st=getStage(s,index); const prev=st.status; if(prev===nextStatus) return;
+      const t=nowISO(); st.status=nextStatus; st.updatedAt=t; st.createdAt=st.createdAt||t;
+      if(nextStatus==='progress' && !st.startedAt) st.startedAt=t;
+      if(nextStatus==='done') { st.startedAt=st.startedAt||t; st.completedAt=t; }
+      else if(prev==='done' && nextStatus!=='done') st.completedAt=null;
+      addOnboardingAudit(s, `${st.title} — ${ONBOARDING_STATUS[nextStatus].label}`, `Status alterado de ${ONBOARDING_STATUS[prev]?.label || 'Pendente'} para ${ONBOARDING_STATUS[nextStatus].label}.`);
+      const p=onboardingProgress(s); const next=p.stages[p.currentIndex];
+      s.onboarding.nextStep=next?.title || 'Onboarding finalizado';
+      persistAll(); renderSales();
+    }
+    function updateStageField(s,index,field,value){
+      const st=getStage(s,index); const t=nowISO();
+      if(field==='responsible') st.responsible=value.trim();
+      if(field==='dueDate') st.dueDate=value;
+      if(field==='notes') st.notes=value;
+      if(field==='startedAt') { st.startedAt=value ? `${value}T12:00:00` : null; st.createdAt=st.createdAt||nowISO(); }
+      st.updatedAt=t;
+      persistAll(); renderSales();
+    }
+    function toggleSubstep(s,index,subIndex,done){
+      const st=getStage(s,index); const sub=st.substeps[subIndex]; if(!sub) return; const t=nowISO();
+      sub.done=done; sub.completedAt=done?t:null; st.updatedAt=t;
+      addOnboardingAudit(s, `${st.title} — atividade atualizada`, `${done?'Concluída':'Reaberta'}: ${sub.label}.`);
+      persistAll(); renderSales();
+    }
+    function toggleStageExpanded(saleId,index,expand=true){
+      const key=`${saleId}:${index}`; if(expand) expandedStages.add(key); else expandedStages.delete(key); renderSales();
+    }
+
+    function updateKpis(list=sales){
+      document.getElementById('kpiSales').textContent = list.length;
+      const total = list.reduce((sum,s)=>sum + moneyToNumber(s.amount),0);
+      document.getElementById('kpiRevenue').textContent = formatBRL(total);
+      document.getElementById('kpiActive').textContent = list.filter(s=>s.status!=='Concluído').length;
+      document.getElementById('kpiDone').textContent = list.filter(s=>s.status==='Concluído').length;
+    }
+
+    function renderSales(){
+      sales.forEach(normalizeOnboarding);
+      const q = document.getElementById('search').value.trim().toLowerCase();
+      const sf = document.getElementById('statusFilter').value;
+      const tf = document.getElementById('typeFilter').value;
+      const saleDate = document.getElementById('saleDateFilter').value;
+      const rows = sales.filter(s =>
+        (!q || [s.name,s.cnpj,s.closer,s.service,s.type].join(' ').toLowerCase().includes(q)) &&
+        (!sf || s.status===sf) &&
+        (!tf || s.type===tf) &&
+        (!saleDate || s.sale === isoToBR(saleDate))
+      );
+      document.getElementById('resultCount').textContent = `${rows.length} venda${rows.length===1?'':'s'}`;
+      // Muitas vendas no histórico: mostra as mais recentes e carrega o resto sob demanda.
+      const limiteOnb = root.__limite || 24;
+      document.getElementById('salesGrid').innerHTML = rows.slice(0, limiteOnb).map(s => `
+        <article class="sale-card" tabindex="0" role="button" data-id="${s.id}" aria-label="Abrir detalhes da venda de ${esc(s.name)}">
+          <div class="sale-card-top">
+            <span class="sale-id">VENDA #${String(s.id).padStart(4,'0')}</span>
+            <span class="sale-date">${esc(s.sale)}</span>
+          </div>
+          <div class="sale-client-row">
+            <div class="sale-client-avatar">${esc(s.abbr || initials(s.name))}</div>
+            <div><div class="sale-client-name">${esc(s.name)}</div><div class="sale-client-meta">${esc(s.cnpj || 'CNPJ não informado')}</div></div>
+          </div>
+          <div class="sale-service">
+            <div class="sale-service-label">Produto / serviço</div>
+            <div class="sale-service-value">${esc(s.service || s.type)}</div>
+          </div>
+          <div class="badges">
+            <span class="badge ${statusClass(s.status)}">${esc(s.status)}</span>
+            <span class="badge b-neutral">${esc(s.closer || 'Sem vendedor')}</span>
+          </div>
+          <div class="sale-card-bottom">
+            <div><div class="sale-value">${esc(s.amount)}</div><div class="sale-value-label">valor da venda</div></div>
+            <div class="sale-closer">Mensalidade<strong>${esc(s.monthly || '—')}</strong></div>
+          </div>
+          ${renderOnboardingCard(s)}
+          <div class="sale-arrow">Ver detalhes</div>
+        </article>`).join('');
+      document.getElementById('emptyState').hidden = rows.length > 0;
+      let maisOnb = document.getElementById('onbMais');
+      if (!maisOnb) { maisOnb = document.createElement('div'); maisOnb.id = 'onbMais'; maisOnb.style.cssText = 'display:flex;justify-content:center;padding:1rem'; document.getElementById('salesGrid').after(maisOnb); }
+      maisOnb.innerHTML = rows.length > limiteOnb ? `<button type="button" class="ghost-btn">Mostrar mais vendas (${rows.length - limiteOnb} restantes)</button>` : '';
+      maisOnb.onclick = (e) => { if (e.target.closest('button')) { root.__limite = limiteOnb + 48; renderSales(); } };
+      document.querySelectorAll('.sale-card').forEach(card => {
+        card.addEventListener('click', e => {
+          if(e.target.closest('.onboarding-interactive')) return;
+          openSale(Number(card.dataset.id));
+        });
+        card.addEventListener('keydown', e => {
+          if(e.target.closest('.onboarding-interactive')) return;
+          if(e.key==='Enter' || e.key===' ') { e.preventDefault(); openSale(Number(card.dataset.id)); }
+        });
+      });
+      updateKpis(sales);
+    }
+
+    function openSale(id){
+      const s = sales.find(x=>x.id===id);
+      if(!s) return;
+      selectedId=id;
+      const percent=saleStatusPercent(s);
+      document.getElementById('detailSaleId').textContent=String(s.id).padStart(4,'0');
+      document.getElementById('detailAvatar').textContent=s.abbr || initials(s.name);
+      document.getElementById('detailName').textContent=s.name;
+      document.getElementById('detailCnpj').textContent=`${s.cnpj || 'CNPJ não informado'} · ${s.type || s.service || 'Serviço'}`;
+      document.getElementById('detailStatus').className=`badge ${statusClass(s.status)}`;
+      document.getElementById('detailStatus').textContent=s.status;
+      document.getElementById('detailType').textContent=s.service || s.type || 'Serviço';
+      document.getElementById('detailValue').textContent=s.amount || 'R$ 0,00';
+      document.getElementById('progressBar').style.width=`${percent}%`;
+      document.getElementById('detailProgressText').textContent=`${percent}%`;
+      document.getElementById('saleInfo').innerHTML=formatInfo(s.saleInfo || {
+        'Vendedor / closer':s.closer || '—','Fechamento':s.sale || '—','Valor da venda':s.amount || '—',
+        'Mensalidade':s.monthly || '—','Desconto':s.discount || '—','Início previsto':s.start || '—','Serviço':s.service || s.type || '—'
+      });
+      document.getElementById('companyInfo').innerHTML=formatInfo(s.companyInfo || {'Cliente':s.name,'CNPJ':s.cnpj || 'Não informado'});
+      document.getElementById('currentInfo').innerHTML=formatInfo(s.currentInfo || {'Processo contratado':s.service || s.type,'Situação':s.status});
+      document.getElementById('painBlocks').innerHTML=`
+        <div class="highlight"><div class="highlight-label">Principal necessidade</div><div class="highlight-text">${esc(s.pain || 'Não informado.')}</div></div>
+        <div class="highlight"><div class="highlight-label">Expectativa com a BSconta</div><div class="highlight-text">${esc(s.expectation || 'Não informado.')}</div></div>`;
+      document.getElementById('meetingNote').innerHTML=`<strong style="color:var(--text)">Informações conversadas / contexto</strong><br>${esc(s.meeting || 'Registro adicional não informado.')}`;
+      document.getElementById('alerts').innerHTML=(s.alerts || ['Nenhum alerta crítico.']).map(a=>`<div class="alert-row"><span class="alert-dot"></span><span>${esc(a)}</span></div>`).join('');
+      document.getElementById('docs').innerHTML=(s.docs || []).map(d=>`<div class="doc-row"><div class="doc-left"><div class="doc-icon">DOC</div><div class="doc-name">${esc(d[0])}</div></div><span class="doc-status ${d[2]==='ok'?'doc-ok':d[2]==='review'?'doc-review':'doc-pending'}">${esc(d[1])}</span></div>`).join('') || '<div class="empty-row" style="padding:1rem">Nenhum documento registrado.</div>';
+      document.getElementById('partners').innerHTML=(s.partners || []).map(p=>`
+        <div class="partner">
+          <div class="partner-top"><div class="partner-name">${esc(p.name)} ${p.admin==='Sim'?'<span class="badge b-indigo" style="margin-left:.3rem">Administrador</span>':''}</div><div class="partner-share">${esc(p.share)}</div></div>
+          <div class="partner-grid">
+            <div><div class="mini-label">CPF</div><div class="mini-value">${esc(p.cpf)}</div></div>
+            <div><div class="mini-label">RG</div><div class="mini-value">${esc(p.rg)}</div></div>
+            <div><div class="mini-label">Nascimento</div><div class="mini-value">${esc(p.birth)}</div></div>
+            <div><div class="mini-label">Nacionalidade</div><div class="mini-value">${esc(p.nationality)}</div></div>
+            <div><div class="mini-label">Estado civil</div><div class="mini-value">${esc(p.marital)}</div></div>
+            <div><div class="mini-label">Regime de bens</div><div class="mini-value">${esc(p.regime)}</div></div>
+            <div><div class="mini-label">Profissão</div><div class="mini-value">${esc(p.profession)}</div></div>
+            <div><div class="mini-label">WhatsApp</div><div class="mini-value">${esc(p.phone)}</div></div>
+            <div><div class="mini-label">E-mail</div><div class="mini-value">${esc(p.email)}</div></div>
+            <div><div class="mini-label">Endereço</div><div class="mini-value">${esc(p.address)}</div></div>
+          </div>
+        </div>`).join('') || '<div class="empty-row" style="padding:1rem">Nenhum sócio registrado.</div>';
+      document.getElementById('capital').innerHTML=`<div class="info"><div class="info-label">Capital social</div><div class="info-value">${esc(s.capital || 'Não informado')}</div></div><div class="info"><div class="info-label">Participação societária</div><div class="info-value">${(s.partners || []).map(p=>`${esc(p.name)} · ${esc(p.share)}`).join('<br>') || 'Não informado'}</div></div>`;
+      document.getElementById('notes').textContent=s.notes || 'Sem observações adicionais.';
+      document.getElementById('timeline').innerHTML=generatedHistory(s).map((h,i)=>`
+        <div class="timeline-item"><span class="timeline-dot"></span><div class="timeline-date">${esc(h.date || '—')}</div><div class="timeline-title">${esc(h.title || 'Atualização')}</div><div class="timeline-text">${esc(h.text || '')}</div></div>`).join('');
+      const screen=document.getElementById('detailScreen');
+      screen.classList.add('open');
+      screen.setAttribute('aria-hidden','false');
+      document.body.style.overflow='hidden';
+    }
+
+    function closeDetail(){
+      const screen=document.getElementById('detailScreen');
+      screen.classList.remove('open');
+      screen.setAttribute('aria-hidden','true');
+      document.body.style.overflow='';
+      selectedId=null;
+    }
+
+    function saveSales(){ persistAll(); }
+
+    function nextSaleId(){ return Math.max(0,...sales.map(s=>Number(s.id)||0))+1; }
+
+    function registerSale({client,service,amount,date,status,closer}){
+      const sale = {
+        id: nextSaleId(), name: client, abbr: initials(client), cnpj:'Não informado', closer: closer || 'Marlon',
+        sale: isoToBR(date), amount: formatBRL(moneyToNumber(amount)), monthly:'A definir', discount:'Sem desconto',
+        service, type:service, status, priority:'Normal', start:isoToBR(date), progress:status==='Concluído'?100:8,
+        saleInfo:{'Vendedor / closer':closer || 'Marlon','Fechamento':isoToBR(date),'Valor da venda':formatBRL(moneyToNumber(amount)),'Mensalidade':'A definir','Desconto':'Sem desconto','Início previsto':isoToBR(date),'Serviço':service},
+        companyInfo:{'Razão Social':client,'Nome fantasia':client,'CNPJ':'Não informado','Responsável':'A cadastrar','WhatsApp':'Não informado','E-mail':'Não informado','Cidade/UF':'Não informado','Regime atual':'A definir','Faturamento médio':'A informar','Sócios':'A informar','Funcionários':'A informar'},
+        currentInfo:{'Contador atual':'A informar','Pendências fiscais':'A validar','Situação atual':'Venda recém-registrada','Processo contratado':service},
+        pain:'A preencher no cadastro comercial.', expectation:'A preencher no cadastro comercial.',
+        meeting:'Registro criado diretamente pela central de vendas.',
+        alerts:['Completar o cadastro do cliente e os próximos passos do handoff.'],
+        docs:[], partners:[], capital:'Não informado', notes:'Card criado automaticamente a partir do registro da venda.',
+        history:[
+          {date:isoToBR(date),title:'Venda registrada',text:`Venda de ${service} cadastrada por ${closer || 'Marlon'}.`},
+          {date:isoToBR(date),title:'Card criado automaticamente',text:'O registro passou a integrar a central de vendas e está pronto para acompanhamento.'}
+        ]
+      };
+      sale.onboarding=defaultOnboarding(sale);
+      sales=[sale,...sales];
+      saveSales();
+      renderSales();
+      closeSaleModal();
+      showToast('Venda registrada. O Card foi criado automaticamente.');
+      setTimeout(()=>openSale(sale.id),120);
+      return sale;
+    }
+    window.registerSale = registerSale;
+
+    let activeOnboardingAlert = null;
+    function onboardingStageEditorHtml(s, idx){
+      const st=getStage(s,idx);
+      return `<div class="stage-body">
+        <div class="stage-controls">
+          <label class="stage-field"><span>Status</span><select data-action="stage-status"><option value="done" ${st.status==='done'?'selected':''}>Concluído</option><option value="progress" ${st.status==='progress'?'selected':''}>Em andamento</option><option value="pending" ${st.status==='pending'?'selected':''}>Pendente</option><option value="blocked" ${st.status==='blocked'?'selected':''}>Bloqueado</option></select></label>
+          <label class="stage-field"><span>Responsável</span><input data-action="stage-responsible" value="${esc(st.responsible||'')}" placeholder="Ex.: João" /></label>
+          <label class="stage-field"><span>Data de início</span><input data-action="stage-start" type="date" value="${esc(dateInputValue(st.startedAt))}" /></label>
+          <label class="stage-field"><span>Prazo</span><input data-action="stage-due" type="date" value="${esc(st.dueDate||'')}" /></label>
+          <label class="stage-field full"><span>Observações</span><textarea data-action="stage-notes" placeholder="Registre observações desta etapa...">${esc(st.notes||'')}</textarea></label>
+        </div>
+        <div class="stage-checklist">${st.substeps.map((sub,si)=>`<label class="stage-check ${sub.done?'done':''}"><input type="checkbox" data-action="substep" data-substep-index="${si}" ${sub.done?'checked':''}><span>${esc(sub.label)}</span></label>`).join('')}</div>
+        <div class="stage-dates"><span class="stage-date-pill"><strong>Criada:</strong> ${esc(formatDateTime(st.createdAt))}</span><span class="stage-date-pill"><strong>Início:</strong> ${esc(formatDateTime(st.startedAt))}</span><span class="stage-date-pill"><strong>Conclusão:</strong> ${esc(formatDateTime(st.completedAt))}</span><span class="stage-date-pill"><strong>Atualizada:</strong> ${esc(formatDateTime(st.updatedAt))}</span></div>
+      </div>`;
+    }
+    function openOnboardingAlert(saleId, idx){
+      const s=sales.find(x=>Number(x.id)===Number(saleId)); if(!s) return;
+      const st=getStage(s,idx), meta=stageStatusMeta(st.status), main=stageFocus(st,idx);
+      activeOnboardingAlert={saleId:Number(saleId),idx};
+      document.getElementById('onboardingAlertTitle').textContent=`${String(idx+1).padStart(2,'0')} · ${st.title}`;
+      document.getElementById('onboardingAlertSub').textContent=`${s.name} · Venda #${String(s.id).padStart(4,'0')}`;
+      document.getElementById('onboardingAlertStatus').innerHTML=`<span class="stage-marker ${meta.className}">${String(idx+1).padStart(2,'0')}</span><span class="badge ${st.status==='done'?'b-green':st.status==='blocked'?'b-red':st.status==='progress'?'b-indigo':'b-neutral'}">${esc(meta.label)}</span>`;
+      document.getElementById('onboardingAlertMain').textContent=`${meta.label} — ${main || st.title}`;
+      const body=document.getElementById('onboardingAlertBody'); body.innerHTML=onboardingStageEditorHtml(s,idx);
+      const modal=document.getElementById('onboardingAlert'); modal.classList.add('open'); modal.setAttribute('aria-hidden','false');
+    }
+    function closeOnboardingAlert(){
+      const modal=document.getElementById('onboardingAlert'); modal.classList.remove('open'); modal.setAttribute('aria-hidden','true'); activeOnboardingAlert=null;
+    }
+
+    function openSaleModal(){
+      const modal=document.getElementById('saleModal');
+      modal.classList.add('open'); modal.setAttribute('aria-hidden','false');
+      document.getElementById('saleDate').value=new Date().toISOString().slice(0,10);
+      setTimeout(()=>document.getElementById('saleClient').focus(),40);
+    }
+    function closeSaleModal(){
+      const modal=document.getElementById('saleModal');
+      modal.classList.remove('open'); modal.setAttribute('aria-hidden','true');
+      document.getElementById('saleForm').reset();
+      document.getElementById('saleCloser').value='Marlon';
+    }
+
+    root.querySelectorAll('[data-icon]').forEach(el => { if (!el.innerHTML.trim()) el.innerHTML = ONB_ICONS[el.dataset.icon] || ''; });
+    ['search','statusFilter','typeFilter','saleDateFilter'].forEach(id => document.getElementById(id).addEventListener('input',renderSales));
+    document.getElementById('salesGrid').addEventListener('click',e=>{
+      const stageHead=e.target.closest('[data-action="toggle-stage"]');
+      if(stageHead){
+        const stage=stageHead.closest('.onboarding-stage');
+        if(stage) openOnboardingAlert(Number(stage.dataset.saleId), Number(stage.dataset.stageIndex));
+        return;
+      }
+    });
+    document.getElementById('salesGrid').addEventListener('keydown',e=>{
+      const stageHead=e.target.closest('[data-action="toggle-stage"]');
+      if(stageHead && (e.key==='Enter'||e.key===' ')){e.preventDefault(); const stage=stageHead.closest('.onboarding-stage'); if(stage) openOnboardingAlert(Number(stage.dataset.saleId),Number(stage.dataset.stageIndex));}
+    });
+    document.getElementById('onboardingAlertBody').addEventListener('change',e=>{
+      const action=e.target.dataset.action; if(!action || !activeOnboardingAlert) return;
+      const {saleId,idx}=activeOnboardingAlert, s=sales.find(x=>Number(x.id)===saleId); if(!s) return;
+      if(action==='stage-status') updateStageStatus(s,idx,e.target.value);
+      else if(action==='stage-responsible') updateStageField(s,idx,'responsible',e.target.value);
+      else if(action==='stage-due') updateStageField(s,idx,'dueDate',e.target.value);
+      else if(action==='stage-start') updateStageField(s,idx,'startedAt',e.target.value);
+      else if(action==='stage-notes') updateStageField(s,idx,'notes',e.target.value);
+      else if(action==='substep') toggleSubstep(s,idx,Number(e.target.dataset.substepIndex),e.target.checked);
+      openOnboardingAlert(saleId,idx);
+    });
+    document.getElementById('onboardingAlertBody').addEventListener('input',e=>{
+      const action=e.target.dataset.action; if(!action || !activeOnboardingAlert) return;
+      const {saleId,idx}=activeOnboardingAlert, s=sales.find(x=>Number(x.id)===saleId); if(!s) return;
+      if(action==='stage-responsible') updateStageField(s,idx,'responsible',e.target.value);
+      else if(action==='stage-notes') updateStageField(s,idx,'notes',e.target.value);
+      else return;
+      // manter a janela aberta sem re-renderizar a grade
+    });
+    document.getElementById('closeDetail').addEventListener('click',closeDetail);
+    document.getElementById('closeOnboardingAlert').addEventListener('click',closeOnboardingAlert);
+    document.getElementById('cancelOnboardingAlert').addEventListener('click',closeOnboardingAlert);
+    document.getElementById('onboardingAlert').addEventListener('click',e=>{if(e.target.id==='onboardingAlert')closeOnboardingAlert();});
+    document.getElementById('mockRefresh').addEventListener('click',()=>{renderSales();showToast('Cards atualizados.');});
+    document.getElementById('newSale').addEventListener('click',openSaleModal);
+    document.getElementById('cancelSale').addEventListener('click',closeSaleModal);
+    document.getElementById('cancelSale2').addEventListener('click',closeSaleModal);
+    document.getElementById('saleModal').addEventListener('click',e=>{if(e.target.id==='saleModal')closeSaleModal();});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(document.getElementById('onboardingAlert').classList.contains('open'))closeOnboardingAlert(); else if(document.getElementById('saleModal').classList.contains('open'))closeSaleModal(); else if(document.getElementById('detailScreen').classList.contains('open'))closeDetail();}});
+    document.getElementById('saleForm').addEventListener('submit',e=>{
+      e.preventDefault();
+      registerSale({
+        client:document.getElementById('saleClient').value.trim(),
+        service:document.getElementById('saleService').value,
+        amount:document.getElementById('saleAmount').value,
+        date:document.getElementById('saleDate').value,
+        status:document.getElementById('saleStatus').value,
+        closer:document.getElementById('saleCloser').value.trim() || 'Marlon'
+      });
+    });
+    
+    function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window.__toast);window.__toast=setTimeout(()=>t.classList.remove('show'),2600)}
+    renderSales();
+      
+      document.getElementById('mockRefresh').onclick = recarregar;
+    }
+
+    function montar() {
+      const content = document.getElementById("content");
+      content.className = "";
+      content.innerHTML = "";
+      const root = document.createElement("div");
+      root.className = "onb";
+      root.appendChild(document.getElementById("onb-template").content.cloneNode(true));
+      content.appendChild(root);
+      iniciarOnboarding(root, clientesDasVendas(store), async () => {
+        try { store = await loadAll({ fresh: true }); montar(); } catch (e) { console.error(e); }
+      });
+    }
+
+    (async () => {
+      try {
+        const dados = loadAllInstantaneo((novo) => { store = novo; montar(); }).catch((e) => e);
+        const auth = await requireAuth();
+        if (!auth) return;
+        renderShell(auth.profile);
+        const resultado = await dados;
+        if (resultado instanceof Error) throw resultado;
+        store = resultado;
+        montar();
+        startPageLoadSync(async () => { store = await loadAll({ fresh: true }); montar(); });
+      } catch (err) {
+        console.error(err);
+        showFatalError(err);
+      }
+    })();
+  </script>
+</body>
+</html>

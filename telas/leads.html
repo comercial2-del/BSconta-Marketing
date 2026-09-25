@@ -1,0 +1,417 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BSconta + Marketing — Leads</title>
+  <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
+  <link rel="stylesheet" href="../css/styles.css?v=20260925" />
+  <style>
+    /* ===== Tela Leads — visual do preview "Leads" aprovado pelo usuário ===== */
+    .page-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:1rem}
+    .eyebrow{display:flex;align-items:center;gap:.45rem;font-size:.71rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--indigo-600);margin-bottom:.25rem}
+    .eyebrow svg{width:14px;height:14px}
+    .head-actions{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap}
+    .ghost-btn{border-radius:10px;padding:.67rem .85rem;border:1px solid var(--border);font-size:.82rem;font-weight:700;background:var(--surface);color:var(--text-soft);display:inline-flex;align-items:center;gap:.45rem;box-shadow:var(--shadow-sm);cursor:pointer;font-family:inherit}
+    .ghost-btn:hover{background:var(--surface-2);color:var(--text)}
+    .ghost-btn svg{width:16px;height:16px}
+    .ghost-btn[disabled]{opacity:.6;cursor:default}
+
+    .leads-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--gap)}
+    .lead-kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.05rem;box-shadow:var(--shadow-sm);display:flex;align-items:flex-start;gap:.8rem;min-width:0;text-align:left;font-family:inherit;color:inherit;cursor:pointer;transition:border-color .12s, box-shadow .12s}
+    .lead-kpi:hover{border-color:var(--indigo-100);box-shadow:var(--shadow-md)}
+    .lead-kpi.ativo{border-color:var(--indigo-500);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+    .lead-kpi-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex:0 0 auto}
+    .lead-kpi-icon svg{width:20px;height:20px}
+    .lead-kpi-icon.indigo{background:var(--indigo-50);color:var(--indigo-700)}
+    .lead-kpi-icon.green{background:var(--emerald-50);color:var(--emerald-700)}
+    .lead-kpi-icon.amber{background:var(--amber-50);color:var(--amber-700)}
+    .lead-kpi-icon.red{background:var(--red-50);color:var(--red-700)}
+    .lead-kpi-icon.violet{background:var(--violet-50);color:var(--violet-700)}
+    .lead-kpi-label{font-size:.68rem;text-transform:uppercase;letter-spacing:.055em;font-weight:800;color:var(--text-faint)}
+    .lead-kpi-value{font-size:1.38rem;font-weight:850;letter-spacing:-.03em;margin:.16rem 0 0}
+    .lead-kpi-foot{font-size:.68rem;color:var(--text-faint);margin-top:.12rem;line-height:1.35}
+    .lead-kpi-foot strong{color:var(--text-soft)}
+
+    .leads-grid-2{display:grid;grid-template-columns:1.4fr 1fr;gap:var(--gap)}
+    .leads-board{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden;min-width:0}
+    .leads-board-head{padding:1rem 1.1rem .85rem;display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;border-bottom:1px solid var(--surface-2)}
+    .leads-board-head h2{font-size:1rem;margin:0;font-weight:850}
+    .leads-board-head p{font-size:.74rem;color:var(--text-faint);margin:.2rem 0 0}
+    .sales-kicker{font-size:.66rem;text-transform:uppercase;letter-spacing:.075em;color:var(--indigo-600);font-weight:850;margin-bottom:.18rem}
+    .preview-pill{display:inline-flex;align-items:center;gap:.35rem;font-size:.64rem;font-weight:800;color:var(--text-faint);background:#f2f3f7;border-radius:999px;padding:.22rem .5rem;white-space:nowrap}
+    .preview-pill:before{content:"";width:6px;height:6px;background:var(--indigo-500);border-radius:50%}
+
+    .lead-funnel{display:grid;grid-template-columns:repeat(4,1fr);gap:.55rem;padding:.8rem 1.1rem;border-bottom:1px solid var(--surface-2);background:#fcfcff}
+    .funnel-item{border:1px solid var(--border);background:#fff;border-radius:11px;padding:.65rem .7rem;position:relative;overflow:hidden}
+    .funnel-item::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--indigo-500)}
+    .funnel-item.amber::before{background:var(--amber-500)}
+    .funnel-item.green::before{background:var(--emerald-500)}
+    .funnel-item.red::before{background:var(--red-500)}
+    .funnel-label{font-size:.58rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);font-weight:850}
+    .funnel-value{font-size:1.18rem;font-weight:900;margin-top:.15rem}
+    .funnel-foot{font-size:.61rem;color:var(--text-faint);margin-top:.12rem}
+
+    .chegadas-chart{padding:1rem 1.1rem 1.1rem}
+    .chegadas-bars{display:flex;align-items:flex-end;gap:3px;height:150px;border-bottom:1px solid var(--border)}
+    .chegadas-bar{flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%}
+    .chegadas-bar span{display:block;width:100%;max-width:26px;background:var(--indigo-500);border-radius:4px 4px 0 0;min-height:2px}
+    .chegadas-bar span.zero{background:var(--border)}
+    .chegadas-bar em{font-style:normal;font-size:.58rem;font-weight:800;color:var(--text-soft);margin-bottom:2px}
+    .chegadas-labels{display:flex;gap:3px;margin-top:.35rem}
+    .chegadas-labels span{flex:1 1 0;min-width:0;font-size:.55rem;color:var(--text-faint);text-align:center;overflow:hidden;white-space:nowrap}
+    .perdas-lista{padding:.9rem 1.1rem 1.1rem;display:flex;flex-direction:column;gap:.7rem}
+    .perda-row{display:grid;grid-template-columns:1fr auto;gap:.2rem .8rem;align-items:center}
+    .perda-row .nome{font-size:.76rem;font-weight:800}
+    .perda-row .num{font-size:.76rem;font-weight:850;text-align:right}
+    .perda-row .num small{display:block;font-size:.62rem;color:var(--text-faint);font-weight:700}
+    .perda-track{grid-column:1/-1;height:8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);overflow:hidden}
+    .perda-track span{display:block;height:100%;border-radius:999px}
+    .perdas-nota{font-size:.65rem;color:var(--text-faint);line-height:1.45;margin:0}
+
+    .leads-filters{padding:.75rem 1.1rem;display:grid;grid-template-columns:2fr 1.2fr 1fr;gap:.55rem;border-bottom:1px solid var(--surface-2)}
+    .field{position:relative}
+    .field input,.field select{width:100%;height:40px;border:1px solid var(--border);border-radius:9px;background:var(--surface);padding:0 .72rem;font-size:.78rem;color:var(--text-soft);outline:none;font-family:inherit}
+    .field input:focus,.field select:focus{border-color:var(--indigo-500);box-shadow:0 0 0 3px rgba(99,102,241,.08)}
+    .field.search:before{content:"⌕";position:absolute;left:.72rem;top:50%;transform:translateY(-52%);font-size:1.05rem;color:var(--text-faint);pointer-events:none}
+    .field.search input{padding-left:2rem}
+
+    .leads-table-wrap{overflow:auto}
+    .leads-table{width:100%;border-collapse:collapse;font-size:.74rem;min-width:860px}
+    .leads-table th{font-size:.62rem;text-transform:uppercase;letter-spacing:.045em;color:var(--text-faint);font-weight:850;text-align:left;padding:.72rem 1rem;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--surface)}
+    .leads-table td{padding:.72rem 1rem;border-bottom:1px solid var(--surface-2);vertical-align:middle}
+    .leads-table tbody tr{cursor:pointer;transition:background .12s}
+    .leads-table tbody tr:hover{background:#fafafe}
+    .leads-table .cell-num{text-align:right;white-space:nowrap}
+    .lead-cell{display:flex;align-items:center;gap:.65rem;min-width:200px}
+    .lead-avatar{width:35px;height:35px;border-radius:10px;background:var(--indigo-50);color:var(--indigo-700);display:grid;place-items:center;font-size:.69rem;font-weight:850;flex:0 0 auto}
+    .lead-name{font-size:.76rem;font-weight:850}
+    .lead-meta{font-size:.62rem;color:var(--text-faint);margin-top:.1rem}
+    .lead-date{font-size:.66rem;color:var(--text-soft);font-weight:700;white-space:nowrap}
+    .lead-etapa{font-size:.66rem;color:var(--text-soft);font-weight:700}
+    .lead-status{display:inline-flex;align-items:center;border-radius:999px;padding:.23rem .52rem;font-size:.63rem;font-weight:850;white-space:nowrap}
+    .lead-new{background:var(--indigo-100);color:var(--indigo-700)}
+    .lead-contact{background:var(--blue-50);color:#1d4ed8}
+    .lead-negotiation{background:var(--amber-100);color:var(--amber-700)}
+    .lead-won{background:var(--emerald-100);color:var(--emerald-700)}
+    .lead-lost{background:var(--red-100);color:var(--red-700)}
+    .lead-empty{padding:1.6rem;text-align:center;color:var(--text-faint);font-size:.78rem}
+    .lead-more{display:flex;justify-content:center;padding:.8rem}
+
+    .lead-modal{border:none;padding:0;background:transparent;max-width:none}
+    .lead-modal::backdrop{background:rgba(15,23,42,.26);backdrop-filter:blur(3px)}
+    .lead-detail-card{width:min(620px,calc(100vw - 2rem));background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 24px 70px rgba(15,23,42,.22);padding:1rem}
+    .lead-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--surface-2)}
+    .lead-modal-kicker{font-size:.56rem;text-transform:uppercase;letter-spacing:.06em;color:var(--indigo-600);font-weight:900}
+    .lead-modal-title{font-size:1rem;font-weight:900;margin-top:.12rem}
+    .lead-modal-sub{font-size:.66rem;color:var(--text-faint);margin-top:.16rem}
+    .lead-modal-close{border:none;background:var(--surface-2);border-radius:8px;width:32px;height:32px;font-size:1.1rem;cursor:pointer;color:var(--text-soft)}
+    .lead-detail-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem;margin-top:.9rem}
+    .lead-detail-item{background:var(--surface-2);border:1px solid #eef0f5;border-radius:10px;padding:.62rem .68rem}
+    .lead-detail-label{font-size:.59rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);font-weight:850}
+    .lead-detail-value{font-size:.72rem;font-weight:750;margin-top:.18rem;color:var(--text)}
+    .lead-modal-actions{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.85rem}
+
+    @media (max-width:1200px){.leads-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media (max-width:900px){.leads-grid-2{grid-template-columns:1fr}}
+    @media (max-width:760px){
+      .leads-kpis{grid-template-columns:1fr 1fr}
+      .lead-funnel{grid-template-columns:1fr 1fr}
+      .leads-filters{grid-template-columns:1fr 1fr}
+      .leads-filters .field:first-child{grid-column:1/-1}
+      .lead-detail-grid{grid-template-columns:1fr}
+      .head-actions{width:100%}
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell"><div id="app-header"></div><div class="app-content"><main class="main"><div id="content"><div class="loading-wrap"><div class="spinner"></div></div></div></main></div></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="../js/config.js?v=20260925"></script>
+  <script src="../js/supabaseClient.js?v=20260925"></script>
+  <script src="../js/auth.js?v=20260925"></script>
+  <script src="../js/data.js?v=20260925"></script>
+  <script src="../js/calc.js?v=20260925"></script>
+  <script src="../js/ui.js?v=20260925"></script>
+  <script src="../js/sync.js?v=20260925"></script>
+  <script src="../js/leads.js?v=20260925"></script>
+  <script>
+    let store = null;
+    // Estado da tabela (não vai para a URL: é só a visão do momento).
+    const tabela = { visao: "chegaram", busca: "", limite: 100 };
+
+    const PERIODOS_LEADS = [
+      { value: "today", label: "Hoje" },
+      { value: "yesterday", label: "Ontem" },
+      { value: "this_week", label: "Esta semana" },
+      { value: "last_week", label: "Semana passada" },
+      { value: "this_month", label: "Este mês" },
+      { value: "last_month", label: "Mês passado" },
+      { value: "last_3_months", label: "Últimos 3 meses" },
+      { value: "this_year", label: "Este ano" },
+      { value: "all", label: "Todo o período" },
+    ];
+
+    const VISOES = [
+      { value: "chegaram", label: "Leads que chegaram no período" },
+      { value: "perdidos", label: "Perdidos no período (total)" },
+      { value: "retornoFuturo", label: "Retorno futuro (perdidos no período)" },
+      { value: "vendasPerdidas", label: "Vendas perdidas (perdidos no período)" },
+      { value: "semRetorno", label: "Sem retorno (perdidos no período)" },
+      { value: "semContatoAgora", label: "Sem contato agora" },
+      { value: "perdidosTodos", label: "Funil Perdidos — tudo (sem filtro de data)" },
+    ];
+
+    const ICON_USER_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>';
+    const ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.9-4L3 10"/><path d="M3 5v5h5"/><path d="M4 13a8 8 0 0 0 14.9 4L21 14"/><path d="M21 19v-5h-5"/></svg>';
+    const ICON_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+
+    function periodoDaTela(period) {
+      if (period === "all") return { start: new Date(2000, 0, 1), end: new Date(2100, 0, 1) };
+      return resolvePeriod(period);
+    }
+    const n = (v) => Number(v || 0).toLocaleString("pt-BR");
+    const dataBr = (d) => (d ? new Date(d).toLocaleDateString("pt-BR") : "—");
+
+    function linhasDaVisao(painel, range) {
+      const perdidoNoPeriodo = (l) => l.perdidoEm && l.perdidoEm >= range.start && l.perdidoEm < range.end;
+      const baldes = ["retornoFuturo", "vendasPerdidas", "semRetorno"];
+      let linhas;
+      switch (tabela.visao) {
+        case "perdidos": linhas = painel.leads.filter((l) => baldes.includes(l.situacao) && perdidoNoPeriodo(l)); break;
+        case "retornoFuturo":
+        case "vendasPerdidas":
+        case "semRetorno": linhas = painel.leads.filter((l) => l.situacao === tabela.visao && perdidoNoPeriodo(l)); break;
+        case "semContatoAgora": linhas = painel.leads.filter((l) => l.situacao === "semContato"); break;
+        case "perdidosTodos": linhas = painel.leads.filter((l) => baldes.includes(l.situacao)); break;
+        default: linhas = painel.chegaram.slice();
+      }
+      const q = leadsNorm(tabela.busca);
+      if (q) linhas = linhas.filter((l) => leadsNorm(`${l.nome} ${l.empresa} ${l.vendedor}`).includes(q));
+      const dataDeOrdem = (l) => (tabela.visao === "chegaram" || tabela.visao === "semContatoAgora" ? l.chegada : l.perdidoEm || l.chegada);
+      return linhas.sort((a, b) => (dataDeOrdem(b)?.getTime() || 0) - (dataDeOrdem(a)?.getTime() || 0));
+    }
+
+    function kpiHtml({ id, label, value, foot, tone, icon }) {
+      return `<button type="button" class="lead-kpi ${tabela.visao === id ? "ativo" : ""}" data-visao="${id}" title="Ver a lista">
+        <div class="lead-kpi-icon ${tone}">${icon}</div>
+        <div><div class="lead-kpi-label">${label}</div><div class="lead-kpi-value">${value}</div><div class="lead-kpi-foot">${foot}</div></div>
+      </button>`;
+    }
+
+    function graficoChegadasHtml(painel, range) {
+      if (!painel.chegaram.length) return `<div class="lead-empty">Nenhum lead chegou no período selecionado.</div>`;
+      const { modo, barras } = leadsChegadasPorPeriodo(painel.chegaram, range);
+      const max = Math.max(1, ...barras.map((b) => b.n));
+      const mostrarNumero = barras.length <= 31;
+      // Com muitas barras, só alguns rótulos cabem embaixo.
+      const passo = Math.ceil(barras.length / 12);
+      return `<div class="chegadas-chart">
+        <div class="chegadas-bars">${barras.map((b) => `<div class="chegadas-bar" title="${esc(b.rotulo)}: ${b.n} lead${b.n === 1 ? "" : "s"}">${mostrarNumero && b.n ? `<em>${b.n}</em>` : ""}<span class="${b.n ? "" : "zero"}" style="height:${Math.max(2, (b.n / max) * 100)}%"></span></div>`).join("")}</div>
+        <div class="chegadas-labels">${barras.map((b, i) => `<span>${i % passo === 0 ? esc(b.rotulo) : ""}</span>`).join("")}</div>
+        <p class="perdas-nota" style="margin-top:.6rem">Chegadas por ${modo === "dia" ? "dia" : modo === "semana" ? "semana" : "mês"} — data de criação do lead no RD Station (todo lead nasce em "Sem contato").</p>
+      </div>`;
+    }
+
+    function perdasHtml(p) {
+      const itens = [
+        ["Retorno futuro", p.periodo.retornoFuturo, p.atual.retornoFuturo, "var(--amber-500)"],
+        ["Vendas perdidas", p.periodo.vendasPerdidas, p.atual.vendasPerdidas, "var(--red-500)"],
+        ["Sem retorno", p.periodo.semRetorno, p.atual.semRetorno, "var(--violet-500)"],
+      ];
+      const max = Math.max(1, ...itens.map((i) => i[1].n));
+      return `<div class="perdas-lista">
+        ${itens.map(([nome, per, atual, cor]) => `<div class="perda-row">
+          <span class="nome">${nome}</span>
+          <span class="num">${n(per.n)} <small>${brl(per.valor)} · ${n(atual.n)} no RD hoje</small></span>
+          <div class="perda-track"><span style="width:${(per.n / max) * 100}%;background:${cor}"></span></div>
+        </div>`).join("")}
+        <p class="perdas-nota">Contagem pela data em que o lead foi perdido. "No RD hoje" é o total atual de cada etapa do funil Perdidos, sem filtro de data — igual ao quadro do RD Station.</p>
+      </div>`;
+    }
+
+    function tabelaHtml(linhas) {
+      const visiveis = linhas.slice(0, tabela.limite);
+      const mostraPerda = !["chegaram", "semContatoAgora"].includes(tabela.visao);
+      const corpo = visiveis.map((l) => {
+        const sit = LEADS_SITUACOES[l.situacao] || LEADS_SITUACOES.andamento;
+        return `<tr data-lead="${esc(l.id)}">
+          <td><div class="lead-cell"><div class="lead-avatar">${esc(initials(l.nome))}</div><div><div class="lead-name">${esc(l.nome)}</div><div class="lead-meta">${esc(l.empresa || "—")}</div></div></div></td>
+          <td class="lead-date">${dataBr(l.chegada)}</td>
+          <td><span class="lead-status ${sit.classe}">${esc(sit.label)}</span></td>
+          <td class="lead-etapa">${esc(l.etapa)}</td>
+          <td>${esc(l.vendedor)}</td>
+          <td class="cell-num">${l.valor ? brl(l.valor) : "—"}</td>
+          <td class="lead-date">${mostraPerda ? dataBr(l.perdidoEm) : dataBr(l.ultimaInteracao)}</td>
+        </tr>`;
+      }).join("");
+      return `<div class="leads-table-wrap"><table class="leads-table">
+          <thead><tr><th>Lead</th><th>Chegada</th><th>Situação</th><th>Etapa no RD</th><th>Vendedor</th><th class="cell-num">Valor</th><th>${mostraPerda ? "Perdido em" : "Última interação"}</th></tr></thead>
+          <tbody>${corpo}</tbody>
+        </table></div>
+        ${linhas.length ? "" : `<div class="lead-empty">Nenhum lead encontrado com os filtros atuais.</div>`}
+        ${linhas.length > tabela.limite ? `<div class="lead-more"><button type="button" class="ghost-btn" id="lead-more">Mostrar mais (${n(linhas.length - tabela.limite)} restantes)</button></div>` : ""}`;
+    }
+
+    function abrirLead(lead) {
+      const sit = LEADS_SITUACOES[lead.situacao] || LEADS_SITUACOES.andamento;
+      const dlg = document.createElement("dialog");
+      dlg.className = "lead-modal";
+      const item = (rotulo, valor) => `<div class="lead-detail-item"><div class="lead-detail-label">${rotulo}</div><div class="lead-detail-value">${esc(valor)}</div></div>`;
+      dlg.innerHTML = `<div class="lead-detail-card">
+        <div class="lead-modal-head">
+          <div><div class="lead-modal-kicker">Detalhes do lead</div><div class="lead-modal-title">${esc(lead.nome)}</div><div class="lead-modal-sub"><span class="lead-status ${sit.classe}">${esc(sit.label)}</span></div></div>
+          <button type="button" class="lead-modal-close" aria-label="Fechar" data-fechar>×</button>
+        </div>
+        <div class="lead-detail-grid">
+          ${item("Empresa", lead.empresa || "—")}
+          ${item("Etapa no RD", lead.etapa)}
+          ${item("Vendedor", lead.vendedor)}
+          ${item("Valor", lead.valor ? brl(lead.valor) : "—")}
+          ${item("Chegou em", dataBr(lead.chegada))}
+          ${item("Perdido em", dataBr(lead.perdidoEm))}
+          ${item("Última interação", dataBr(lead.ultimaInteracao))}
+          ${item("Origem", lead.origem || "Não informada no RD")}
+        </div>
+        <div class="lead-modal-actions"><button type="button" class="ghost-btn" data-fechar>Fechar</button></div>
+      </div>`;
+      document.body.appendChild(dlg);
+      const fechar = () => { dlg.close(); dlg.remove(); };
+      dlg.querySelectorAll("[data-fechar]").forEach((b) => b.addEventListener("click", fechar));
+      dlg.addEventListener("click", (e) => { if (e.target === dlg) fechar(); });
+      dlg.addEventListener("cancel", (e) => { e.preventDefault(); fechar(); });
+      dlg.showModal();
+    }
+
+    function render() {
+      const { period, sellerId } = currentPeriodFromUrl("this_month");
+      const sellerOk = sellerId && store.sellers.some((s) => s.id === sellerId) ? sellerId : undefined;
+      const range = periodoDaTela(period);
+      const painel = getLeadsPainel(store, { range, sellerId: sellerOk });
+      const prev = period === "all" ? null : getLeadsPainel(store, { range: previousRange(range), sellerId: sellerOk });
+      const p = painel.perdidos;
+      const variacao = (atual, antes) => {
+        if (!prev) return "";
+        const v = pctChange(atual, antes);
+        return v == null ? " · sem base anterior" : ` · ${v >= 0 ? "↑" : "↓"} ${Math.abs(v).toFixed(0)}% vs. anterior`;
+      };
+      const rotuloPeriodo = (PERIODOS_LEADS.find((x) => x.value === period) || {}).label || "Período personalizado";
+
+      const content = document.getElementById("content");
+      content.className = "space-y";
+      content.innerHTML = `
+        <div class="page-head">
+          <div>
+            <div class="eyebrow">${ICON_USER_PLUS} Central comercial · Leads</div>
+            <h1 class="page-title">Leads</h1>
+            <p class="page-sub">Quantos leads chegaram, o que aconteceu com eles e quantos foram perdidos — direto do RD Station.</p>
+          </div>
+          <div class="head-actions">
+            <button type="button" class="icon-btn" aria-label="Calendário">${ICONS.meeting}</button>
+            <button type="button" class="ghost-btn" id="lead-refresh">${ICON_REFRESH}Atualizar</button>
+          </div>
+        </div>
+
+        <div id="period-filter"></div>
+
+        <section class="leads-kpis" aria-label="Resumo dos leads">
+          ${kpiHtml({ id: "chegaram", label: "Leads que chegaram", value: n(painel.chegaram.length), foot: `Entraram em "Sem contato" · ${esc(rotuloPeriodo)}${variacao(painel.chegaram.length, prev?.chegaram.length)}`, tone: "indigo", icon: ICON_USER_PLUS })}
+          ${kpiHtml({ id: "perdidos", label: "Total de leads perdidos", value: n(p.periodo.total.n), foot: `${brl(p.periodo.total.valor)} · <strong>${n(p.atual.total.n)}</strong> no funil Perdidos hoje`, tone: "red", icon: ICONS.xCircle })}
+          ${kpiHtml({ id: "vendasPerdidas", label: "Vendas perdidas", value: n(p.periodo.vendasPerdidas.n), foot: `${brl(p.periodo.vendasPerdidas.valor)} · <strong>${n(p.atual.vendasPerdidas.n)}</strong> no RD hoje`, tone: "red", icon: ICONS.sales })}
+          ${kpiHtml({ id: "retornoFuturo", label: "Retorno futuro", value: n(p.periodo.retornoFuturo.n), foot: `Vale voltar a falar · <strong>${n(p.atual.retornoFuturo.n)}</strong> no RD hoje`, tone: "amber", icon: ICON_CLOCK })}
+          ${kpiHtml({ id: "semRetorno", label: "Sem retorno", value: n(p.periodo.semRetorno.n), foot: `Não responderam · <strong>${n(p.atual.semRetorno.n)}</strong> no RD hoje`, tone: "violet", icon: ICONS.phoneOff })}
+        </section>
+
+        <div class="leads-grid-2">
+          <section class="leads-board">
+            <div class="leads-board-head">
+              <div><div class="sales-kicker">Chegadas</div><h2>Leads que chegaram</h2><p>O que aconteceu com os leads que entraram no período.</p></div>
+              <span class="preview-pill">${n(painel.chegaram.length)} leads</span>
+            </div>
+            <div class="lead-funnel">
+              <div class="funnel-item"><div class="funnel-label">Sem contato</div><div class="funnel-value">${n(painel.safra.semContato)}</div><div class="funnel-foot">Ainda sem contato</div></div>
+              <div class="funnel-item amber"><div class="funnel-label">Em andamento</div><div class="funnel-value">${n(painel.safra.andamento)}</div><div class="funnel-foot">Pré-vendas ou negociação</div></div>
+              <div class="funnel-item green"><div class="funnel-label">Vendidos</div><div class="funnel-value">${n(painel.safra.vendido)}</div><div class="funnel-foot">Viraram venda</div></div>
+              <div class="funnel-item red"><div class="funnel-label">Perdidos</div><div class="funnel-value">${n(painel.safra.perdido)}</div><div class="funnel-foot">Já foram perdidos</div></div>
+            </div>
+            ${graficoChegadasHtml(painel, range)}
+          </section>
+          <section class="leads-board">
+            <div class="leads-board-head">
+              <div><div class="sales-kicker">Funil Perdidos</div><h2>Para onde foram os perdidos</h2><p>${esc(rotuloPeriodo)} · ${brl(p.periodo.total.valor)} em valor perdido.</p></div>
+              <span class="preview-pill">${n(p.periodo.total.n)} perdidos</span>
+            </div>
+            ${perdasHtml(p)}
+          </section>
+        </div>
+
+        <section class="leads-board">
+          <div class="leads-board-head">
+            <div><div class="sales-kicker">Gestão de leads</div><h2>Lista de leads</h2><p>Clique num cartão acima ou escolha a lista abaixo. Clique num lead para ver os detalhes.</p></div>
+            <span class="preview-pill" id="lead-count"></span>
+          </div>
+          <div class="leads-filters">
+            <div class="field search"><input id="lead-search" type="search" placeholder="Buscar nome, empresa ou vendedor..." value="${esc(tabela.busca)}" /></div>
+            <div class="field"><select id="lead-visao">${VISOES.map((v) => `<option value="${v.value}" ${v.value === tabela.visao ? "selected" : ""}>${v.label}</option>`).join("")}</select></div>
+            <div class="field"><input type="text" value="Sem contato agora: ${n(painel.semContatoAgora)}" readonly aria-label="Leads em Sem contato agora" /></div>
+          </div>
+          <div id="lead-table"></div>
+        </section>
+      `;
+
+      renderPeriodFilter(document.getElementById("period-filter"), store.sellers, () => { tabela.limite = 100; render(); }, {
+        defaultPeriod: "this_month",
+        periods: PERIODOS_LEADS,
+      });
+      setupCalendarPicker(render);
+
+      const desenharTabela = () => {
+        const linhas = linhasDaVisao(painel, range);
+        document.getElementById("lead-count").textContent = `${n(linhas.length)} lead${linhas.length === 1 ? "" : "s"}`;
+        const host = document.getElementById("lead-table");
+        host.innerHTML = tabelaHtml(linhas);
+        const porId = new Map(linhas.map((l) => [l.id, l]));
+        host.querySelectorAll("tr[data-lead]").forEach((tr) => tr.addEventListener("click", () => abrirLead(porId.get(tr.dataset.lead))));
+        host.querySelector("#lead-more")?.addEventListener("click", () => { tabela.limite += 200; desenharTabela(); });
+      };
+      desenharTabela();
+
+      content.querySelectorAll("[data-visao]").forEach((b) => b.addEventListener("click", () => {
+        tabela.visao = b.dataset.visao;
+        tabela.limite = 100;
+        render();
+        document.getElementById("lead-table")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }));
+      document.getElementById("lead-visao").addEventListener("change", (e) => { tabela.visao = e.target.value; tabela.limite = 100; render(); });
+      let t = null;
+      document.getElementById("lead-search").addEventListener("input", (e) => {
+        clearTimeout(t);
+        t = setTimeout(() => { tabela.busca = e.target.value; tabela.limite = 100; desenharTabela(); }, 200);
+      });
+      document.getElementById("lead-refresh").addEventListener("click", async (e) => {
+        const btn = e.currentTarget;
+        btn.disabled = true;
+        try { store = await loadAll({ fresh: true }); render(); } catch (err) { console.error(err); btn.disabled = false; }
+      });
+    }
+
+    (async () => {
+      try {
+        const dados = loadAllInstantaneo((novo) => { store = novo; render(); }).catch((e) => e);
+        const auth = await requireAuth();
+        if (!auth) return;
+        renderShell(auth.profile);
+        const resultado = await dados;
+        if (resultado instanceof Error) throw resultado;
+        store = resultado;
+        render();
+        startPageLoadSync(async () => { store = await loadAll({ fresh: true }); render(); });
+      } catch (err) {
+        console.error(err);
+        showFatalError(err);
+      }
+    })();
+  </script>
+</body>
+</html>
