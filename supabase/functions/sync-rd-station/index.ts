@@ -194,7 +194,17 @@ Deno.serve(async (req: Request) => {
   // do RD e o do Supabase não são exatamente iguais, e sem essa folga uma
   // negociação alterada no limite da janela poderia escapar da sincronização.
   const SINCE_SAFETY_MS = 10 * 60_000;
-  const sinceCutoffMs: number | null = sinceIso ? new Date(sinceIso).getTime() - SINCE_SAFETY_MS : null;
+  // Carga completa sob demanda: POST com corpo {"full": true} ignora o
+  // incremental e reprocessa todas as negociações (usado para preencher
+  // campos novos, como fonte e campanha, nas negociações antigas).
+  let forcarCompleta = false;
+  try {
+    const corpo = await req.clone().json();
+    forcarCompleta = corpo?.full === true;
+  } catch {
+    /* sem corpo JSON: sincronização normal */
+  }
+  const sinceCutoffMs: number | null = sinceIso && !forcarCompleta ? new Date(sinceIso).getTime() - SINCE_SAFETY_MS : null;
   console.log(`[sync-rd-station] última sincronização completa: ${sinceIso ?? "nenhuma (carga inicial)"}`);
 
   // TRAVA ANTI-SOBREPOSIÇÃO
@@ -240,6 +250,9 @@ Deno.serve(async (req: Request) => {
   // exatamente como antes — só não sincroniza exclusões.
   let suportaExclusao = true;
   const avisos: string[] = [];
+  // A coluna deals.campaign só existe depois de rodar 19_fonte_campanha.sql.
+  // Sem ela, a fonte continua sendo gravada e a campanha fica de fora.
+  const suportaCampanha = !(await supabase.from("deals").select("campaign").limit(1)).error;
   {
     const p1 = await supabase.from("deals").select("deleted_at").limit(1);
     const p2 = await supabase.from("activities").select("deleted_at").limit(1);
@@ -393,10 +406,16 @@ Deno.serve(async (req: Request) => {
         const status = deal.win === true ? "WON" : deal.win === false ? "LOST" : "OPEN";
         const clientName =
           deal.contacts?.[0]?.name || deal.organization?.name || deal.name || "Sem nome";
+        // FONTE e CAMPANHA do RD (25/09/2026). O RD devolve a fonte em
+        // deal.deal_source e a campanha em deal.campaign — os nomes antigos
+        // (origin/source) nunca vinham preenchidos, por isso deals.origin
+        // estava vazio em todas as negociações.
         const dealOrigin =
-          typeof deal.origin === "string" ? deal.origin :
-          deal.origin?.name ?? deal.source?.name ?? deal.source ??
-          deal.custom_fields?.origin ?? deal.custom_fields?.campanha ?? null;
+          deal.deal_source?.name ??
+          (typeof deal.origin === "string" ? deal.origin : deal.origin?.name) ??
+          deal.source?.name ?? (typeof deal.source === "string" ? deal.source : null) ??
+          null;
+        const dealCampaign = deal.campaign?.name ?? (typeof deal.campaign === "string" ? deal.campaign : null) ?? null;
 
         // Valor: negociação só com mensalidade (recorrente) vinha como 0 —
         // agora a mensalidade entra como último recurso.
@@ -410,6 +429,7 @@ Deno.serve(async (req: Request) => {
           client_name: clientName,
           company_name: deal.organization?.name ?? null,
           origin: dealOrigin,
+          ...(suportaCampanha ? { campaign: dealCampaign } : {}),
           seller_id: sellerId,
           stage_id: stageId,
           value: dealValue,
