@@ -345,14 +345,14 @@
 
         <div id="period-filter"></div>
 
-        <div class="card card-p perf-banner blue">
-          <div class="perf-icon">${ICON_USER_PLUS}</div>
+        <div class="card card-p perf-banner green">
+          <div class="perf-icon">${ICONS.sales}</div>
           <div class="perf-text">
             <p class="perf-label-small">Leads do período · ${esc(rotuloPeriodo)}</p>
-            <p class="perf-label-big">${n(totalSafra)} lead${totalSafra === 1 ? "" : "s"} chegaram</p>
+            <p class="perf-label-big">${n(totalSafra)} lead${totalSafra === 1 ? "" : "s"} chegaram <span aria-hidden="true">✨</span></p>
           </div>
           <p class="perf-desc">${n(emAndamento)} em andamento, ${n(saf.perdido)} já perdidos e ${n(saf.semContato)} ainda sem contato. Todo lead nasce em "Sem contato" no RD.</p>
-          <div class="perf-illustration">${ICONS.users}</div>
+          <div class="perf-illustration">${ICONS.rocket}</div>
         </div>
 
         <div class="kpi-grid lead-kpis">
