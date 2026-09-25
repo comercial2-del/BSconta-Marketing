@@ -603,3 +603,56 @@ function confirmarAcao({ titulo, item, texto, confirmar = "Apagar", cancelar = "
     dlg.querySelector('[data-resposta="nao"]').focus();
   });
 }
+
+// ---------------------------------------------------------------------------
+// Faixa de performance do período — o mesmo visual da Visão geral (ícone,
+// nota "Excelente/Boa/Atenção/Ruim" com ✨ e o foguete). Pedido do usuário
+// (25/09/2026): a faixa em todas as abas. Cada tela decide a própria nota.
+// ---------------------------------------------------------------------------
+const NOTAS_PERF = {
+  excelente: { label: "Excelente", tone: "green" },
+  boa: { label: "Boa", tone: "blue" },
+  atencao: { label: "Atenção", tone: "amber" },
+  ruim: { label: "Ruim", tone: "red" },
+};
+
+/** Nota a partir da variação % contra o período anterior. */
+function notaPorVariacao(pct) {
+  if (pct === null || pct === undefined || !Number.isFinite(pct)) return NOTAS_PERF.boa;
+  if (pct >= 10) return NOTAS_PERF.excelente;
+  if (pct >= 0) return NOTAS_PERF.boa;
+  if (pct >= -20) return NOTAS_PERF.atencao;
+  return NOTAS_PERF.ruim;
+}
+
+/** Nota a partir de uma taxa (%) e dos limites [excelente, boa, atenção]. */
+function notaPorTaxa(valor, limites) {
+  const [exc, boa, aten] = limites;
+  if (valor >= exc) return NOTAS_PERF.excelente;
+  if (valor >= boa) return NOTAS_PERF.boa;
+  if (valor >= aten) return NOTAS_PERF.atencao;
+  return NOTAS_PERF.ruim;
+}
+
+/** Mesma regra da Visão geral: realização de reuniões + vendas fechadas. */
+function notaComercial(kpis) {
+  const rate = kpis.meetingRealizationRate ?? 0;
+  if (kpis.salesCount >= 3 && rate >= 70) return NOTAS_PERF.excelente;
+  if (kpis.salesCount >= 1 && rate >= 50) return NOTAS_PERF.boa;
+  if (rate >= 30) return NOTAS_PERF.atencao;
+  return NOTAS_PERF.ruim;
+}
+
+/** HTML da faixa. `desc` pode conter HTML simples (já escapado por quem chama). */
+function perfBannerHtml({ titulo, nota, desc }) {
+  return `
+    <div class="card card-p perf-banner ${nota.tone}">
+      <div class="perf-icon">${ICONS.sales}</div>
+      <div class="perf-text">
+        <p class="perf-label-small">${esc(titulo)}</p>
+        <p class="perf-label-big">${esc(nota.label)} <span aria-hidden="true">✨</span></p>
+      </div>
+      <p class="perf-desc">${desc}</p>
+      <div class="perf-illustration">${ICONS.rocket}</div>
+    </div>`;
+}
