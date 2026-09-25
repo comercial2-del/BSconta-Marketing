@@ -8,6 +8,20 @@
   <link rel="preconnect" href="https://cdn.jsdelivr.net" />
   <link rel="preconnect" href="https://zqhuhaqothpxusnaijog.supabase.co" crossorigin />
   <link rel="stylesheet" href="../css/styles.css?v=20260916c" />
+  <style>
+    /* Origem dos leads (RD Station) — 25/09/2026 */
+    .origem-lista{display:flex;flex-direction:column;gap:.9rem;margin-top:.4rem}
+    .origem-topo{display:flex;justify-content:space-between;gap:.6rem;align-items:baseline;flex-wrap:wrap}
+    .origem-nome{display:inline-flex;align-items:center;gap:.45rem;font-weight:800;font-size:.84rem}
+    .origem-nome i{width:10px;height:10px;border-radius:50%;display:inline-block}
+    .origem-num{font-size:.76rem;color:var(--text-soft)}
+    .origem-barra{height:8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);overflow:hidden;margin-top:.35rem}
+    .origem-barra span{display:block;height:100%;border-radius:999px}
+    .origem-detalhe{display:flex;flex-wrap:wrap;gap:.3rem 1rem;font-size:.72rem;color:var(--text-soft);margin-top:.35rem}
+    .origem-fontes{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.35rem}
+    .origem-fontes span{font-size:.64rem;color:var(--text-faint);background:var(--surface-2);border:1px solid var(--border);border-radius:999px;padding:.12rem .45rem}
+    .origem-tabela td,.origem-tabela th{font-size:.78rem}
+  </style>
 </head>
 <body>
   <div class="app-shell">
@@ -23,12 +37,17 @@
   <script src="../js/config.js?v=20260916"></script>
   <script src="../js/supabaseClient.js?v=20260916"></script>
   <script src="../js/auth.js?v=20260916"></script>
-  <script src="../js/data.js?v=20260916"></script>
+  <script src="../js/data.js?v=20260925b"></script>
   <script src="../js/calc.js?v=20260916"></script>
-  <script src="../js/ui.js?v=20260916.3"></script>
+  <script src="../js/ui.js?v=20260925b"></script>
   <script src="../js/marketingData.js?v=20260916b"></script>
+<script src="../js/sync.js?v=20260925b"></script>
+<script src="../js/leads.js?v=20260925b"></script>
+<script src="../js/origens.js?v=20260925b"></script>
   <script>
-    function marketingPerformance(m) {
+    let store = null; // dados do banco (RD Station), usados na origem dos leads
+
+function marketingPerformance(m) {
       const qual = pct(m.qualificados, m.leads);
       const meeting = pct(m.reunioes, m.qualificados);
       const contract = pct(m.contratos, m.reunioes);
@@ -181,6 +200,8 @@
       const campaignData = aggregateCampaignRows(range);
       const campaignRows = campaignData.list;
       const bestCampaign = aggregateCampaigns(range);
+      // Origem dos leads por canal e campanha — dados do RD Station (js/origens.js).
+      const origens = getOrigensDosLeads(store, { range });
 
       document.getElementById("content").className = "space-y";
       document.getElementById("content").innerHTML = `
@@ -223,73 +244,29 @@
         </div>
 
         <div class="grid-2 marketing-main-grid">
-          <div class="card card-p marketing-campaign-funnel-card">
+          <div class="card card-p origem-card">
             <div class="row-between marketing-card-head">
               <div>
-                <h2>Canais de Aquisição</h2>
-                <p class="card-sub">Veja o que cada canal está gerando no período, do investimento aos contratos e custos por etapa.</p>
+                <h2>Origem dos leads</h2>
+                <p class="card-sub">Leads que chegaram no período, por canal de origem — direto do RD Station (campo Fonte).</p>
               </div>
-              <span class="mini-badge">${campaignData.sourceLabel}</span>
+              <span class="mini-badge">${num(origens.total)} leads</span>
             </div>
-
-            <div class="marketing-campaign-list">
-              ${campaignRows.map((campaign) => `
-                <article class="marketing-campaign-card ${campaign.hasActivity ? "" : "is-empty"}">
-                  <div class="marketing-channel-row">
-                    <div class="marketing-channel-identity">
-                    <div class="marketing-campaign-card-title-wrap">
-                      <span class="marketing-campaign-dot" aria-hidden="true"></span>
-                      <div>
-                        <h3>${campaign.campaign}</h3>
-                        <span class="marketing-campaign-card-meta">${campaign.hasActivity ? "Com movimentação no período" : "Sem movimentação no período"}</span>
-                      </div>
-                    </div>
-                    <div class="marketing-channel-status"><span></span>${campaign.hasActivity ? "Ativo no período" : "Sem movimentação"}</div>
+            <div class="origem-lista">
+              ${origens.canais.map((c) => `
+                <div class="origem-linha">
+                  <div class="origem-topo">
+                    <span class="origem-nome"><i style="background:${c.cor}"></i>${esc(c.nome)}</span>
+                    <span class="origem-num"><strong>${num(c.leads)}</strong> leads · ${pct(c.leads, origens.total).toFixed(0)}%</span>
                   </div>
-                  <div class="marketing-channel-metric marketing-channel-metric--investment">
-                    <span>Investimento</span>
-                    <strong>${brl0(campaign.investimento)}</strong>
+                  <div class="origem-barra"><span style="width:${pct(c.leads, origens.total)}%;background:${c.cor}"></span></div>
+                  <div class="origem-detalhe">
+                    <span><strong>${num(c.vendas)}</strong> viraram clientes (${c.conversao.toFixed(1)}%)</span>
+                    <span>${brl0(c.valorVendido)} vendidos</span>
+                    <span><strong>${num(c.perdidos)}</strong> perdidos</span>
                   </div>
-                  <div class="marketing-channel-metric">
-                    <span>Leads</span>
-                    <strong>${num(campaign.leads)}</strong>
-                  </div>
-                  <div class="marketing-channel-metric">
-                    <span>Qualificados</span>
-                    <strong>${num(campaign.qualificados)}</strong>
-                    <small>${campaign.qualRate.toFixed(1)}%</small>
-                  </div>
-                  <div class="marketing-channel-metric">
-                    <span>Reuniões</span>
-                    <strong>${num(campaign.reunioes)}</strong>
-                    <small>${campaign.meetingRate.toFixed(1)}%</small>
-                  </div>
-                  <div class="marketing-channel-metric marketing-channel-metric--sales">
-                    <span>Vendas</span>
-                    <strong>${num(campaign.vendas)}</strong>
-                    <small>${campaign.vendasRate.toFixed(1)}%</small>
-                  </div>
-                  <div class="marketing-channel-result-group">
-                    <div class="marketing-channel-metric marketing-channel-metric--contract">
-                      <span>Contratos</span>
-                      <strong>${num(campaign.contratos)}</strong>
-                      <small>${campaign.contractRate.toFixed(1)}%</small>
-                    </div>
-                    <div class="marketing-channel-metric marketing-channel-metric--running">
-                      <span>Valor atual rodando</span>
-                      <strong>${brl0(Number(campaign.valorAtualRodando || 0))}</strong>
-                      <small>valor recorrente atual</small>
-                    </div>
-                  </div>
-                  <div class="marketing-channel-costs-inline">
-                    <div><span>CPL</span><strong>${brl0(campaign.cpl)}</strong></div>
-                    <div><span>CPQ</span><strong>${brl0(campaign.cpq)}</strong></div>
-                    <div><span>CPR</span><strong>${brl0(campaign.cpr)}</strong></div>
-                    <div><span>CPC</span><strong>${brl0(campaign.cpc)}</strong></div>
-                  </div>
-                  </div>
-                </article>
-              `).join("")}
+                  ${c.fontes.length ? `<div class="origem-fontes">${c.fontes.map(([nome, n]) => `<span>${esc(nome)}: ${num(n)}</span>`).join("")}</div>` : ""}
+                </div>`).join("")}
             </div>
           </div>
 
@@ -355,25 +332,32 @@
               </div>
             </div>
 
-            ${bestCampaign ? `
-            <div class="marketing-campaign-highlight">
-              <div class="marketing-campaign-highlight-head">
-                <div>
-                  <span class="marketing-campaign-eyebrow">Melhor campanha em desenvolvimento</span>
-                  <strong class="marketing-campaign-name">${bestCampaign.campaign}</strong>
-                </div>
-                <span class="marketing-campaign-rate">${bestCampaign.contractRate.toFixed(0)}% conversão</span>
-              </div>
-              <div class="marketing-campaign-metrics">
-                <span><strong>${bestCampaign.contratos}</strong> contratos</span>
-                <span><strong>${bestCampaign.reunioes}</strong> reuniões</span>
-                <span><strong>${bestCampaign.meetingShare.toFixed(1)}%</strong> das reuniões</span>
-                <span><strong>${bestCampaign.contractShare.toFixed(1)}%</strong> dos contratos</span>
-              </div>
-              <small class="marketing-campaign-source">${bestCampaign.sourceLabel}</small>
-            </div>` : ""}
+            
           </div>
         </div>
+
+        <div class="card card-p">
+          <div class="row-between marketing-card-head">
+            <div>
+              <h2>Leads por campanha</h2>
+              <p class="card-sub">Campanha registrada no RD Station para cada lead que chegou no período.</p>
+            </div>
+            <span class="mini-badge">${num(origens.campanhas.length)} campanhas</span>
+          </div>
+          <div class="table-scroll">
+            <table class="origem-tabela">
+              <thead><tr><th>Campanha</th><th>Canal</th><th class="cell-num">Leads</th><th class="cell-num">Clientes</th><th class="cell-num">Conversão</th><th class="cell-num">Valor vendido</th><th class="cell-num">Perdidos</th></tr></thead>
+              <tbody>
+                ${origens.campanhas.length ? origens.campanhas.map((c) => `<tr>
+                  <td>${esc(c.nome)}</td><td>${esc(c.canal)}</td>
+                  <td class="cell-num"><strong>${num(c.leads)}</strong></td><td class="cell-num">${num(c.vendas)}</td>
+                  <td class="cell-num">${c.conversao.toFixed(1)}%</td><td class="cell-num">${brl0(c.valorVendido)}</td><td class="cell-num">${num(c.perdidos)}</td>
+                </tr>`).join("") : `<tr><td colspan="7" class="text-empty">Nenhum lead chegou no período selecionado.</td></tr>`}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
 
       `;
 
@@ -386,7 +370,11 @@
         const auth = await requireAuth();
         if (!auth) return;
         renderShell(auth.profile);
+        // Os leads por canal/campanha vêm do banco (RD Station); o resto da tela
+        // continua vindo da planilha de marketing (js/marketingData.js).
+        store = await loadAllInstantaneo((novo) => { store = novo; render(); });
         render();
+        startPageLoadSync(async () => { store = await loadAll({ fresh: true }); render(); });
       } catch (err) {
         console.error(err);
         showFatalError(err);

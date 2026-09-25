@@ -25,12 +25,13 @@
   <script src="../js/config.js?v=20260916"></script>
   <script src="../js/supabaseClient.js?v=20260916"></script>
   <script src="../js/auth.js?v=20260916"></script>
-  <script src="../js/data.js?v=20260916"></script>
-  <script src="../js/calc.js?v=20260916"></script>
-  <script src="../js/ui.js?v=20260916.3"></script>
+  <script src="../js/data.js?v=20260925b"></script>
+  <script src="../js/calc.js?v=20260925b"></script>
+  <script src="../js/ui.js?v=20260925b"></script>
   <script src="../js/lancamentos.js?v=20260916"></script>
   <script src="../js/sync.js?v=20260916"></script>
   <script src="../js/charts.js?v=20260916.2"></script>
+<script src="../js/leads.js?v=20260925b"></script>
   <script>
     let store = null;
     let lancamentos = []; // lançamento manual de ligações (js/lancamentos.js)
@@ -213,6 +214,9 @@
       // Perdas. Nada além desta linha precisa mudar.
       const leads = { chegaram: 0, perdidos: 0 };
       const perf = performanceLabel(kpis);
+      // Leads que chegaram e leads perdidos (funil Perdidos do RD) — mesma regra da tela Leads (js/leads.js).
+      const painelLeads = getLeadsPainel(store, { range, sellerId: allowedSellerId });
+      const painelLeadsAntes = getLeadsPainel(store, { range: prevRange, sellerId: allowedSellerId });
 
       const content = document.getElementById("content");
       content.className = "space-y";
@@ -272,11 +276,14 @@
         { label: "Ligações de agendamento", value: ligacoes.agendamento, change: pctChange(ligacoes.agendamento, ligacoesAntes.agendamento), tone: "blue", icon: ICONS.phone },
         { label: "Reuniões agendadas × realizadas", value: kpis.meetingsScheduled, sub: [`Realizadas: ${kpis.meetingsDone}`, `Taxa de realização: ${(kpis.meetingRealizationRate ?? 0).toFixed(0)}%`], change: pctChange(kpis.meetingsScheduled, prevKpis.meetingsScheduled), tone: "indigo", icon: ICONS.meeting },
         { label: "No Show", value: kpis.meetingsNoShow, change: pctChange(kpis.meetingsNoShow, prevKpis.meetingsNoShow ?? 0), tone: "red", icon: ICONS.xCircle },
-        { label: "Reunião de proposta", value: kpis.reuniaoPropostaCount, sub: brl(kpis.reuniaoPropostaValue), tone: "orange", icon: ICONS.handshake },
-        { label: "Follow-up", value: kpis.followUpCount, sub: brl(kpis.followUpValue), tone: "blue", icon: ICONS.userCheck },
-        { label: "Prováveis fechamentos", value: kpis.probableClosures, sub: brl(kpis.probableClosuresValue), tone: "violet", icon: ICONS.checkCircle },
+        // Reunião de proposta + Follow-up + Prováveis fechamentos num cartão só (pedido do usuário, 25/09/2026):
+        // as oportunidades em acompanhamento para fechamento.
+        { label: "Oportunidades em acompanhamento", value: kpis.reuniaoPropostaCount + kpis.followUpCount + kpis.probableClosures, sub: [brl(kpis.opportunitiesValue), `Proposta ${kpis.reuniaoPropostaCount} · Follow-up ${kpis.followUpCount} · Fechamento ${kpis.probableClosures}`], tone: "violet", icon: ICONS.handshake },
         { label: "Vendas realizadas", value: kpis.salesCount, change: pctChange(kpis.salesCount, prevKpis.salesCount), tone: "green", icon: ICONS.dollarSign },
-        { label: "Clientes que entraram", value: kpis.clientsEntered, change: pctChange(kpis.clientsEntered, prevKpis.clientsEntered), tone: "indigo", icon: ICONS.users },
+        // "Clientes que entraram" = todas as vendas (negociações ganhas) do período — pedido do usuário, 25/09/2026.
+        { label: "Clientes que entraram", value: kpis.salesCount, sub: brl(kpis.revenue), tone: "indigo", icon: ICONS.users },
+        { label: "Leads que chegaram", value: painelLeads.chegaram.length, change: pctChange(painelLeads.chegaram.length, painelLeadsAntes.chegaram.length), tone: "blue", icon: ICONS.userPlus },
+        { label: "Leads perdidos", value: painelLeads.perdidos.periodo.total.n, sub: [`${brl(painelLeads.perdidos.periodo.total.valor)} em valor perdido`], tone: "red", icon: ICONS.xCircle },
       ]);
 
       document.getElementById("kpi-wide-grid").innerHTML = [

@@ -17,7 +17,7 @@
     .ghost-btn svg{width:16px;height:16px}
     .ghost-btn[disabled]{opacity:.6;cursor:default}
 
-    .leads-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:var(--gap)}
+    .leads-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--gap)}
     .lead-kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.05rem;box-shadow:var(--shadow-sm);display:flex;align-items:flex-start;gap:.8rem;min-width:0;text-align:left;font-family:inherit;color:inherit;cursor:pointer;transition:border-color .12s, box-shadow .12s}
     .lead-kpi:hover{border-color:var(--indigo-100);box-shadow:var(--shadow-md)}
     .lead-kpi.ativo{border-color:var(--indigo-500);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
@@ -33,7 +33,7 @@
     .lead-kpi-foot{font-size:.68rem;color:var(--text-faint);margin-top:.12rem;line-height:1.35}
     .lead-kpi-foot strong{color:var(--text-soft)}
 
-    .leads-grid-2{display:grid;grid-template-columns:1.4fr 1fr;gap:var(--gap)}
+    .leads-grid-2{display:grid;grid-template-columns:1fr;gap:var(--gap)}
     .leads-board{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden;min-width:0}
     .leads-board-head{padding:1rem 1.1rem .85rem;display:flex;justify-content:space-between;gap:1rem;align-items:flex-start;border-bottom:1px solid var(--surface-2)}
     .leads-board-head h2{font-size:1rem;margin:0;font-weight:850}
@@ -42,7 +42,7 @@
     .preview-pill{display:inline-flex;align-items:center;gap:.35rem;font-size:.64rem;font-weight:800;color:var(--text-faint);background:#f2f3f7;border-radius:999px;padding:.22rem .5rem;white-space:nowrap}
     .preview-pill:before{content:"";width:6px;height:6px;background:var(--indigo-500);border-radius:50%}
 
-    .lead-funnel{display:grid;grid-template-columns:repeat(4,1fr);gap:.55rem;padding:.8rem 1.1rem;border-bottom:1px solid var(--surface-2);background:#fcfcff}
+    .lead-funnel{display:grid;grid-template-columns:repeat(3,1fr);gap:.55rem;padding:.8rem 1.1rem;border-bottom:1px solid var(--surface-2);background:#fcfcff}
     .funnel-item{border:1px solid var(--border);background:#fff;border-radius:11px;padding:.65rem .7rem;position:relative;overflow:hidden}
     .funnel-item::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--indigo-500)}
     .funnel-item.amber::before{background:var(--amber-500)}
@@ -112,7 +112,7 @@
     .lead-detail-value{font-size:.72rem;font-weight:750;margin-top:.18rem;color:var(--text)}
     .lead-modal-actions{display:flex;justify-content:flex-end;gap:.5rem;margin-top:.85rem}
 
-    @media (max-width:1200px){.leads-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    
     @media (max-width:900px){.leads-grid-2{grid-template-columns:1fr}}
     @media (max-width:760px){
       .leads-kpis{grid-template-columns:1fr 1fr}
@@ -155,10 +155,7 @@
 
     const VISOES = [
       { value: "chegaram", label: "Leads que chegaram no período" },
-      { value: "perdidos", label: "Perdidos no período (total)" },
-      { value: "retornoFuturo", label: "Retorno futuro (perdidos no período)" },
-      { value: "vendasPerdidas", label: "Vendas perdidas (perdidos no período)" },
-      { value: "semRetorno", label: "Sem retorno (perdidos no período)" },
+      { value: "perdidos", label: "Leads perdidos no período" },
       { value: "semContatoAgora", label: "Sem contato agora" },
       { value: "perdidosTodos", label: "Funil Perdidos — tudo (sem filtro de data)" },
     ];
@@ -317,10 +314,7 @@
 
         <section class="leads-kpis" aria-label="Resumo dos leads">
           ${kpiHtml({ id: "chegaram", label: "Leads que chegaram", value: n(painel.chegaram.length), foot: `Entraram em "Sem contato" · ${esc(rotuloPeriodo)}${variacao(painel.chegaram.length, prev?.chegaram.length)}`, tone: "indigo", icon: ICON_USER_PLUS })}
-          ${kpiHtml({ id: "perdidos", label: "Total de leads perdidos", value: n(p.periodo.total.n), foot: `${brl(p.periodo.total.valor)} · <strong>${n(p.atual.total.n)}</strong> no funil Perdidos hoje`, tone: "red", icon: ICONS.xCircle })}
-          ${kpiHtml({ id: "vendasPerdidas", label: "Vendas perdidas", value: n(p.periodo.vendasPerdidas.n), foot: `${brl(p.periodo.vendasPerdidas.valor)} · <strong>${n(p.atual.vendasPerdidas.n)}</strong> no RD hoje`, tone: "red", icon: ICONS.sales })}
-          ${kpiHtml({ id: "retornoFuturo", label: "Retorno futuro", value: n(p.periodo.retornoFuturo.n), foot: `Vale voltar a falar · <strong>${n(p.atual.retornoFuturo.n)}</strong> no RD hoje`, tone: "amber", icon: ICON_CLOCK })}
-          ${kpiHtml({ id: "semRetorno", label: "Sem retorno", value: n(p.periodo.semRetorno.n), foot: `Não responderam · <strong>${n(p.atual.semRetorno.n)}</strong> no RD hoje`, tone: "violet", icon: ICONS.phoneOff })}
+          ${kpiHtml({ id: "perdidos", label: "Leads perdidos", value: n(p.periodo.total.n), foot: `<strong>${brl(p.periodo.total.valor)}</strong> em valor perdido · ${n(p.atual.total.n)} no funil Perdidos hoje`, tone: "red", icon: ICONS.xCircle })}
         </section>
 
         <div class="leads-grid-2">
@@ -331,18 +325,10 @@
             </div>
             <div class="lead-funnel">
               <div class="funnel-item"><div class="funnel-label">Sem contato</div><div class="funnel-value">${n(painel.safra.semContato)}</div><div class="funnel-foot">Ainda sem contato</div></div>
-              <div class="funnel-item amber"><div class="funnel-label">Em andamento</div><div class="funnel-value">${n(painel.safra.andamento)}</div><div class="funnel-foot">Pré-vendas ou negociação</div></div>
-              <div class="funnel-item green"><div class="funnel-label">Vendidos</div><div class="funnel-value">${n(painel.safra.vendido)}</div><div class="funnel-foot">Viraram venda</div></div>
+              <div class="funnel-item amber"><div class="funnel-label">Em andamento</div><div class="funnel-value">${n(painel.safra.andamento + painel.safra.vendido)}</div><div class="funnel-foot">Pré-vendas, negociação ou já vendidos</div></div>
               <div class="funnel-item red"><div class="funnel-label">Perdidos</div><div class="funnel-value">${n(painel.safra.perdido)}</div><div class="funnel-foot">Já foram perdidos</div></div>
             </div>
             ${graficoChegadasHtml(painel, range)}
-          </section>
-          <section class="leads-board">
-            <div class="leads-board-head">
-              <div><div class="sales-kicker">Funil Perdidos</div><h2>Para onde foram os perdidos</h2><p>${esc(rotuloPeriodo)} · ${brl(p.periodo.total.valor)} em valor perdido.</p></div>
-              <span class="preview-pill">${n(p.periodo.total.n)} perdidos</span>
-            </div>
-            ${perdasHtml(p)}
           </section>
         </div>
 
