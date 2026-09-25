@@ -129,7 +129,10 @@
     .safra-item span{font-size:.8rem;font-weight:700;color:var(--text-soft);margin-left:.2rem}
     .safra-item small{display:block;font-size:.68rem;color:var(--text-faint);margin-top:.1rem}
     .lead-lista-card{padding:0;overflow:hidden}
-    .lead-lista-card .section-head{padding:1.05rem 1.15rem .6rem}
+    .lead-lista-card .lead-sec-head{padding:1.05rem 1.15rem .75rem;margin:0}
+    .lead-sec-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
+    .lead-sec-head h2{font-size:1rem;font-weight:800;margin:0;letter-spacing:-.01em}
+    .lead-sec-head p{font-size:.78rem;color:var(--text-faint);margin:.2rem 0 0}
     @media (max-width:760px){.safra-legenda{grid-template-columns:1fr}}
     @media (max-width:760px){
       .leads-kpis{grid-template-columns:1fr 1fr}
@@ -172,6 +175,7 @@
 
     const VISOES = [
       { value: "chegaram", label: "Leads que chegaram no período" },
+      { value: "andamento", label: "Em andamento (chegaram no período)" },
       { value: "perdidos", label: "Leads perdidos no período" },
       { value: "semContatoAgora", label: "Sem contato agora" },
       { value: "perdidosTodos", label: "Funil Perdidos — tudo (sem filtro de data)" },
@@ -197,6 +201,7 @@
         case "retornoFuturo":
         case "vendasPerdidas":
         case "semRetorno": linhas = painel.leads.filter((l) => l.situacao === tabela.visao && perdidoNoPeriodo(l)); break;
+        case "andamento": linhas = painel.chegaram.filter((l) => l.situacao === "andamento" || l.situacao === "vendido"); break;
         case "semContatoAgora": linhas = painel.leads.filter((l) => l.situacao === "semContato"); break;
         case "perdidosTodos": linhas = painel.leads.filter((l) => baldes.includes(l.situacao)); break;
         default: linhas = painel.chegaram.slice();
@@ -352,13 +357,13 @@
 
         <div class="kpi-grid lead-kpis">
           ${cartaoClicavel("chegaram", { label: "Leads que chegaram", value: totalSafra, change: prev ? pctChange(totalSafra, prev.chegaram.length) : undefined, tone: "indigo", icon: ICON_USER_PLUS })}
-          ${cartaoClicavel("chegaram", { label: "Em andamento", value: emAndamento, sub: `${pctDe(emAndamento).toFixed(0)}% dos que chegaram`, tone: "orange", icon: ICONS.handshake })}
+          ${cartaoClicavel("andamento", { label: "Em andamento", value: emAndamento, sub: `${pctDe(emAndamento).toFixed(0)}% dos que chegaram`, tone: "orange", icon: ICONS.handshake })}
           ${cartaoClicavel("semContatoAgora", { label: "Sem contato agora", value: painel.semContatoAgora, sub: "Aguardando o primeiro contato", tone: "blue", icon: ICONS.phone })}
           ${cartaoClicavel("perdidos", { label: "Leads perdidos", value: p.periodo.total.n, sub: [`${brl(p.periodo.total.valor)} em valor perdido`, `${n(p.atual.total.n)} no funil Perdidos hoje`], tone: "red", icon: ICONS.xCircle })}
         </div>
 
         <div class="card card-p">
-          <div class="section-head">
+          <div class="lead-sec-head">
             <div>
               <h2>Situação dos leads que chegaram</h2>
               <p>Onde estão hoje os ${n(totalSafra)} leads que entraram no período.</p>
@@ -378,7 +383,7 @@
         </div>
 
         <div class="card card-p lead-lista-card">
-          <div class="section-head">
+          <div class="lead-sec-head">
             <div>
               <h2>Lista de leads</h2>
               <p>Clique num cartão acima ou escolha a lista. Clique num lead para ver os detalhes.</p>
