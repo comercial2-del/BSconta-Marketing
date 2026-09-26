@@ -214,9 +214,6 @@
       // Perdas. Nada além desta linha precisa mudar.
       const leads = { chegaram: 0, perdidos: 0 };
       const perf = performanceLabel(kpis);
-      // Leads que chegaram e leads perdidos (funil Perdidos do RD) — mesma regra da tela Leads (js/leads.js).
-      const painelLeads = getLeadsPainel(store, { range, sellerId: allowedSellerId });
-      const painelLeadsAntes = getLeadsPainel(store, { range: prevRange, sellerId: allowedSellerId });
 
       const content = document.getElementById("content");
       content.className = "space-y";
@@ -282,8 +279,6 @@
         { label: "Vendas realizadas", value: kpis.salesCount, change: pctChange(kpis.salesCount, prevKpis.salesCount), tone: "green", icon: ICONS.dollarSign },
         // "Clientes que entraram" = todas as vendas (negociações ganhas) do período — pedido do usuário, 25/09/2026.
         { label: "Clientes que entraram", value: kpis.salesCount, sub: brl(kpis.revenue), tone: "indigo", icon: ICONS.users },
-        { label: "Leads que chegaram", value: painelLeads.chegaram.length, change: pctChange(painelLeads.chegaram.length, painelLeadsAntes.chegaram.length), tone: "blue", icon: ICONS.userPlus },
-        { label: "Leads perdidos", value: painelLeads.perdidos.periodo.total.n, sub: [`${brl(painelLeads.perdidos.periodo.total.valor)} em valor perdido`], tone: "red", icon: ICONS.xCircle },
       ]);
 
       document.getElementById("kpi-wide-grid").innerHTML = [

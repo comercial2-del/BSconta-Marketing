@@ -174,7 +174,7 @@
     ];
 
     const VISOES = [
-      { value: "chegaram", label: "Leads que chegaram no período" },
+      { value: "chegaram", label: "Leads que chegaram (vendidos no período)" },
       { value: "andamento", label: "Em andamento (chegaram no período)" },
       { value: "perdidos", label: "Leads perdidos no período" },
       { value: "semContatoAgora", label: "Sem contato agora" },
@@ -204,7 +204,7 @@
         case "andamento": linhas = painel.chegaram.filter((l) => l.situacao === "andamento" || l.situacao === "vendido"); break;
         case "semContatoAgora": linhas = painel.leads.filter((l) => l.situacao === "semContato"); break;
         case "perdidosTodos": linhas = painel.leads.filter((l) => baldes.includes(l.situacao)); break;
-        default: linhas = painel.chegaram.slice();
+        default: linhas = painel.leads.filter((l) => painel.vendidosIds && painel.vendidosIds.has(l.id));
       }
       const q = leadsNorm(tabela.busca);
       if (q) linhas = linhas.filter((l) => leadsNorm(`${l.nome} ${l.empresa} ${l.vendedor}`).includes(q));
@@ -308,6 +308,13 @@
       const sellerOk = sellerId && store.sellers.some((s) => s.id === sellerId) ? sellerId : undefined;
       const range = periodoDaTela(period);
       const painel = getLeadsPainel(store, { range, sellerId: sellerOk });
+      // "Leads que chegaram" = leads que viraram venda no período (pedido do
+      // usuário, 26/09/2026): mesma base do "Vendas realizadas" / "Clientes que
+      // entraram" da Visão geral (tabela sales, pela data da venda).
+      const vendasDoPeriodo = (r) => (store.sales || []).filter((s) => s.closed_at && s.closed_at >= r.start && s.closed_at < r.end && (!sellerOk || s.seller_id === sellerOk));
+      const vendidos = vendasDoPeriodo(range);
+      painel.vendidosIds = new Set(vendidos.map((s) => s.deal_id));
+      const vendidosAntes = period === "all" ? null : vendasDoPeriodo(previousRange(range)).length;
       const prev = period === "all" ? null : getLeadsPainel(store, { range: previousRange(range), sellerId: sellerOk });
       const p = painel.perdidos;
       const variacao = (atual, antes) => {
@@ -345,11 +352,11 @@
 
         <div id="period-filter"></div>
 
-        ${perfBannerHtml({ titulo: `Performance de Leads · ${rotuloPeriodo}`, nota: totalSafra ? notaPorTaxa(100 - pctDe(saf.perdido), [85, 70, 55]) : NOTAS_PERF.atencao, desc: `${n(totalSafra)} lead${totalSafra === 1 ? "" : "s"} chegaram: ${n(emAndamento)} em andamento, ${n(saf.perdido)} já perdidos e ${n(saf.semContato)} ainda sem contato.` })}
+        ${perfBannerHtml({ titulo: `Performance de Leads · ${rotuloPeriodo}`, nota: totalSafra ? notaPorTaxa(100 - pctDe(saf.perdido), [85, 70, 55]) : NOTAS_PERF.atencao, desc: `${n(vendidos.length)} lead${vendidos.length === 1 ? "" : "s"} chegaram (vendidos no período) · ${n(totalSafra)} novos cadastros no RD: ${n(emAndamento)} em andamento, ${n(saf.perdido)} já perdidos e ${n(saf.semContato)} sem contato.` })}
 
         <div class="kpi-grid lead-kpis">
-          ${cartaoClicavel("chegaram", { label: "Leads que chegaram", value: totalSafra, change: prev ? pctChange(totalSafra, prev.chegaram.length) : undefined, tone: "indigo", icon: ICON_USER_PLUS })}
-          ${cartaoClicavel("andamento", { label: "Em andamento", value: emAndamento, sub: `${pctDe(emAndamento).toFixed(0)}% dos que chegaram`, tone: "orange", icon: ICONS.handshake })}
+          ${cartaoClicavel("chegaram", { label: "Leads que chegaram", value: vendidos.length, change: vendidosAntes === null ? undefined : pctChange(vendidos.length, vendidosAntes), tone: "indigo", icon: ICON_USER_PLUS })}
+          ${cartaoClicavel("andamento", { label: "Em andamento", value: emAndamento, sub: `${pctDe(emAndamento).toFixed(0)}% dos novos cadastros no RD`, tone: "orange", icon: ICONS.handshake })}
           ${cartaoClicavel("semContatoAgora", { label: "Sem contato agora", value: painel.semContatoAgora, sub: "Aguardando o primeiro contato", tone: "blue", icon: ICONS.phone })}
           ${cartaoClicavel("perdidos", { label: "Leads perdidos", value: p.periodo.total.n, sub: [`${brl(p.periodo.total.valor)} em valor perdido`, `${n(p.atual.total.n)} no funil Perdidos hoje`], tone: "red", icon: ICONS.xCircle })}
         </div>
@@ -357,8 +364,8 @@
         <div class="card card-p">
           <div class="lead-sec-head">
             <div>
-              <h2>Situação dos leads que chegaram</h2>
-              <p>Onde estão hoje os ${n(totalSafra)} leads que entraram no período.</p>
+              <h2>Novos cadastros no RD no período</h2>
+              <p>Onde estão hoje os ${n(totalSafra)} contatos cadastrados no RD no período.</p>
             </div>
           </div>
           ${totalSafra ? `
