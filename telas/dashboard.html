@@ -6,6 +6,18 @@
   <title>BSconta + Marketing</title>
   <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
   <link rel="stylesheet" href="../css/styles.css?v=20260916.2" />
+  <style>
+    /* Organização da Visão geral (26/09/2026) */
+    .kpi-span-2{grid-column:span 2;min-width:0;display:flex}
+    .kpi-span-2 .kpi-wide-card{flex:1;height:100%;margin:0}
+    .vendas-duo{display:grid;grid-template-columns:minmax(280px,1fr) 2.2fr;gap:var(--gap);align-items:stretch}
+    .vendas-duo > *{min-width:0;margin:0 !important}
+    .vendas-duo .sales-highlight-card{display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;gap:1.2rem}
+    .vendas-duo .sales-highlight-main{align-items:flex-start}
+    .vendas-duo .sales-highlight-meta{text-align:left;align-items:flex-start;border-top:1px solid var(--border);padding-top:.9rem;width:100%}
+    @media (max-width:1100px){.vendas-duo{grid-template-columns:1fr}}
+    @media (max-width:640px){.kpi-span-2{grid-column:1 / -1}}
+  </style>
 </head>
 <body>
   <div class="app-shell">
@@ -242,7 +254,6 @@
         </div>
 
         <div id="kpi-grid"></div>
-        <div id="kpi-wide-grid" class="kpi-wide-grid"></div>
 
         <div class="card card-p sales-highlight-card">
           <div class="sales-highlight-main">
@@ -264,7 +275,13 @@
       const clientEntriesHost = document.createElement("div");
       clientEntriesHost.id = "client-entries";
       clientEntriesHost.className = "card card-p client-entries-card";
-      content.appendChild(clientEntriesHost);
+      // Valor total de vendas e a tabela de clientes lado a lado (pedido do usuário, 26/09/2026).
+      const vendasDuo = document.createElement("div");
+      vendasDuo.className = "vendas-duo";
+      const salesCard = content.querySelector(".sales-highlight-card");
+      salesCard.replaceWith(vendasDuo);
+      vendasDuo.appendChild(salesCard);
+      vendasDuo.appendChild(clientEntriesHost);
 
       renderPeriodFilter(document.getElementById("period-filter"), vendedores, render, { defaultPeriod: "this_week", defaultSellerId: allowedSellerId || "" });
       setupCalendarPicker(render);
@@ -281,9 +298,8 @@
         { label: "Clientes que entraram", value: kpis.salesCount, sub: brl(kpis.revenue), tone: "indigo", icon: ICONS.users },
       ]);
 
-      document.getElementById("kpi-wide-grid").innerHTML = [
-        kpiWideCardHtml({ label: "Valor em oportunidades abertas", value: kpis.opportunitiesValue, tone: "blue", icon: ICONS.dollarSign }),
-      ].join("");
+      // Valor em oportunidades abertas ao lado de "Clientes que entraram" (pedido do usuário, 26/09/2026).
+      document.getElementById("kpi-grid").insertAdjacentHTML("beforeend", `<div class="kpi-span-2">${kpiWideCardHtml({ label: "Valor em oportunidades abertas", value: kpis.opportunitiesValue, tone: "blue", icon: ICONS.dollarSign })}</div>`);
 
       renderClientEntries(store, range, allowedSellerId);
 
