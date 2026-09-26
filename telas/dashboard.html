@@ -10,9 +10,10 @@
     /* Organização da Visão geral (26/09/2026) */
     .kpi-span-2{grid-column:span 2;min-width:0;display:flex}
     .kpi-span-2 .kpi-wide-card{flex:1;height:100%;margin:0}
-    .vendas-duo{display:grid;grid-template-columns:minmax(280px,1fr) 2.2fr;gap:var(--gap);align-items:stretch}
+    .vendas-duo{display:grid;grid-template-columns:minmax(280px,1fr) 2.2fr;gap:var(--gap);align-items:start}
     .vendas-duo > *{min-width:0;margin:0 !important}
-    .vendas-duo .sales-highlight-card{display:flex;flex-direction:column;justify-content:space-between;align-items:stretch;gap:1.2rem}
+    /* O card do valor total tem altura própria: não estica junto com a lista de clientes. */
+    .vendas-duo .sales-highlight-card{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:1.2rem;align-self:start;position:sticky;top:1rem}
     .vendas-duo .sales-highlight-main{align-items:flex-start}
     .vendas-duo .sales-highlight-meta{text-align:left;align-items:flex-start;border-top:1px solid var(--border);padding-top:.9rem;width:100%}
     @media (max-width:1100px){.vendas-duo{grid-template-columns:1fr}}
