@@ -299,6 +299,12 @@
 .onb .detail-hero-right{align-items:flex-start}
 .onb .detail-info-grid{grid-template-columns:1fr}
 .onb .detail-screen-head{padding:.7rem}
+.onb .detail-close-hint{font-size:.7rem;color:var(--text-faint);font-weight:650}
+.onb .detail-screen{cursor:pointer}.onb .detail-shell{cursor:auto}
+.onb .rd-contatos{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:.5rem}
+.onb .rd-contato{border:1px solid var(--border);border-radius:12px;padding:.55rem .7rem;font-size:.74rem}
+.onb .rd-contato strong{display:block;font-size:.78rem;color:var(--text)}
+.onb .cnpj-status{grid-column:1/-1;font-size:.74rem;color:var(--text-faint)}
 .onb .detail-client{gap:.6rem}
 .onb .detail-hero h2{font-size:1.02rem}
 }
@@ -370,7 +376,7 @@
         <section class="detail-screen" id="detailScreen" aria-hidden="true">
           <div class="detail-shell">
             <div class="detail-screen-head">
-              <button class="ghost-btn back-btn" type="button" id="closeDetail"><span data-icon="arrow-left"></span>Voltar para vendas</button>
+              <span class="detail-close-hint">Clique fora do card para fechar</span>
               <div class="detail-screen-actions">
                 <span class="preview-pill">Detalhes da venda</span>
               </div>
@@ -399,6 +405,14 @@
 
             <div class="detail-layout">
               <div class="detail-main">
+              <section class="detail-section">
+                <div class="section-title"><h3>Negociação</h3><span>RD Station</span></div>
+                <div class="detail-info-grid" id="rdInfo"></div>
+              </section>
+              <section class="detail-section">
+                <div class="section-title"><h3>Dados da empresa</h3><span>consulta CNPJ</span></div>
+                <div class="detail-info-grid" id="cnpjInfo"></div>
+              </section>
                 <section class="detail-section">
                   <div class="section-title"><h3>Resumo da venda</h3><span>principal</span></div>
                   <div class="detail-info-grid" id="saleInfo"></div>
@@ -525,7 +539,36 @@
     const dataBrOnb = (d) => { const p = (n) => String(n).padStart(2, "0"); return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`; };
     const brlOnb = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-    function clientesDasVendas(store) {
+    // Quadro "Negociação" do RD (deals.rd_details, gravado pelo sync-rd-station
+// desde 28/09/2026): qualificação, fonte, campanha, campos personalizados
+// (CNPJ, Nome da empresa, Serviço contratado...) e contatos.
+async function carregarDetalhesRd(store) {
+  const ids = [...new Set((store.sales || []).map((s) => s.deal_id).filter(Boolean))];
+  const mapa = new Map();
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data, error } = await sb.from("deals").select("id, rd_deal_id, rd_details").in("id", ids.slice(i, i + 100));
+    if (error) { console.warn("Detalhes do RD indisponíveis:", error.message); break; }
+    for (const r of data || []) mapa.set(r.id, { ...(r.rd_details || {}), rd_deal_id: r.rd_deal_id });
+  }
+  return mapa;
+}
+function campoRd(det, rotulo) {
+  const alvo = rotulo.toLowerCase();
+  const f = (det?.campos || []).find((c) => (c.label || "").trim().toLowerCase() === alvo);
+  return f && f.value != null && String(f.value).trim() !== "" ? String(f.value).trim() : "";
+}
+const soDigitos = (v) => String(v || "").replace(/\D/g, "");
+function formatarCnpj(v) {
+  const d = soDigitos(v);
+  return d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : String(v || "");
+}
+function dataHoraRd(iso) {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? String(iso) : d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+
+function clientesDasVendas(store, detalhesRd = new Map()) {
       const deals = new Map((store.deals || []).map((d) => [d.id, d]));
       const sellers = new Map((store.sellers || []).map((s) => [s.id, s.name]));
       // Ordem de fechamento (mais antiga = #0001): o número do Card não muda
@@ -533,7 +576,13 @@
       const vendas = (store.sales || []).filter((s) => s.closed_at).slice().sort((a, b) => a.closed_at - b.closed_at);
       const lista = vendas.map((sale, i) => {
         const d = deals.get(sale.deal_id) || {};
-        const nome = d.company_name || d.client_name || "Cliente sem nome";
+        const det = detalhesRd.get(sale.deal_id) || null;
+    const cnpjRd = campoRd(det, "CNPJ");
+    const empresaRd = campoRd(det, "Nome da empresa");
+    const servicoRd = campoRd(det, "Serviço contratado");
+    const inicioRd = campoRd(det, "Data de início");
+    const contato = (det?.contatos || [])[0] || {};
+    const nome = empresaRd || d.company_name || d.client_name || "Cliente sem nome";
         const closer = (sellers.get(sale.seller_id || d.seller_id) || "—").split(" ")[0];
         const data = dataBrOnb(sale.closed_at);
         const valor = brlOnb(sale.value);
@@ -542,20 +591,21 @@
           key: `sale_${sale.id}`,
           name: nome,
           abbr: initials(nome),
-          cnpj: "",
+          cnpj: cnpjRd ? formatarCnpj(cnpjRd) : "",
+      rd: det,
           closer,
           sale: data,
           amount: valor,
           monthly: sale.is_recurring ? valor : "—",
           discount: "—",
-          service: "A definir",
-          type: "A definir",
+          service: servicoRd || "A definir",
+          type: servicoRd || "A definir",
           status: "Novo",
           priority: "Normal",
-          start: data,
+          start: inicioRd || data,
           progress: 8,
-          saleInfo: { "Vendedor / closer": closer, Fechamento: data, "Valor da venda": valor, "Contato no RD": d.client_name || "—", Recorrente: sale.is_recurring ? "Sim" : "Não", Serviço: "A definir" },
-          companyInfo: { Cliente: nome, Contato: d.client_name || "—", Empresa: d.company_name || "—", CNPJ: "A informar" },
+          saleInfo: { "Vendedor / closer": closer, Fechamento: data, "Valor da venda": valor, "Contato no RD": d.client_name || "—", Recorrente: sale.is_recurring ? "Sim" : "Não", Serviço: servicoRd || "A definir" },
+          companyInfo: { Cliente: nome, Contato: d.client_name || "—", Telefone: (contato.telefones || []).join(", ") || "—", "E-mail": (contato.emails || []).join(", ") || "—", Empresa: empresaRd || d.company_name || "—", CNPJ: cnpjRd ? formatarCnpj(cnpjRd) : "Não informado no RD" },
           currentInfo: { "Processo contratado": "A definir", Situação: "Venda recebida do comercial" },
           pain: "A preencher no handoff comercial.",
           expectation: "A preencher no handoff comercial.",
@@ -866,7 +916,65 @@
       updateKpis(sales);
     }
 
-    function openSale(id){
+    // ---- Negociação do RD + consulta de CNPJ (28/09/2026) ----
+function infoHtml(k,v){ return `<div class="info"><div class="info-label">${esc(k)}</div><div class="info-value ${String(v).length>38?'soft':''}">${esc(v)}</div></div>`; }
+function renderNegociacaoRd(s){
+  const el=document.getElementById('rdInfo'); const det=s.rd;
+  if(!det){ el.innerHTML='<div class="cnpj-status">Detalhes do RD ainda não sincronizados para esta venda.</div>'; return; }
+  const reais=v=>v==null?'—':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const base=[['Nome',det.nome||'—'],['Qualificação',det.qualificacao!=null?String(det.qualificacao):'—'],['Data de fechamento',dataHoraRd(det.fechada_em)],['Fonte',det.fonte||'—'],['Campanha',det.campanha||'—'],['Criada em',dataHoraRd(det.criada_em)],['Valor total',reais(det.valor_total)]];
+  const campos=(det.campos||[]).map(c=>[c.label||'Campo', c.value!=null&&String(c.value).trim()!==''?String(c.value):'—']);
+  const contatos=(det.contatos||[]).map(c=>`<div class="rd-contato"><strong>${esc(c.nome||'Contato')}</strong>${esc([c.cargo,...(c.telefones||[]),...(c.emails||[])].filter(Boolean).join(' · ')||'Sem telefone/e-mail')}</div>`).join('');
+  const link=det.rd_deal_id?`<div class="cnpj-status"><a href="https://crm.rdstation.com/app/deals/${encodeURIComponent(det.rd_deal_id)}" target="_blank" rel="noopener">Abrir negociação no RD Station ↗</a></div>`:'';
+  el.innerHTML=[...base,...campos].map(([k,v])=>infoHtml(k,v)).join('')+(contatos?`<div class="rd-contatos">${contatos}</div>`:'')+link;
+}
+const dataIsoBr=v=>{ const m=String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})/); return m?`${m[3]}/${m[2]}/${m[1]}`:(v||'—'); };
+const reaisCnpj=v=>v==null||v===''?'—':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+function normBrasilApi(j){
+  const end=[[j.descricao_tipo_de_logradouro,j.logradouro].filter(Boolean).join(' '),j.numero,j.complemento,j.bairro].filter(Boolean).join(', ');
+  return {razao:j.razao_social,fantasia:j.nome_fantasia,situacao:j.descricao_situacao_cadastral,abertura:dataIsoBr(j.data_inicio_atividade),natureza:j.natureza_juridica,porte:j.porte,
+    cnae:[j.cnae_fiscal,j.cnae_fiscal_descricao].filter(Boolean).join(' — '),capital:reaisCnpj(j.capital_social),endereco:end,cep:j.cep?String(j.cep).replace(/^(\d{5})(\d{3})$/,'$1-$2'):'',
+    cidadeUf:[j.municipio,j.uf].filter(Boolean).join('/'),telefone:j.ddd_telefone_1||'',email:(j.email||'').toLowerCase(),
+    simples:j.opcao_pelo_mei?'MEI':j.opcao_pelo_simples?'Optante pelo Simples':j.opcao_pelo_simples===false?'Não optante':'',
+    socios:(j.qsa||[]).map(q=>({nome:q.nome_socio,qualificacao:q.qualificacao_socio,entrada:dataIsoBr(q.data_entrada_sociedade)}))};
+}
+function normCnpjWs(j){
+  const e=j.estabelecimento||{};
+  const end=[[e.tipo_logradouro,e.logradouro].filter(Boolean).join(' '),e.numero,e.complemento,e.bairro].filter(Boolean).join(', ');
+  return {razao:j.razao_social,fantasia:e.nome_fantasia,situacao:e.situacao_cadastral,abertura:dataIsoBr(e.data_inicio_atividade),natureza:j.natureza_juridica?.descricao,porte:j.porte?.descricao,
+    cnae:[e.atividade_principal?.subclasse,e.atividade_principal?.descricao].filter(Boolean).join(' — '),capital:reaisCnpj(j.capital_social),endereco:end,cep:e.cep?String(e.cep).replace(/^(\d{5})(\d{3})$/,'$1-$2'):'',
+    cidadeUf:[e.cidade?.nome,e.estado?.sigla].filter(Boolean).join('/'),telefone:[e.ddd1,e.telefone1].filter(Boolean).join(' '),email:(e.email||'').toLowerCase(),
+    simples:j.simples?.mei==='Sim'?'MEI':j.simples?.simples==='Sim'?'Optante pelo Simples':j.simples?'Não optante':'',
+    socios:(j.socios||[]).map(q=>({nome:q.nome,qualificacao:q.qualificacao_socio?.descricao,entrada:dataIsoBr(q.data_entrada)}))};
+}
+const cacheCnpj=new Map();
+function buscarCnpj(d){
+  if(cacheCnpj.has(d)) return cacheCnpj.get(d);
+  const p=(async()=>{
+    try{ const r=await fetch(`https://brasilapi.com.br/api/cnpj/v1/${d}`); if(r.ok) return {fonte:'BrasilAPI (Receita Federal)',...normBrasilApi(await r.json())}; if(r.status===404) return {erro:'CNPJ não encontrado na Receita Federal. Confira o número no RD.'}; }catch(e){}
+    try{ const r=await fetch(`https://publica.cnpj.ws/cnpj/${d}`); if(r.ok) return {fonte:'CNPJ.ws (Receita Federal)',...normCnpjWs(await r.json())}; }catch(e){}
+    return {erro:'Não foi possível consultar o CNPJ agora. Tente abrir o card de novo em instantes.'};
+  })();
+  cacheCnpj.set(d,p); p.then(x=>{ if(x.erro) cacheCnpj.delete(d); }); return p;
+}
+async function consultarCnpj(s){
+  const el=document.getElementById('cnpjInfo'); const d=soDigitos(s.cnpj);
+  if(d.length!==14){ el.innerHTML='<div class="cnpj-status">CNPJ não informado no RD. Quando o campo CNPJ da negociação for preenchido no RD, endereço, CEP, sócios e demais dados da Receita aparecem aqui automaticamente.</div>'; return; }
+  el.innerHTML='<div class="cnpj-status">Consultando o CNPJ '+esc(formatarCnpj(d))+'…</div>';
+  const r=await buscarCnpj(d);
+  if(selectedId!==s.id) return;
+  if(r.erro){ el.innerHTML='<div class="cnpj-status">'+esc(r.erro)+'</div>'; return; }
+  const linhas=[['CNPJ',formatarCnpj(d)],['Razão social',r.razao],['Nome fantasia',r.fantasia],['Situação cadastral',r.situacao],['Abertura',r.abertura],['Natureza jurídica',r.natureza],['Porte',r.porte],['Simples / MEI',r.simples],['Atividade principal (CNAE)',r.cnae],['Capital social',r.capital],['Endereço',r.endereco],['CEP',r.cep],['Cidade/UF',r.cidadeUf],['Telefone',r.telefone],['E-mail',r.email]];
+  el.innerHTML=linhas.map(([k,v])=>infoHtml(k,v||'—')).join('')+`<div class="cnpj-status">Fonte: ${esc(r.fonte)}.</div>`;
+  if(!(s.partners||[]).length && r.socios.length){
+    document.getElementById('partners').innerHTML=r.socios.map(p=>`<div class="partner"><div class="partner-top"><div class="partner-name">${esc(p.nome)}</div><div class="partner-share">${esc(p.qualificacao||'')}</div></div><div class="partner-grid"><div><div class="mini-label">Entrada na sociedade</div><div class="mini-value">${esc(p.entrada||'—')}</div></div><div><div class="mini-label">Fonte</div><div class="mini-value">Receita Federal</div></div></div></div>`).join('');
+  }
+  if((s.capital||'Não informado')==='Não informado' && r.capital && r.capital!=='—'){
+    const cap=document.querySelector('#capital .info .info-value'); if(cap) cap.textContent=r.capital;
+  }
+}
+
+function openSale(id){
       const s = sales.find(x=>x.id===id);
       if(!s) return;
       selectedId=id;
@@ -913,7 +1021,9 @@
       document.getElementById('notes').textContent=s.notes || 'Sem observações adicionais.';
       document.getElementById('timeline').innerHTML=generatedHistory(s).map((h,i)=>`
         <div class="timeline-item"><span class="timeline-dot"></span><div class="timeline-date">${esc(h.date || '—')}</div><div class="timeline-title">${esc(h.title || 'Atualização')}</div><div class="timeline-text">${esc(h.text || '')}</div></div>`).join('');
-      const screen=document.getElementById('detailScreen');
+      renderNegociacaoRd(s);
+    consultarCnpj(s);
+    const screen=document.getElementById('detailScreen');
       screen.classList.add('open');
       screen.setAttribute('aria-hidden','false');
       document.body.style.overflow='hidden';
@@ -1035,7 +1145,8 @@
       else return;
       // manter a janela aberta sem re-renderizar a grade
     });
-    document.getElementById('closeDetail').addEventListener('click',closeDetail);
+    // Fecha ao clicar fora do card (no fundo escurecido) — sem botão "Voltar" (pedido do usuário, 28/09/2026).
+document.getElementById('detailScreen').addEventListener('click',e=>{ if(!e.target.closest('.detail-shell')) closeDetail(); });
     document.getElementById('closeOnboardingAlert').addEventListener('click',closeOnboardingAlert);
     document.getElementById('cancelOnboardingAlert').addEventListener('click',closeOnboardingAlert);
     document.getElementById('onboardingAlert').addEventListener('click',e=>{if(e.target.id==='onboardingAlert')closeOnboardingAlert();});
@@ -1063,7 +1174,8 @@
       document.getElementById('mockRefresh').onclick = recarregar;
     }
 
-    function montar() {
+    let detalhesRd = new Map();
+function montar() {
       const content = document.getElementById("content");
       content.className = "";
       content.innerHTML = "";
@@ -1071,8 +1183,8 @@
       root.className = "onb";
       root.appendChild(document.getElementById("onb-template").content.cloneNode(true));
       content.appendChild(root);
-      iniciarOnboarding(root, clientesDasVendas(store), async () => {
-        try { store = await loadAll({ fresh: true }); montar(); } catch (e) { console.error(e); }
+      iniciarOnboarding(root, clientesDasVendas(store, detalhesRd), async () => {
+        try { store = await loadAll({ fresh: true }); try { detalhesRd = await carregarDetalhesRd(store); } catch (e) {} montar(); } catch (e) { console.error(e); }
       });
     }
 
@@ -1086,7 +1198,8 @@
         if (resultado instanceof Error) throw resultado;
         store = resultado;
         montar();
-        startPageLoadSync(async () => { store = await loadAll({ fresh: true }); montar(); });
+        try { detalhesRd = await carregarDetalhesRd(store); montar(); } catch (e) { console.warn(e); }
+        startPageLoadSync(async () => { store = await loadAll({ fresh: true }); try { detalhesRd = await carregarDetalhesRd(store); } catch (e) {} montar(); });
       } catch (err) {
         console.error(err);
         showFatalError(err);
