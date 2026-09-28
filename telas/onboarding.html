@@ -750,7 +750,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
 
     const ONBOARDING_STORAGE_KEY = 'bsconta_onboarding_timeline_v1';
     const ONBOARDING_STAGES = [
-      {title:'Handoff', items:['Venda recebida','Informações recebidas do comercial','Responsável pelo onboarding definido']},
+      {title:'Handoff', items:['Venda concluída','Grupo de WhatsApp','Documentos/Informações']},
       {title:'Início do Onboarding', items:['Primeiro contato realizado','Mensagem de boas-vindas','Apresentação do responsável']},
       {title:'1ª Reunião', items:['Reunião agendada','Reunião realizada','Necessidades do cliente levantadas','Pendências registradas']},
       {title:'Configuração / Implantação', items:['Documentos recebidos','Dados conferidos','Cadastros/configurações realizados','Pendências internas','Pendências com o cliente']},
@@ -819,7 +819,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
     }
     function normalizeOnboarding(s){
       if(s.onboarding && Array.isArray(s.onboarding.stages) && s.onboarding.stages.length===ONBOARDING_STAGES.length){
-        s.onboarding.stages=s.onboarding.stages.map((st,i)=>({...createStageTemplate(ONBOARDING_STAGES[i]),...st,substeps:Array.isArray(st.substeps)&&st.substeps.length===ONBOARDING_STAGES[i].items.length ? st.substeps : ONBOARDING_STAGES[i].items.map(label=>({label,done:false,completedAt:null}))}));
+        s.onboarding.stages=s.onboarding.stages.map((st,i)=>({...createStageTemplate(ONBOARDING_STAGES[i]),...st,substeps:Array.isArray(st.substeps)&&st.substeps.length===ONBOARDING_STAGES[i].items.length ? st.substeps.map((x,j)=>({...x,label:ONBOARDING_STAGES[i].items[j]})) : ONBOARDING_STAGES[i].items.map(label=>({label,done:false,completedAt:null}))}));
         s.onboarding.auditHistory=Array.isArray(s.onboarding.auditHistory)?s.onboarding.auditHistory:[];
         return s.onboarding;
       }
