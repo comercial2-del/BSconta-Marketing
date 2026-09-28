@@ -172,7 +172,7 @@
   <script>
     let store = null;
     // Estado da tabela (não vai para a URL: é só a visão do momento).
-    const tabela = { visao: "chegaram", busca: "", limite: 100, motivo: "" };
+    const tabela = { visao: "chegaram", busca: "", limite: 100, motivo: "", vendedor: "" };
 
     const PERIODOS_LEADS = [
       { value: "today", label: "Hoje" },
@@ -216,7 +216,7 @@
     const n = (v) => Number(v || 0).toLocaleString("pt-BR");
     const dataBr = (d) => (d ? new Date(d).toLocaleDateString("pt-BR") : "—");
 
-    function linhasDaVisao(painel, range) {
+    function linhasDaVisao(painel, range, { ignorarVendedor = false } = {}) {
       const perdidoNoPeriodo = (l) => l.perdidoEm && l.perdidoEm >= range.start && l.perdidoEm < range.end;
       const baldes = ["retornoFuturo", "vendasPerdidas", "semRetorno"];
       let linhas;
@@ -236,6 +236,8 @@
       if (q) linhas = linhas.filter((l) => leadsNorm(`${l.nome} ${l.empresa} ${l.vendedor}`).includes(q));
       // Filtro por motivo de perda (vem do RD).
       if (tabela.motivo) linhas = linhas.filter((l) => ((l.motivo || "").trim() || "Sem motivo informado") === tabela.motivo);
+      // Filtro por colaborador (vendedores do RD — novos entram sozinhos pela sincronização).
+      if (tabela.vendedor && !ignorarVendedor) linhas = linhas.filter((l) => l.vendedor === tabela.vendedor);
       const dataDeOrdem = (l) => (visaoFechados(tabela.visao) ? painel.vendaEm.get(l.id) || l.chegada : tabela.visao === "chegaram" || tabela.visao === "semContatoAgora" ? l.chegada : l.perdidoEm || l.chegada);
       return linhas.sort((a, b) => (dataDeOrdem(b)?.getTime() || 0) - (dataDeOrdem(a)?.getTime() || 0));
     }
@@ -369,9 +371,14 @@
       const partes = [
         { rotulo: "Sem contato", n: saf.semContato, cor: "var(--indigo-500)", nota: "ainda sem contato" },
         { rotulo: "Em andamento", n: emAndamento, cor: "var(--amber-500)", nota: "pré-vendas ou negociação" },
-        { rotulo: "Vendidos", n: saf.vendido, cor: "var(--emerald-500, #10b981)", nota: "já são clientes" },
         { rotulo: "Perdidos", n: saf.perdido, cor: "var(--red-500)", nota: "já foram para o funil Perdidos" },
       ];
+      // Em andamento por colaborador (pedido do usuário, 28/09/2026).
+      const contarPorVendedor = (lista) => [...lista.reduce((m, l) => m.set(l.vendedor, (m.get(l.vendedor) || 0) + 1), new Map()).entries()]
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "pt-BR"));
+      const andamentoPorVendedor = contarPorVendedor(painel.chegaram.filter((l) => l.situacao === "andamento"));
+      const vendedoresDaLista = contarPorVendedor(linhasDaVisao(painel, range, { ignorarVendedor: true }));
+      if (tabela.vendedor && !vendedoresDaLista.some(([v]) => v === tabela.vendedor)) vendedoresDaLista.push([tabela.vendedor, 0]);
       const pctDe = (v) => (totalSafra ? (v / totalSafra) * 100 : 0);
       const cartaoClicavel = (visao, cfg) => `<button type="button" class="lead-kpi-btn ${tabela.visao === visao ? "ativo" : ""}" data-visao="${visao}" title="Ver a lista">${kpiCardHtml(cfg)}</button>`;
 
@@ -395,7 +402,7 @@
 
         <div class="kpi-grid lead-kpis">
           ${cartaoClicavel("chegaram", { label: "Leads que chegaram", value: totalSafra, change: prev ? pctChange(totalSafra, prev.chegaram.length) : undefined, tone: "indigo", icon: ICON_USER_PLUS })}
-          ${cartaoClicavel("andamento", { label: "Em andamento", value: emAndamento, sub: `${pctDe(emAndamento).toFixed(0)}% dos que chegaram`, tone: "orange", icon: ICONS.handshake })}
+          ${cartaoClicavel("andamento", { label: "Em andamento", value: emAndamento, sub: [`${pctDe(emAndamento).toFixed(0)}% dos que chegaram`, andamentoPorVendedor.map(([v, q]) => `${esc(v.split(" ")[0])} ${n(q)}`).join(" · ")].filter(Boolean), tone: "orange", icon: ICONS.handshake })}
           ${cartaoClicavel("semContatoAgora", { label: "Sem contato agora", value: painel.semContatoAgora, sub: "Aguardando o primeiro contato", tone: "blue", icon: ICONS.phone })}
           ${cartaoClicavel("perdidos", { label: "Leads perdidos", value: p.periodo.total.n, sub: [`${brl(p.periodo.total.valor)} em valor perdido`, `${n(p.atual.total.n)} no funil Perdidos hoje`], tone: "red", icon: ICONS.xCircle })}
         </div>
@@ -456,6 +463,7 @@
                   ${CANAIS_FECHADOS.map((c) => `<option value="fechados:${c.id}" ${tabela.visao === "fechados:" + c.id ? "selected" : ""}>Fecharam — ${esc(c.nome)} (${n(nFechados(c.id))})</option>`).join("")}
                 </optgroup>
               </select></div>
+            <div class="field"><select id="lead-vendedor" aria-label="Colaborador"><option value="">Todos os colaboradores</option>${vendedoresDaLista.map(([v, q]) => `<option value="${esc(v)}" ${v === tabela.vendedor ? "selected" : ""}>${esc(v)} (${n(q)})</option>`).join("")}</select></div>
             <div class="field"><select id="lead-motivo" aria-label="Motivo de perda"><option value="">Todos os motivos de perda</option>${motivos.map((m) => `<option value="${esc(m.motivo)}" ${m.motivo === tabela.motivo ? "selected" : ""}>${esc(m.motivo)} (${n(m.n)})</option>`).join("")}</select></div>
           </div>
           <div id="lead-table"></div>
@@ -492,6 +500,7 @@
         tabela.limite = 100;
         render();
       });
+      document.getElementById("lead-vendedor").addEventListener("change", (e) => { tabela.vendedor = e.target.value; tabela.limite = 100; render(); });
       document.getElementById("lead-motivo").addEventListener("change", (e) => {
         tabela.motivo = e.target.value;
         if (tabela.motivo && !["perdidos", "perdidosTodos"].includes(tabela.visao)) tabela.visao = "perdidos";
