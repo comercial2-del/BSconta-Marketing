@@ -102,6 +102,8 @@ function renderShell(profile) {
             <strong>BSconta<sup>+</sup></strong>
           </div>
           <p>Transformando números em resultados.</p>
+          <p style="margin:.55rem 0 0;padding-top:.5rem;border-top:1px dashed rgba(99,102,241,.25);font-size:.66rem;line-height:1.35;color:var(--text-faint,#8a8fa3);position:relative;z-index:1">Criado por<br><strong style="font-size:.74rem;color:var(--indigo-600,#4f46e5);font-weight:800">Marlon Gomes da Silva</strong></p>
+          <span aria-hidden="true" style="position:absolute;right:-.4rem;bottom:.2rem;font-size:2.4rem;font-weight:900;letter-spacing:-.04em;color:rgba(99,102,241,.07);transform:rotate(-12deg);pointer-events:none;user-select:none;white-space:nowrap;line-height:1">MGS</span>
           <span class="promo-icon">${ICONS.sales}</span>
         </div>
         <button class="btn-logout" id="btn-logout">${ICONS.logout} Sair</button>
