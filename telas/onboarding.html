@@ -953,8 +953,18 @@ const cacheCnpj=new Map();
 function buscarCnpj(d){
   if(cacheCnpj.has(d)) return cacheCnpj.get(d);
   const p=(async()=>{
-    try{ const r=await fetch(`https://brasilapi.com.br/api/cnpj/v1/${d}`); if(r.ok) return {fonte:'BrasilAPI (Receita Federal)',...normBrasilApi(await r.json())}; if(r.status===404) return {erro:'CNPJ não encontrado na Receita Federal. Confira o número no RD.'}; }catch(e){}
-    try{ const r=await fetch(`https://publica.cnpj.ws/cnpj/${d}`); if(r.ok) return {fonte:'CNPJ.ws (Receita Federal)',...normCnpjWs(await r.json())}; }catch(e){}
+    // BrasilAPI esconde endereço/telefone/e-mail de MEI; o CNPJ.ws traz.
+    // Por isso consultamos a BrasilAPI e completamos o que faltar com o CNPJ.ws.
+    let base=null, naoExiste=false;
+    try{ const r=await fetch(`https://brasilapi.com.br/api/cnpj/v1/${d}`); if(r.ok) base={fonte:'BrasilAPI',...normBrasilApi(await r.json())}; else if(r.status===404) naoExiste=true; }catch(e){}
+    const incompleto=!base || !/\d|rua|av|rod|trav|pra/i.test(base.endereco||'') || !base.telefone || !base.email;
+    if(incompleto){
+      try{ const r=await fetch(`https://publica.cnpj.ws/cnpj/${d}`); if(r.ok){ const ws={fonte:'CNPJ.ws',...normCnpjWs(await r.json())};
+        if(!base) base=ws; else { for(const k of Object.keys(ws)){ const v=base[k]; const vazio=v==null||v===''||(Array.isArray(v)&&!v.length); if(k==='endereco'? (String(ws[k]||'').length>String(v||'').length) : vazio) base[k]=ws[k]; } base.fonte='BrasilAPI + CNPJ.ws'; }
+      } }catch(e){}
+    }
+    if(base) return {...base, fonte:base.fonte+' (Receita Federal)'};
+    if(naoExiste) return {erro:'CNPJ não encontrado na Receita Federal. Confira o número no RD.'};
     return {erro:'Não foi possível consultar o CNPJ agora. Tente abrir o card de novo em instantes.'};
   })();
   cacheCnpj.set(d,p); p.then(x=>{ if(x.erro) cacheCnpj.delete(d); }); return p;
