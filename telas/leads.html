@@ -168,6 +168,7 @@
   <script src="../js/ui.js?v=20260926"></script>
   <script src="../js/sync.js?v=20260925"></script>
   <script src="../js/leads.js?v=20260928"></script>
+  <script src="../js/origens.js?v=20260928"></script>
   <script>
     let store = null;
     // Estado da tabela (não vai para a URL: é só a visão do momento).
@@ -193,6 +194,17 @@
       { value: "perdidosTodos", label: "Funil Perdidos — tudo (sem filtro de data)" },
     ];
 
+    // Leads que FECHARAM conosco no período (vendas da tabela sales, pela data
+    // da venda — mesma base de "Vendas realizadas" da Visão geral), no geral e
+    // por canal de origem do RD (mesmos canais da aba Marketing, js/origens.js).
+    // Pedido do usuário em 28/09/2026.
+    const CANAIS_FECHADOS = [...CANAIS_LEAD, CANAL_OUTROS];
+    const visaoFechados = (v) => v === "fechados" || v.startsWith("fechados:");
+    function fechadosDoCanal(painel, canalId) {
+      const lista = painel.leads.filter((l) => painel.vendidosIds.has(l.id));
+      return canalId ? lista.filter((l) => canalDaFonte(l.origem).id === canalId) : lista;
+    }
+
     const ICON_USER_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>';
     const ICON_REFRESH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 0 0-14.9-4L3 10"/><path d="M3 5v5h5"/><path d="M4 13a8 8 0 0 0 14.9 4L21 14"/><path d="M21 19v-5h-5"/></svg>';
     const ICON_CLOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
@@ -216,13 +228,15 @@
         case "andamento": linhas = painel.chegaram.filter((l) => l.situacao === "andamento" || l.situacao === "vendido"); break;
         case "semContatoAgora": linhas = painel.leads.filter((l) => l.situacao === "semContato"); break;
         case "perdidosTodos": linhas = painel.leads.filter((l) => baldes.includes(l.situacao)); break;
-        default: linhas = painel.chegaram.slice();
+        case "fechados": linhas = fechadosDoCanal(painel); break;
+        default:
+          if (tabela.visao.startsWith("fechados:")) { linhas = fechadosDoCanal(painel, tabela.visao.slice(9)); break; } linhas = painel.chegaram.slice();
       }
       const q = leadsNorm(tabela.busca);
       if (q) linhas = linhas.filter((l) => leadsNorm(`${l.nome} ${l.empresa} ${l.vendedor}`).includes(q));
       // Filtro por motivo de perda (vem do RD).
       if (tabela.motivo) linhas = linhas.filter((l) => ((l.motivo || "").trim() || "Sem motivo informado") === tabela.motivo);
-      const dataDeOrdem = (l) => (tabela.visao === "chegaram" || tabela.visao === "semContatoAgora" ? l.chegada : l.perdidoEm || l.chegada);
+      const dataDeOrdem = (l) => (visaoFechados(tabela.visao) ? painel.vendaEm.get(l.id) || l.chegada : tabela.visao === "chegaram" || tabela.visao === "semContatoAgora" ? l.chegada : l.perdidoEm || l.chegada);
       return linhas.sort((a, b) => (dataDeOrdem(b)?.getTime() || 0) - (dataDeOrdem(a)?.getTime() || 0));
     }
 
@@ -264,23 +278,24 @@
       </div>`;
     }
 
-    function tabelaHtml(linhas) {
+    function tabelaHtml(linhas, painel) {
       const visiveis = linhas.slice(0, tabela.limite);
-      const mostraPerda = !["chegaram", "semContatoAgora"].includes(tabela.visao);
+      const fechados = visaoFechados(tabela.visao);
+      const mostraPerda = !fechados && !["chegaram", "semContatoAgora"].includes(tabela.visao);
       const corpo = visiveis.map((l) => {
         const sit = LEADS_SITUACOES[l.situacao] || LEADS_SITUACOES.andamento;
         return `<tr data-lead="${esc(l.id)}">
           <td><div class="lead-cell"><div class="lead-avatar">${esc(initials(l.nome))}</div><div><div class="lead-name">${esc(l.nome)}</div><div class="lead-meta">${esc(l.empresa || "—")}</div></div></div></td>
           <td class="lead-date">${dataBr(l.chegada)}</td>
-          <td><span class="lead-status ${sit.classe}">${esc(sit.label)}</span>${mostraPerda && l.motivo ? `<div class="lead-meta">${esc(l.motivo)}</div>` : ""}</td>
+          <td><span class="lead-status ${sit.classe}">${esc(sit.label)}</span>${mostraPerda && l.motivo ? `<div class="lead-meta">${esc(l.motivo)}</div>` : ""}${fechados ? `<div class="lead-meta">${esc(canalDaFonte(l.origem).nome)}</div>` : ""}</td>
           <td class="lead-etapa">${esc(l.etapa)}</td>
           <td>${esc(l.vendedor)}</td>
           <td class="cell-num">${l.valor ? brl(l.valor) : "—"}</td>
-          <td class="lead-date">${mostraPerda ? dataBr(l.perdidoEm) : dataBr(l.ultimaInteracao)}</td>
+          <td class="lead-date">${fechados ? dataBr(painel.vendaEm.get(l.id)) : mostraPerda ? dataBr(l.perdidoEm) : dataBr(l.ultimaInteracao)}</td>
         </tr>`;
       }).join("");
       return `<div class="leads-table-wrap"><table class="leads-table">
-          <thead><tr><th>Lead</th><th>Chegada</th><th>Situação</th><th>Etapa no RD</th><th>Vendedor</th><th class="cell-num">Valor</th><th>${mostraPerda ? "Perdido em" : "Última interação"}</th></tr></thead>
+          <thead><tr><th>Lead</th><th>Chegada</th><th>Situação</th><th>Etapa no RD</th><th>Vendedor</th><th class="cell-num">Valor</th><th>${fechados ? "Fechou em" : mostraPerda ? "Perdido em" : "Última interação"}</th></tr></thead>
           <tbody>${corpo}</tbody>
         </table></div>
         ${linhas.length ? "" : `<div class="lead-empty">Nenhum lead encontrado com os filtros atuais.</div>`}
@@ -329,6 +344,8 @@
       const vendasDoPeriodo = (r) => (store.sales || []).filter((s) => s.closed_at && s.closed_at >= r.start && s.closed_at < r.end && (!sellerOk || s.seller_id === sellerOk));
       const vendidos = vendasDoPeriodo(range);
       painel.vendidosIds = new Set(vendidos.map((s) => s.deal_id));
+      painel.vendaEm = new Map(vendidos.map((s) => [s.deal_id, s.closed_at]));
+      const nFechados = (canalId) => fechadosDoCanal(painel, canalId).length;
       const vendidosAntes = period === "all" ? null : vendasDoPeriodo(previousRange(range)).length;
       const prev = period === "all" ? null : getLeadsPainel(store, { range: previousRange(range), sellerId: sellerOk });
       const p = painel.perdidos;
@@ -430,7 +447,13 @@
           </div>
           <div class="leads-filters">
             <div class="field search"><input id="lead-search" type="search" placeholder="Buscar nome, empresa ou vendedor..." value="${esc(tabela.busca)}" /></div>
-            <div class="field"><select id="lead-visao">${VISOES.map((v) => `<option value="${v.value}" ${v.value === tabela.visao ? "selected" : ""}>${v.label}</option>`).join("")}</select></div>
+            <div class="field"><select id="lead-visao">
+                <optgroup label="Leads">${VISOES.map((v) => `<option value="${v.value}" ${v.value === tabela.visao ? "selected" : ""}>${v.label}</option>`).join("")}</optgroup>
+                <optgroup label="Fecharam conosco no período">
+                  <option value="fechados" ${tabela.visao === "fechados" ? "selected" : ""}>Fecharam conosco — geral (${n(nFechados())})</option>
+                  ${CANAIS_FECHADOS.map((c) => `<option value="fechados:${c.id}" ${tabela.visao === "fechados:" + c.id ? "selected" : ""}>Fecharam — ${esc(c.nome)} (${n(nFechados(c.id))})</option>`).join("")}
+                </optgroup>
+              </select></div>
             <div class="field"><select id="lead-motivo" aria-label="Motivo de perda"><option value="">Todos os motivos de perda</option>${motivos.map((m) => `<option value="${esc(m.motivo)}" ${m.motivo === tabela.motivo ? "selected" : ""}>${esc(m.motivo)} (${n(m.n)})</option>`).join("")}</select></div>
           </div>
           <div id="lead-table"></div>
@@ -447,7 +470,7 @@
         const linhas = linhasDaVisao(painel, range);
         document.getElementById("lead-count").textContent = `${n(linhas.length)} lead${linhas.length === 1 ? "" : "s"}`;
         const host = document.getElementById("lead-table");
-        host.innerHTML = tabelaHtml(linhas);
+        host.innerHTML = tabelaHtml(linhas, painel);
         const porId = new Map(linhas.map((l) => [l.id, l]));
         host.querySelectorAll("tr[data-lead]").forEach((tr) => tr.addEventListener("click", () => abrirLead(porId.get(tr.dataset.lead))));
         host.querySelector("#lead-more")?.addEventListener("click", () => { tabela.limite += 200; desenharTabela(); });
@@ -460,7 +483,13 @@
         render();
         document.getElementById("lead-table")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }));
-      document.getElementById("lead-visao").addEventListener("change", (e) => { tabela.visao = e.target.value; tabela.limite = 100; render(); });
+      document.getElementById("lead-visao").addEventListener("change", (e) => {
+        tabela.visao = e.target.value;
+        // O motivo de perda só vale para as listas de perdidos.
+        if (!["perdidos", "perdidosTodos"].includes(tabela.visao)) tabela.motivo = "";
+        tabela.limite = 100;
+        render();
+      });
       document.getElementById("lead-motivo").addEventListener("change", (e) => {
         tabela.motivo = e.target.value;
         if (tabela.motivo && !["perdidos", "perdidosTodos"].includes(tabela.visao)) tabela.visao = "perdidos";
