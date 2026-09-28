@@ -110,6 +110,8 @@ function getLeadsPainel(store, { range, sellerId } = {}) {
       perdidoEm: LEADS_BUCKETS_PERDA.includes(situacao) || situacao === "perdidoOutro" ? leadsDataDaPerda(d) : null,
       ultimaInteracao: d.last_interaction_at || null,
       origem: d.origin || "",
+      // Motivo de perda do RD (deal_lost_reason), gravado pela sincronização desde 28/09/2026.
+      motivo: d.loss_reason || "",
     };
   });
 
@@ -190,6 +192,25 @@ function leadsChegadasPorPeriodo(chegaram, range) {
   }
   const lista = [...barras.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1)).map(([k, n]) => ({ chave: k, rotulo: rotulo(k), n }));
   return { modo, barras: lista };
+}
+
+/**
+ * Ranking dos motivos de perda (do RD) de uma lista de leads perdidos:
+ * [{ motivo, n, valor, pct }], do mais frequente para o menos.
+ */
+function leadsMotivosDePerda(perdidos) {
+  const mapa = new Map();
+  for (const l of perdidos) {
+    const motivo = (l.motivo || "").trim() || "Sem motivo informado";
+    const atual = mapa.get(motivo) || { motivo, n: 0, valor: 0 };
+    atual.n += 1;
+    atual.valor += l.valor || 0;
+    mapa.set(motivo, atual);
+  }
+  const total = perdidos.length || 1;
+  return [...mapa.values()]
+    .map((m) => ({ ...m, pct: (m.n / total) * 100 }))
+    .sort((a, b) => b.n - a.n || b.valor - a.valor || a.motivo.localeCompare(b.motivo, "pt-BR"));
 }
 
 if (typeof module !== "undefined") {
