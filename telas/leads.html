@@ -188,7 +188,7 @@
 
     const VISOES = [
       { value: "chegaram", label: "Leads que chegaram no período" },
-      { value: "andamento", label: "Em andamento (chegaram no período)" },
+      { value: "andamento", label: "Em andamento (chegaram no período, sem os vendidos)" },
       { value: "perdidos", label: "Leads perdidos no período" },
       { value: "semContatoAgora", label: "Sem contato agora" },
       { value: "perdidosTodos", label: "Funil Perdidos — tudo (sem filtro de data)" },
@@ -225,7 +225,7 @@
         case "retornoFuturo":
         case "vendasPerdidas":
         case "semRetorno": linhas = painel.leads.filter((l) => l.situacao === tabela.visao && perdidoNoPeriodo(l)); break;
-        case "andamento": linhas = painel.chegaram.filter((l) => l.situacao === "andamento" || l.situacao === "vendido"); break;
+        case "andamento": linhas = painel.chegaram.filter((l) => l.situacao === "andamento"); break;
         case "semContatoAgora": linhas = painel.leads.filter((l) => l.situacao === "semContato"); break;
         case "perdidosTodos": linhas = painel.leads.filter((l) => baldes.includes(l.situacao)); break;
         case "fechados": linhas = fechadosDoCanal(painel); break;
@@ -363,11 +363,13 @@
       const motivos = leadsMotivosDePerda(perdidosPeriodo);
       const maiorMotivo = motivos[0];
       const maxMotivo = Math.max(1, ...motivos.map((m) => m.n));
-      const emAndamento = saf.andamento + saf.vendido;
+      // Vendido não é "em andamento": já é cliente (pedido do usuário, 28/09/2026).
+      const emAndamento = saf.andamento;
       const totalSafra = painel.chegaram.length;
       const partes = [
         { rotulo: "Sem contato", n: saf.semContato, cor: "var(--indigo-500)", nota: "ainda sem contato" },
-        { rotulo: "Em andamento", n: emAndamento, cor: "var(--amber-500)", nota: "pré-vendas, negociação ou vendidos" },
+        { rotulo: "Em andamento", n: emAndamento, cor: "var(--amber-500)", nota: "pré-vendas ou negociação" },
+        { rotulo: "Vendidos", n: saf.vendido, cor: "var(--emerald-500, #10b981)", nota: "já são clientes" },
         { rotulo: "Perdidos", n: saf.perdido, cor: "var(--red-500)", nota: "já foram para o funil Perdidos" },
       ];
       const pctDe = (v) => (totalSafra ? (v / totalSafra) * 100 : 0);
@@ -389,7 +391,7 @@
 
         <div id="period-filter"></div>
 
-        ${perfBannerHtml({ titulo: `Performance de Leads · ${rotuloPeriodo}`, nota: totalSafra ? notaPorTaxa(100 - pctDe(saf.perdido), [85, 70, 55]) : NOTAS_PERF.atencao, desc: `${n(totalSafra)} lead${totalSafra === 1 ? "" : "s"} chegaram: ${n(emAndamento)} em andamento, ${n(saf.perdido)} já perdidos e ${n(saf.semContato)} ainda sem contato.` })}
+        ${perfBannerHtml({ titulo: `Performance de Leads · ${rotuloPeriodo}`, nota: totalSafra ? notaPorTaxa(100 - pctDe(saf.perdido), [85, 70, 55]) : NOTAS_PERF.atencao, desc: `${n(totalSafra)} lead${totalSafra === 1 ? "" : "s"} chegaram: ${n(emAndamento)} em andamento, ${n(saf.vendido)} vendido${saf.vendido === 1 ? "" : "s"}, ${n(saf.perdido)} já perdidos e ${n(saf.semContato)} ainda sem contato.` })}
 
         <div class="kpi-grid lead-kpis">
           ${cartaoClicavel("chegaram", { label: "Leads que chegaram", value: totalSafra, change: prev ? pctChange(totalSafra, prev.chegaram.length) : undefined, tone: "indigo", icon: ICON_USER_PLUS })}
