@@ -1065,6 +1065,7 @@ function openSale(id){
       const s = sales.find(x=>x.id===id);
       if(!s) return;
       selectedId=id;
+      window.__onbAberto=s.key||String(s.id);
       const percent=saleStatusPercent(s);
       document.getElementById('detailSaleId').textContent=String(s.id).padStart(4,'0');
       document.getElementById('detailAvatar').textContent=s.abbr || initials(s.name);
@@ -1124,6 +1125,7 @@ function openSale(id){
       screen.setAttribute('aria-hidden','true');
       document.body.style.overflow='';
       selectedId=null;
+      window.__onbAberto=null;
     }
 
     function saveSales(){ persistAll(); }
@@ -1259,6 +1261,8 @@ document.getElementById('detailScreen').addEventListener('click',e=>{ if(!e.targ
     
     function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window.__toast);window.__toast=setTimeout(()=>t.classList.remove('show'),2600)}
     renderSales();
+    // A sincronização em segundo plano redesenha a tela: se um card estava aberto, ele continua aberto.
+    if (window.__onbAberto) { const aberto = sales.find((x) => (x.key || String(x.id)) === window.__onbAberto); if (aberto) openSale(aberto.id); }
       
       document.getElementById('mockRefresh').onclick = recarregar;
     }
