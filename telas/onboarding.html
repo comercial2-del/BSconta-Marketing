@@ -374,6 +374,12 @@
 .onb .constituicao-texto{flex:1;white-space:pre-wrap;font-size:.8rem;color:var(--text);line-height:1.5}
 .onb .constituicao-texto.vazio{color:var(--text-faint)}
 .onb .constituicao-input{min-height:12rem}
+
+/* Calendário do Onboarding (28/09/2026) */
+.onb .onb-cal{display:inline-flex;align-items:center;justify-content:center}
+.onb .onb-cal svg{width:18px;height:18px}
+.onb .onb-periodo{border:1px solid var(--indigo-200,#c7d2fe);background:rgba(99,102,241,.08);color:var(--indigo-600);border-radius:999px;padding:.35rem .75rem;font-size:.74rem;font-weight:750;cursor:pointer}
+.onb .onb-periodo b{margin-left:.3rem}
 </style>
 </head>
 <body>
@@ -388,8 +394,10 @@
             <p class="page-sub">Toda venda marcada como ganha no RD Station vira um Card aqui automaticamente, pronta para o onboarding.</p>
           </div>
           <div class="head-actions">
+            <button type="button" class="onb-periodo" id="onbPeriodo" hidden title="Tirar o filtro de data"></button>
+            <button class="icon-btn onb-cal" type="button" aria-label="Calendário" title="Filtrar pela data da venda"></button>
             <button class="ghost-btn" type="button" id="mockRefresh"><span data-icon="refresh"></span>Atualizar</button>
-            <button class="primary-btn" type="button" id="newSale"><span data-icon="plus"></span>Nova venda</button>
+            <button class="primary-btn" type="button" id="newSale" hidden><span data-icon="plus"></span>Nova venda</button>
           </div>
         </section>
 
@@ -962,11 +970,13 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       const sf = document.getElementById('statusFilter').value;
       const tf = document.getElementById('typeFilter').value;
       const saleDate = document.getElementById('saleDateFilter').value;
+      const perOnb = periodoOnboarding(); // filtro do calendário (data da venda)
       const rows = sales.filter(s =>
         (!q || [s.name,s.cnpj,s.closer,s.service,s.type].join(' ').toLowerCase().includes(q)) &&
         (!sf || s.status===sf) &&
         (!tf || s.type===tf) &&
-        (!saleDate || s.sale === isoToBR(saleDate))
+        (!saleDate || s.sale === isoToBR(saleDate)) &&
+      (!perOnb || ((dd) => dd && dd >= perOnb.start && dd < perOnb.end)(dataBrParaDate(s.sale)))
       );
       document.getElementById('resultCount').textContent = `${rows.length} venda${rows.length===1?'':'s'}`;
       // Muitas vendas no histórico: mostra as mais recentes e carrega o resto sob demanda.
@@ -1011,7 +1021,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
           if(e.key==='Enter' || e.key===' ') { e.preventDefault(); openSale(Number(card.dataset.id)); }
         });
       });
-      updateKpis(sales);
+      updateKpis(perOnb ? rows : sales);
     }
 
     
@@ -1537,7 +1547,22 @@ document.getElementById('detailScreen').addEventListener('click',e=>{ if(!e.targ
       document.getElementById('mockRefresh').onclick = recarregar;
     }
 
-    let detalhesRd = new Map();
+    
+// Filtro por período no calendário do topo (28/09/2026): usa a data da venda.
+function periodoOnboarding(){
+  const per=new URLSearchParams(location.search).get('period'); if(!per) return null;
+  try{ const r=resolvePeriod(per); return r&&r.start&&r.end?r:null; }catch(e){ return null; }
+}
+function dataBrParaDate(br){ const [d,m,y]=String(br||'').split('/').map(Number); return d&&m&&y?new Date(y,m-1,d):null; }
+function ligarCalendarioOnboarding(root){
+  const cal=root.querySelector('.onb-cal'); if(cal && typeof ICONS!=='undefined') cal.innerHTML=ICONS.meeting;
+  setupCalendarPicker(()=>montar());
+  const chip=root.querySelector('#onbPeriodo'); const per=periodoOnboarding(); if(!chip) return;
+  if(per){ const fim=new Date(per.end.getTime()-1); chip.hidden=false; chip.innerHTML='Vendas de '+dataBrOnb(per.start)+' a '+dataBrOnb(fim)+' <b aria-hidden="true">×</b>'; chip.onclick=()=>{ history.replaceState(null,'',location.pathname); montar(); }; }
+  else chip.hidden=true;
+}
+
+let detalhesRd = new Map();
 // A cada minuto relê os detalhes do RD (ex.: "Serviço contratado") e redesenha
 // o board se algo mudou — sem precisar recarregar a página (28/09/2026).
 setInterval(async () => {
@@ -1560,6 +1585,7 @@ function montar() {
       iniciarOnboarding(root, clientesDasVendas(store, detalhesRd), async () => {
         try { store = await loadAll({ fresh: true }); try { detalhesRd = await carregarDetalhesRd(store); } catch (e) {} montar(); } catch (e) { console.error(e); }
       });
+  ligarCalendarioOnboarding(root);
     }
 
     (async () => {
