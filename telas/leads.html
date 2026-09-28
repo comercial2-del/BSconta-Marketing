@@ -69,7 +69,7 @@
     .perda-track span{display:block;height:100%;border-radius:999px}
     .perdas-nota{font-size:.65rem;color:var(--text-faint);line-height:1.45;margin:0}
 
-    .leads-filters{padding:.75rem 1.1rem;display:grid;grid-template-columns:2fr 1fr;gap:.55rem;border-bottom:1px solid var(--surface-2)}
+    .leads-filters{padding:.75rem 1.1rem;display:grid;grid-template-columns:2fr 1fr 1fr;gap:.55rem;border-bottom:1px solid var(--surface-2)}
     .field{position:relative}
     .field input,.field select{width:100%;height:40px;border:1px solid var(--border);border-radius:9px;background:var(--surface);padding:0 .72rem;font-size:.78rem;color:var(--text-soft);outline:none;font-family:inherit}
     .field input:focus,.field select:focus{border-color:var(--indigo-500);box-shadow:0 0 0 3px rgba(99,102,241,.08)}
@@ -134,6 +134,18 @@
     .lead-sec-head h2{font-size:1rem;font-weight:800;margin:0;letter-spacing:-.01em}
     .lead-sec-head p{font-size:.78rem;color:var(--text-faint);margin:.2rem 0 0}
     @media (max-width:760px){.safra-legenda{grid-template-columns:1fr}}
+    /* Motivos de perda (28/09/2026) */
+    .motivos-lista{display:flex;flex-direction:column;gap:.45rem;margin-top:.9rem}
+    .motivo-row{all:unset;box-sizing:border-box;display:grid;grid-template-columns:1fr auto;gap:.3rem .8rem;align-items:center;padding:.55rem .7rem;border:1px solid var(--border);border-radius:11px;background:var(--surface);cursor:pointer;transition:border-color .12s,background .12s}
+    .motivo-row:hover{background:var(--surface-2)}
+    .motivo-row.ativo{border-color:var(--red-500);background:var(--red-50)}
+    .motivo-row:focus-visible{outline:2px solid var(--indigo-500);outline-offset:2px}
+    .motivo-nome{font-size:.8rem;font-weight:750;color:var(--text)}
+    .motivo-num{font-size:.74rem;color:var(--text-soft);text-align:right;white-space:nowrap}
+    .motivo-num strong{color:var(--text)}
+    .motivo-track{grid-column:1/-1;height:7px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+    .motivo-track span{display:block;height:100%;border-radius:999px;background:var(--red-500)}
+    @media (max-width:760px){.leads-filters{grid-template-columns:1fr}}
     @media (max-width:760px){
       .leads-kpis{grid-template-columns:1fr 1fr}
       .lead-funnel{grid-template-columns:1fr 1fr}
@@ -151,15 +163,15 @@
   <script src="../js/config.js?v=20260925"></script>
   <script src="../js/supabaseClient.js?v=20260925"></script>
   <script src="../js/auth.js?v=20260925"></script>
-  <script src="../js/data.js?v=20260925"></script>
+  <script src="../js/data.js?v=20260928"></script>
   <script src="../js/calc.js?v=20260925"></script>
   <script src="../js/ui.js?v=20260926"></script>
   <script src="../js/sync.js?v=20260925"></script>
-  <script src="../js/leads.js?v=20260925"></script>
+  <script src="../js/leads.js?v=20260928"></script>
   <script>
     let store = null;
     // Estado da tabela (não vai para a URL: é só a visão do momento).
-    const tabela = { visao: "chegaram", busca: "", limite: 100 };
+    const tabela = { visao: "chegaram", busca: "", limite: 100, motivo: "" };
 
     const PERIODOS_LEADS = [
       { value: "today", label: "Hoje" },
@@ -208,6 +220,8 @@
       }
       const q = leadsNorm(tabela.busca);
       if (q) linhas = linhas.filter((l) => leadsNorm(`${l.nome} ${l.empresa} ${l.vendedor}`).includes(q));
+      // Filtro por motivo de perda (vem do RD).
+      if (tabela.motivo) linhas = linhas.filter((l) => ((l.motivo || "").trim() || "Sem motivo informado") === tabela.motivo);
       const dataDeOrdem = (l) => (tabela.visao === "chegaram" || tabela.visao === "semContatoAgora" ? l.chegada : l.perdidoEm || l.chegada);
       return linhas.sort((a, b) => (dataDeOrdem(b)?.getTime() || 0) - (dataDeOrdem(a)?.getTime() || 0));
     }
@@ -258,7 +272,7 @@
         return `<tr data-lead="${esc(l.id)}">
           <td><div class="lead-cell"><div class="lead-avatar">${esc(initials(l.nome))}</div><div><div class="lead-name">${esc(l.nome)}</div><div class="lead-meta">${esc(l.empresa || "—")}</div></div></div></td>
           <td class="lead-date">${dataBr(l.chegada)}</td>
-          <td><span class="lead-status ${sit.classe}">${esc(sit.label)}</span></td>
+          <td><span class="lead-status ${sit.classe}">${esc(sit.label)}</span>${mostraPerda && l.motivo ? `<div class="lead-meta">${esc(l.motivo)}</div>` : ""}</td>
           <td class="lead-etapa">${esc(l.etapa)}</td>
           <td>${esc(l.vendedor)}</td>
           <td class="cell-num">${l.valor ? brl(l.valor) : "—"}</td>
@@ -292,6 +306,7 @@
           ${item("Perdido em", dataBr(lead.perdidoEm))}
           ${item("Última interação", dataBr(lead.ultimaInteracao))}
           ${item("Origem", lead.origem || "Não informada no RD")}
+          ${lead.perdidoEm ? item("Motivo da perda", lead.motivo || "Sem motivo informado") : ""}
         </div>
         <div class="lead-modal-actions"><button type="button" class="ghost-btn" data-fechar>Fechar</button></div>
       </div>`;
@@ -326,6 +341,11 @@
 
       // Resumo da safra do período (quem chegou e onde está agora).
       const saf = painel.safra;
+      // Motivos de perda dos leads perdidos no período (funil Perdidos do RD).
+      const perdidosPeriodo = painel.leads.filter((l) => ["retornoFuturo", "vendasPerdidas", "semRetorno"].includes(l.situacao) && l.perdidoEm && l.perdidoEm >= range.start && l.perdidoEm < range.end);
+      const motivos = leadsMotivosDePerda(perdidosPeriodo);
+      const maiorMotivo = motivos[0];
+      const maxMotivo = Math.max(1, ...motivos.map((m) => m.n));
       const emAndamento = saf.andamento + saf.vendido;
       const totalSafra = painel.chegaram.length;
       const partes = [
@@ -381,6 +401,25 @@
             </div>` : `<p class="text-empty">Nenhum lead chegou no período selecionado.</p>`}
         </div>
 
+        <div class="card card-p">
+          <div class="lead-sec-head">
+            <div>
+              <h2>Motivos de perda</h2>
+              <p>Por que os ${n(perdidosPeriodo.length)} leads perdidos no período foram perdidos — motivo registrado no RD Station. Clique num motivo para ver os leads.</p>
+            </div>
+            ${maiorMotivo ? `<span class="client-count-pill">Maior motivo: ${esc(maiorMotivo.motivo)}</span>` : ""}
+          </div>
+          ${motivos.length ? `
+            <div class="motivos-lista">
+              ${motivos.map((m, i) => `
+                <button type="button" class="motivo-row ${tabela.motivo === m.motivo ? "ativo" : ""}" data-motivo="${esc(m.motivo)}">
+                  <span class="motivo-nome">${i === 0 ? "🏆 " : ""}${esc(m.motivo)}</span>
+                  <span class="motivo-num"><strong>${n(m.n)}</strong> · ${m.pct.toFixed(0)}%${m.valor ? ` · ${brl(m.valor)}` : ""}</span>
+                  <span class="motivo-track"><span style="width:${(m.n / maxMotivo) * 100}%"></span></span>
+                </button>`).join("")}
+            </div>` : `<p class="text-empty">Nenhum lead perdido no período selecionado.</p>`}
+        </div>
+
         <div class="card card-p lead-lista-card">
           <div class="lead-sec-head">
             <div>
@@ -392,6 +431,7 @@
           <div class="leads-filters">
             <div class="field search"><input id="lead-search" type="search" placeholder="Buscar nome, empresa ou vendedor..." value="${esc(tabela.busca)}" /></div>
             <div class="field"><select id="lead-visao">${VISOES.map((v) => `<option value="${v.value}" ${v.value === tabela.visao ? "selected" : ""}>${v.label}</option>`).join("")}</select></div>
+            <div class="field"><select id="lead-motivo" aria-label="Motivo de perda"><option value="">Todos os motivos de perda</option>${motivos.map((m) => `<option value="${esc(m.motivo)}" ${m.motivo === tabela.motivo ? "selected" : ""}>${esc(m.motivo)} (${n(m.n)})</option>`).join("")}</select></div>
           </div>
           <div id="lead-table"></div>
         </div>
@@ -421,6 +461,20 @@
         document.getElementById("lead-table")?.scrollIntoView({ behavior: "smooth", block: "start" });
       }));
       document.getElementById("lead-visao").addEventListener("change", (e) => { tabela.visao = e.target.value; tabela.limite = 100; render(); });
+      document.getElementById("lead-motivo").addEventListener("change", (e) => {
+        tabela.motivo = e.target.value;
+        if (tabela.motivo && !["perdidos", "perdidosTodos"].includes(tabela.visao)) tabela.visao = "perdidos";
+        tabela.limite = 100;
+        render();
+      });
+      content.querySelectorAll("[data-motivo]").forEach((b) => b.addEventListener("click", () => {
+        const motivo = b.dataset.motivo;
+        tabela.motivo = tabela.motivo === motivo ? "" : motivo;
+        tabela.visao = "perdidos";
+        tabela.limite = 100;
+        render();
+        document.getElementById("lead-table")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }));
       let t = null;
       document.getElementById("lead-search").addEventListener("input", (e) => {
         clearTimeout(t);
