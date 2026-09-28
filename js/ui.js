@@ -99,8 +99,8 @@ function renderShell(profile) {
         <div class="sidebar-promo">
           <div style="position:relative;z-index:1">
             <strong style="display:block;text-align:center;font-size:1rem;font-weight:850;color:var(--indigo-600,#4f46e5);letter-spacing:.01em">BSconta<sup>+</sup></strong>
-            <p style="margin:.35rem 0 0;text-align:left;white-space:nowrap;font-size:.78rem;line-height:1.3">Transformando números</p>
-            <p style="margin:.1rem 0 0;display:flex;align-items:center;justify-content:flex-end;gap:.35rem;white-space:nowrap;font-size:.78rem;line-height:1.3">em resultados. <img class="logo-mark" src="../assets/bsconta-logo.jpg" alt="BSconta+" style="width:20px;height:20px;border-radius:5px;object-fit:cover" /></p>
+            <p style="margin:.35rem 0 0;text-align:center;white-space:nowrap;font-size:.78rem;line-height:1.3">Transformando números</p>
+            <p style="margin:.1rem 0 0;text-align:center;white-space:nowrap;font-size:.78rem;line-height:1.3">em resultados.</p>
           </div>
           <p style="margin:.55rem 0 0;padding-top:.5rem;border-top:1px dashed rgba(99,102,241,.25);font-size:.66rem;line-height:1.35;color:var(--text-faint,#8a8fa3);position:relative;z-index:1">Criado por<br><strong style="font-size:.74rem;color:var(--indigo-600,#4f46e5);font-weight:800">Marlon Gomes da Silva</strong></p>
           <span aria-hidden="true" style="position:absolute;right:-.4rem;bottom:.2rem;font-size:2.4rem;font-weight:900;letter-spacing:-.04em;color:rgba(99,102,241,.07);transform:rotate(-12deg);pointer-events:none;user-select:none;white-space:nowrap;line-height:1">MGS</span>
