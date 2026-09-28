@@ -1462,6 +1462,8 @@ function openSale(id){
       document.getElementById('onboardingAlertStatus').innerHTML=`<span class="stage-marker ${meta.className}">${String(idx+1).padStart(2,'0')}</span><span class="badge ${st.status==='done'?'b-green':st.status==='blocked'?'b-red':st.status==='progress'?'b-indigo':'b-neutral'}">${esc(meta.label)}</span>`;
       document.getElementById('onboardingAlertMain').textContent=`${meta.label} — ${main || st.title}`;
       const body=document.getElementById('onboardingAlertBody'); body.innerHTML=onboardingStageEditorHtml(s,idx);
+  // 01 · Handoff sem Responsável, Data de início e Prazo (pedido do usuário, 28/09/2026).
+  if(idx===0) body.querySelectorAll('[data-action="stage-responsible"],[data-action="stage-start"],[data-action="stage-due"]').forEach(i=>i.closest('label')?.remove());
       const modal=document.getElementById('onboardingAlert'); modal.classList.add('open'); modal.setAttribute('aria-hidden','false');
     }
     function closeOnboardingAlert(){
