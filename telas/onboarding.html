@@ -476,7 +476,7 @@
                 <div class="detail-info-grid" id="rdInfo"></div>
               </section>
               <section class="detail-section" id="constituicaoSection" hidden>
-                <div class="section-title"><h3>Dados do cliente para a Constituição</h3><span>enviados pelo cliente</span></div>
+                <div class="section-title"><h3 id="constituicaoTitulo">Dados do cliente para a Constituição</h3><span>enviados pelo cliente</span></div>
                 <div id="constituicaoBox"></div>
               </section>
               <section class="detail-section" id="cnpjSection">
@@ -1179,18 +1179,27 @@ function renderSocios(s,r){
 // Constituição: sem dados automáticos de CNPJ/empresa/sócios; só um campo com o que o cliente enviou.
 function aplicarProcesso(s){
   const p=processoDaVenda(s);
-  const titulo=document.getElementById('alertasTitulo'); if(titulo) titulo.textContent=p==='transformacao'?'Informação de Transformação':'Alertas';
+  const titulo=document.getElementById('alertasTitulo'); if(titulo) titulo.textContent='Alertas';
   const constituicao=p==='constituicao';
   ['cnpjSection','clienteSection'].forEach(id=>{ const el=document.getElementById(id); if(el) el.hidden=constituicao; });
   if(constituicao){ const ps=document.getElementById('partnersSection'); if(ps) ps.hidden=true; }
-  const sec=document.getElementById('constituicaoSection'); if(sec) sec.hidden=!constituicao;
-  if(constituicao) renderDadosConstituicao(s);
+  // Campo "Dados do cliente" (28/09/2026): Constituição (logo após Negociação) e
+  // Transformação (acima de Informações dos sócios, mantendo os dados da empresa).
+  const campo=constituicao||p==='transformacao';
+  const sec=document.getElementById('constituicaoSection');
+  if(sec){
+    sec.hidden=!campo;
+    const t=document.getElementById('constituicaoTitulo'); if(t) t.textContent=p==='transformacao'?'Dados do cliente para a Transformação':'Dados do cliente para a Constituição';
+    if(p==='transformacao'){ const ps=document.getElementById('partnersSection'); if(ps&&ps.previousElementSibling!==sec) ps.parentNode.insertBefore(sec,ps); }
+    else { const neg=document.getElementById('rdInfo'); const negSec=neg&&neg.closest('section'); if(negSec&&negSec.nextElementSibling!==sec) negSec.after(sec); }
+  }
+  if(campo) renderDadosConstituicao(s);
 }
 function renderDadosConstituicao(s){
   const el=document.getElementById('constituicaoBox'); if(!el) return;
   const texto=(s.nota&&s.nota.dados_cliente)||'';
   const pode=podeAnexar()&&!!s.dealId;
-  el.innerHTML='<div class="constituicao-box"><div class="constituicao-texto'+(texto?'':' vazio')+'">'+(texto?esc(texto):'Nenhuma informação ainda. '+(pode?'Clique no lápis para colar os dados que o cliente enviou (nome, CPF, endereço, atividade, capital social, sócios…).':'O Uriel preenche com os dados que o cliente enviar.'))+'</div>'+(pode?'<button type="button" class="alerta-editar" data-editar-const title="Editar dados do cliente" aria-label="Editar dados do cliente">'+ICON_LAPIS+'</button>':'')+'</div>';
+  el.innerHTML='<div class="constituicao-box"><div class="constituicao-texto'+(texto?'':' vazio')+'">'+(texto?esc(texto):'Nenhuma informação ainda. '+(pode?'Clique no lápis para colar os dados que o cliente enviou.':'O Uriel preenche com os dados que o cliente enviar.'))+'</div>'+(pode?'<button type="button" class="alerta-editar" data-editar-const title="Editar dados do cliente" aria-label="Editar dados do cliente">'+ICON_LAPIS+'</button>':'')+'</div>';
   const btn=el.querySelector('[data-editar-const]'); if(!btn) return;
   btn.addEventListener('click',()=>{
     el.innerHTML='<textarea class="alerta-input constituicao-input" rows="10" placeholder="Cole aqui os dados que o cliente enviou: nome completo, CPF, RG, endereço, e-mail, telefone, atividade da empresa, nome desejado, capital social, sócios e participação…">'+esc(texto)+'</textarea><div class="alerta-acoes"><button type="button" class="ghost-btn" data-a="cancelar">Cancelar</button><button type="button" class="primary-btn" data-a="salvar">Salvar</button></div>';
