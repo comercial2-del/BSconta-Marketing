@@ -1012,6 +1012,10 @@ function normBrasilApi(j){
     cnae:[j.cnae_fiscal,j.cnae_fiscal_descricao].filter(Boolean).join(' — '),capital:reaisCnpj(j.capital_social),endereco:end,cep:j.cep?String(j.cep).replace(/^(\d{5})(\d{3})$/,'$1-$2'):'',
     cidadeUf:[j.municipio,j.uf].filter(Boolean).join('/'),telefone:j.ddd_telefone_1||'',email:(j.email||'').toLowerCase(),
     simples:j.opcao_pelo_mei?'MEI':j.opcao_pelo_simples?'Optante pelo Simples':j.opcao_pelo_simples===false?'Não optante':'',
+    optSimples:j.opcao_pelo_simples??null,dataSimples:j.data_opcao_pelo_simples||'',exclusaoSimples:j.data_exclusao_do_simples||'',
+    optMei:j.opcao_pelo_mei??null,dataMei:j.data_opcao_pelo_mei||'',exclusaoMei:j.data_exclusao_do_mei||'',
+    regimes:(j.regime_tributario||[]).map(x=>({ano:x.ano,forma:x.forma_de_tributacao})).filter(x=>x.forma).sort((a,b)=>a.ano-b.ano),
+    secundarias:(j.cnaes_secundarios||[]).filter(x=>x&&x.codigo).map(x=>[x.codigo,x.descricao].filter(Boolean).join(' — ')),
     socios:(j.qsa||[]).map(q=>({nome:q.nome_socio,qualificacao:q.qualificacao_socio,entrada:dataIsoBr(q.data_entrada_sociedade)}))};
 }
 function normCnpjWs(j){
@@ -1021,6 +1025,10 @@ function normCnpjWs(j){
     cnae:[e.atividade_principal?.subclasse,e.atividade_principal?.descricao].filter(Boolean).join(' — '),capital:reaisCnpj(j.capital_social),endereco:end,cep:e.cep?String(e.cep).replace(/^(\d{5})(\d{3})$/,'$1-$2'):'',
     cidadeUf:[e.cidade?.nome,e.estado?.sigla].filter(Boolean).join('/'),telefone:[e.ddd1,e.telefone1].filter(Boolean).join(' '),email:(e.email||'').toLowerCase(),
     simples:j.simples?.mei==='Sim'?'MEI':j.simples?.simples==='Sim'?'Optante pelo Simples':j.simples?'Não optante':'',
+    optSimples:j.simples?(j.simples.simples==='Sim'):null,dataSimples:j.simples?.data_opcao_simples||'',exclusaoSimples:j.simples?.data_exclusao_simples||'',
+    optMei:j.simples?(j.simples.mei==='Sim'):null,dataMei:j.simples?.data_opcao_mei||'',exclusaoMei:j.simples?.data_exclusao_mei||'',
+    regimes:[],
+    secundarias:(e.atividades_secundarias||[]).map(x=>[x.subclasse,x.descricao].filter(Boolean).join(' — ')),
     socios:(j.socios||[]).map(q=>({nome:q.nome,qualificacao:q.qualificacao_socio?.descricao,entrada:dataIsoBr(q.data_entrada)}))};
 }
 const cacheCnpj=new Map();
@@ -1043,6 +1051,32 @@ function buscarCnpj(d){
   })();
   cacheCnpj.set(d,p); p.then(x=>{ if(x.erro) cacheCnpj.delete(d); }); return p;
 }
+
+// Regime tributário pela Receita (28/09/2026): Simples/MEI com datas e, fora do Simples,
+// a forma de tributação declarada (Lucro Presumido / Real / Arbitrado), comparando com o RD.
+const tituloCaso=t=>String(t||'').toLowerCase().replace(/(^|\s)\S/g,m=>m.toUpperCase()).replace(/\bDe\b/g,'de');
+function regimeDaReceita(r){
+  const ultimo=(r.regimes||[]).slice(-1)[0];
+  if(r.optMei===true) return {texto:'MEI (Simples Nacional)', chave:'simples'};
+  if(r.optSimples===true) return {texto:'Simples Nacional', chave:'simples'};
+  if(ultimo) return {texto:tituloCaso(ultimo.forma)+' ('+ultimo.ano+')', chave:/presumido/i.test(ultimo.forma)?'presumido':/real/i.test(ultimo.forma)?'real':'outro'};
+  if(r.optSimples===false) return {texto:'Não optante pelo Simples — Lucro Presumido ou Real (a Receita não informou qual)', chave:'fora'};
+  return {texto:'Não informado pela Receita', chave:''};
+}
+function linhaSimples(opt,desde,excl){
+  if(opt===true) return 'Sim'+(desde?', desde '+dataIsoBr(desde):'');
+  if(excl) return 'Não — excluído em '+dataIsoBr(excl)+(desde?' (optou em '+dataIsoBr(desde)+')':'');
+  if(opt===false) return 'Não';
+  return '—';
+}
+function confereComRd(rdValor, reg){
+  const v=String(rdValor||'').toLowerCase(); if(!v) return 'Tributação não informada no RD';
+  const rdChave=/simples|mei/.test(v)?'simples':/presumido/.test(v)?'presumido':/real/.test(v)?'real':'';
+  if(!rdChave||!reg.chave) return 'No RD: '+rdValor;
+  const bate = rdChave===reg.chave || (reg.chave==='fora' && rdChave!=='simples');
+  return bate ? 'Confere (RD: '+rdValor+')' : '⚠ Diferente — no RD está "'+rdValor+'", na Receita: '+reg.texto;
+}
+
 async function consultarCnpj(s){
   const el=document.getElementById('cnpjInfo'); const d=soDigitos(s.cnpj);
   if(d.length!==14){ el.innerHTML='<div class="cnpj-status">CNPJ não informado no RD. Quando o campo CNPJ da negociação for preenchido no RD, endereço, CEP, sócios e demais dados da Receita aparecem aqui automaticamente.</div>'; return; }
@@ -1050,7 +1084,7 @@ async function consultarCnpj(s){
   const r=await buscarCnpj(d);
   if(selectedId!==s.id) return;
   if(r.erro){ el.innerHTML='<div class="cnpj-status">'+esc(r.erro)+'</div>'; return; }
-  const linhas=[['CNPJ',formatarCnpj(d)],['Razão social',r.razao],['Nome fantasia',r.fantasia],['Situação cadastral',r.situacao],['Abertura',r.abertura],['Natureza jurídica',r.natureza],['Porte',r.porte],['Simples / MEI',r.simples],['Atividade principal (CNAE)',r.cnae],['Capital social',r.capital],['Endereço',r.endereco],['CEP',r.cep],['Cidade/UF',r.cidadeUf],['Telefone',r.telefone],['E-mail',r.email]];
+  const linhas=[['CNPJ',formatarCnpj(d)],['Razão social',r.razao],['Nome fantasia',r.fantasia],['Situação cadastral',r.situacao],['Abertura',r.abertura],['Natureza jurídica',r.natureza],['Porte',r.porte],['Regime tributário (Receita)',regimeDaReceita(r).texto],['Optante pelo Simples Nacional',linhaSimples(r.optSimples,r.dataSimples,r.exclusaoSimples)],['MEI',linhaSimples(r.optMei,r.dataMei,r.exclusaoMei)],['Confere com o RD?',confereComRd(campoRd(s.rd,'Tributação e Tipo'),regimeDaReceita(r))],['Atividade principal (CNAE)',r.cnae],['Atividades secundárias',(r.secundarias||[]).join('; ')||'Nenhuma'],['Histórico do regime',(r.regimes||[]).map(x=>x.ano+': '+tituloCaso(x.forma)).join(' · ')||'—'],['Capital social',r.capital],['Endereço',r.endereco],['CEP',r.cep],['Cidade/UF',r.cidadeUf],['Telefone',r.telefone],['E-mail',r.email]];
   el.innerHTML=linhas.map(([k,v])=>infoHtml(k,v||'—')).join('')+`<div class="cnpj-status">Fonte: ${esc(r.fonte)}.</div>`;
   if(!(s.partners||[]).length && r.socios.length){
     document.getElementById('partnersSection').hidden=false;
