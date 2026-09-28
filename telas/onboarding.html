@@ -639,15 +639,17 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
           amount: valor,
           monthly: sale.is_recurring ? valor : "—",
           discount: "—",
-          service: produtoRd || servicoRd || "A definir",
-      tipoRd: produtoRd && servicoRd ? servicoRd : "",
+          // "Produto / serviço" vem do campo "Serviço contratado" do RD (pedido do usuário, 28/09/2026);
+      // o produto da aba Produtos do RD aparece embaixo, menor.
+      service: servicoRd || "A definir",
+      tipoRd: produtoRd ? "Produto no RD: " + produtoRd : "",
       nota,
-          type: servicoRd || produtoRd || "A definir",
+          type: servicoRd || "A definir",
           status: "Novo",
           priority: "Normal",
           start: inicioRd || data,
           progress: 8,
-          saleInfo: { "Vendedor / closer": closer, Fechamento: data, "Valor da venda": valor, "Contato no RD": d.client_name || "—", Recorrente: sale.is_recurring ? "Sim" : "Não", Serviço: [produtoRd, servicoRd].filter(Boolean).join(" · ") || "A definir" },
+          saleInfo: { "Vendedor / closer": closer, Fechamento: data, "Valor da venda": valor, "Contato no RD": d.client_name || "—", Recorrente: sale.is_recurring ? "Sim" : "Não", Serviço: servicoRd || "A definir" },
           companyInfo: { Cliente: nome, Contato: d.client_name || "—", Telefone: (contato.telefones || []).join(", ") || "—", "E-mail": (contato.emails || []).join(", ") || "—", Empresa: empresaRd || d.company_name || "—", CNPJ: cnpjRd ? formatarCnpj(cnpjRd) : "Não informado no RD" },
           currentInfo: { "Processo contratado": "A definir", Situação: "Venda recebida do comercial" },
           pain: "A preencher no handoff comercial.",
@@ -1066,7 +1068,7 @@ function renderNegociacaoRd(s){
   const el=document.getElementById('rdInfo'); const det=s.rd;
   if(!det){ el.innerHTML='<div class="cnpj-status">Detalhes do RD ainda não sincronizados para esta venda.</div>'; return; }
   const reais=v=>v==null?'—':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-  const base=[['Nome',det.nome||'—'],['Qualificação',det.qualificacao!=null?String(det.qualificacao):'—'],['Data de fechamento',dataHoraRd(det.fechada_em)],['Fonte',det.fonte||'—'],['Campanha',det.campanha||'—'],['Criada em',dataHoraRd(det.criada_em)],['Valor total',reais(det.valor_total)],['Produto / serviço',produtosDetalhe(det)||'Nenhum produto na negociação']].concat(det.funil?[['Funil',det.funil]]:[]);
+  const base=[['Nome',det.nome||'—'],['Qualificação',det.qualificacao!=null?String(det.qualificacao):'—'],['Data de fechamento',dataHoraRd(det.fechada_em)],['Fonte',det.fonte||'—'],['Campanha',det.campanha||'—'],['Criada em',dataHoraRd(det.criada_em)],['Valor total',reais(det.valor_total)],['Produtos (aba Produtos do RD)',produtosDetalhe(det)||'Nenhum produto na negociação']].concat(det.funil?[['Funil',det.funil]]:[]);
   const campos=(det.campos||[]).map(c=>[c.label||'Campo', c.value!=null&&String(c.value).trim()!==''?String(c.value):'—']);
   const contatos=(det.contatos||[]).map(c=>`<div class="rd-contato"><strong>${esc(c.nome||'Contato')}</strong>${esc([c.cargo,...(c.telefones||[]),...(c.emails||[])].filter(Boolean).join(' · ')||'Sem telefone/e-mail')}</div>`).join('');
   const link=det.rd_deal_id?`<div class="cnpj-status"><a href="https://crm.rdstation.com/app/deals/${encodeURIComponent(det.rd_deal_id)}" target="_blank" rel="noopener">Abrir negociação no RD Station ↗</a></div>`:'';
