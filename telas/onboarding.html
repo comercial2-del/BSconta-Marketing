@@ -1433,7 +1433,9 @@ function openSale(id){
       // manter a janela aberta sem re-renderizar a grade
     });
     // Fecha ao clicar fora do card (no fundo escurecido) — sem botão "Voltar" (pedido do usuário, 28/09/2026).
-document.getElementById('detailScreen').addEventListener('click',e=>{ if(!e.target.closest('.detail-shell')) closeDetail(); });
+// Só fecha se o clique foi no fundo. Se o elemento clicado sumiu da tela (ex.: o lápis do
+// alerta, que vira a caixa de texto), NÃO é clique fora — antes isso fechava o card.
+document.getElementById('detailScreen').addEventListener('click',e=>{ if(!e.target.isConnected || e.target.closest('.detail-shell')) return; closeDetail(); });
     document.getElementById('closeOnboardingAlert').addEventListener('click',closeOnboardingAlert);
     document.getElementById('cancelOnboardingAlert').addEventListener('click',closeOnboardingAlert);
     document.getElementById('onboardingAlert').addEventListener('click',e=>{if(e.target.id==='onboardingAlert')closeOnboardingAlert();});
