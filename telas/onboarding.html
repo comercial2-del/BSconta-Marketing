@@ -310,6 +310,18 @@
 .onb .rd-contato strong{display:block;font-size:.78rem;color:var(--text)}
 .onb .cnpj-status{grid-column:1/-1;font-size:.74rem;color:var(--text-faint)}
 .onb .rd-contato strong{margin-bottom:.1rem}
+
+/* Anexos do card (28/09/2026) */
+.onb .anexos-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem}
+@media(max-width:800px){.onb .anexos-grid{grid-template-columns:1fr}}
+.onb .anexo-col{border:1px solid var(--border);border-radius:12px;padding:.7rem;display:flex;flex-direction:column;gap:.45rem;min-width:0}
+.onb .anexo-col-title{font-size:.68rem;font-weight:850;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);display:flex;justify-content:space-between}
+.onb .anexo-item{display:flex;align-items:center;gap:.4rem;font-size:.76rem;min-width:0}
+.onb .anexo-abrir{background:none;border:0;padding:0;color:var(--indigo-600);font-weight:750;cursor:pointer;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;font-size:.76rem}
+.onb .anexo-item small{color:var(--text-faint);white-space:nowrap;font-size:.66rem}
+.onb .anexo-apagar{border:0;background:none;color:var(--text-faint);cursor:pointer;font-size:1rem;line-height:1}
+.onb .anexo-add,.onb .anexo-link{align-self:flex-start;border:1px dashed var(--border);border-radius:9px;padding:.35rem .6rem;font-size:.72rem;font-weight:750;cursor:pointer;background:none;color:var(--indigo-600)}
+.onb .anexo-vazio,.onb .anexo-dica{font-size:.7rem;color:var(--text-faint)}
 </style>
 </head>
 <body>
@@ -415,6 +427,10 @@
                 <div class="section-title"><h3>Dados da empresa</h3><span>consulta CNPJ</span></div>
                 <div class="detail-info-grid" id="cnpjInfo"></div>
               </section>
+              <section class="detail-section">
+                <div class="section-title"><h3>Anexos</h3><span>documentos e reunião</span></div>
+                <div id="anexosBox"></div>
+              </section>
                 <section class="detail-section">
                   <div class="section-title"><h3>Resumo da venda</h3><span>principal</span></div>
                   <div class="detail-info-grid" id="saleInfo"></div>
@@ -441,7 +457,7 @@
                   <div class="docs" id="docs"></div>
                 </section>
 
-                <section class="detail-section">
+                <section class="detail-section" id="partnersSection" hidden>
                   <div class="section-title"><h3>Informações dos sócios</h3></div>
                   <div class="partners" id="partners"></div>
                 </section>
@@ -454,11 +470,6 @@
               </div>
 
               <aside class="detail-side">
-                <section class="detail-section side-section">
-                  <div class="section-title"><h3>Histórico da venda</h3><span>linha do tempo</span></div>
-                  <div class="timeline" id="timeline"></div>
-                </section>
-
                 <section class="detail-section side-section">
                   <div class="section-title"><h3>Alertas</h3><span>atenção</span></div>
                   <div class="alerts" id="alerts"></div>
@@ -595,6 +606,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
           abbr: initials(nome),
           cnpj: cnpjRd ? formatarCnpj(cnpjRd) : "",
       rd: det,
+      dealId: sale.deal_id,
           closer,
           sale: data,
           amount: valor,
@@ -918,7 +930,69 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       updateKpis(sales);
     }
 
-    // ---- Negociação do RD + consulta de CNPJ (28/09/2026) ----
+    
+// ---- Anexos do card (28/09/2026): só o Uriel anexa; todos veem ----
+const ANEXO_CATS=[{id:'documento',titulo:'Documentos do cliente',accept:'',dica:'Contrato social, RG/CPF, comprovantes…'},{id:'video',titulo:'Vídeo da reunião',accept:'video/*',dica:'Até 50 MB por arquivo. Vídeo maior: use "Colar link" (Drive, YouTube, Meet…).'},{id:'anotacao',titulo:'Anotações da reunião',accept:'',dica:'PDF, Word, imagem ou texto.'}];
+const URIEL_ID='e99d1c7f-749e-4348-b34a-4fb0631ba371';
+let usuarioAtualId=null;
+sb.auth.getUser().then(r=>{ usuarioAtualId=r.data?.user?.id||null; if(selectedId!=null){ const x=sales.find(v=>v.id===selectedId); if(x) renderAnexos(x); } });
+const podeAnexar=()=>usuarioAtualId===URIEL_ID;
+const tamanhoFmt=b=>b==null?'':b>1048576?(b/1048576).toFixed(1).replace('.',',')+' MB':Math.max(1,Math.round(b/1024))+' KB';
+async function renderAnexos(s){
+  const box=document.getElementById('anexosBox'); if(!box) return;
+  if(!s.dealId){ box.innerHTML='<div class="cnpj-status">Anexos disponíveis para as vendas vindas do RD.</div>'; return; }
+  box.innerHTML='<div class="cnpj-status">Carregando anexos…</div>';
+  const {data,error}=await sb.from('onboarding_anexos').select('*').eq('deal_id',s.dealId).order('created_at',{ascending:false});
+  if(selectedId!==s.id) return;
+  if(error){ box.innerHTML='<div class="cnpj-status">Não foi possível carregar os anexos: '+esc(error.message)+'</div>'; return; }
+  const pode=podeAnexar();
+  box.innerHTML='<div class="anexos-grid">'+ANEXO_CATS.map(c=>{
+    const itens=(data||[]).filter(a=>a.categoria===c.id);
+    const lista=itens.map(a=>'<div class="anexo-item"><button type="button" class="anexo-abrir" data-anexo="'+esc(a.id)+'" title="Abrir '+esc(a.nome)+'">'+esc(a.nome)+'</button><small>'+esc([tamanhoFmt(a.tamanho),dateLabel(a.created_at)].filter(Boolean).join(' · '))+'</small>'+(pode?'<button type="button" class="anexo-apagar" data-apagar="'+esc(a.id)+'" aria-label="Apagar">×</button>':'')+'</div>').join('')||'<div class="anexo-vazio">Nenhum arquivo.</div>';
+    const acoes=pode?'<label class="anexo-add"><input type="file" multiple '+(c.accept?'accept="'+c.accept+'" ':'')+'data-upload="'+c.id+'" hidden>+ Anexar arquivo</label>'+(c.id==='video'?'<button type="button" class="anexo-link" data-link="video">+ Colar link</button>':'')+'<div class="anexo-dica">'+esc(c.dica)+'</div>':'';
+    return '<div class="anexo-col"><div class="anexo-col-title">'+esc(c.titulo)+' <span>'+itens.length+'</span></div>'+lista+acoes+'</div>';
+  }).join('')+'</div>'+(pode?'':'<div class="cnpj-status" style="margin-top:.5rem">Somente o Uriel pode anexar arquivos.</div>');
+  const porId=new Map((data||[]).map(a=>[a.id,a]));
+  box.querySelectorAll('[data-anexo]').forEach(b=>b.addEventListener('click',async()=>{
+    const a=porId.get(b.dataset.anexo); if(!a) return;
+    if(/^https?:\/\//i.test(a.caminho)){ window.open(a.caminho,'_blank','noopener'); return; }
+    const {data:u,error:e}=await sb.storage.from('onboarding-anexos').createSignedUrl(a.caminho,3600);
+    if(e){ showToast('Não foi possível abrir: '+e.message); return; }
+    window.open(u.signedUrl,'_blank','noopener');
+  }));
+  box.querySelectorAll('[data-apagar]').forEach(b=>b.addEventListener('click',async()=>{
+    const a=porId.get(b.dataset.apagar); if(!a || !confirm('Apagar "'+a.nome+'"?')) return;
+    if(!/^https?:\/\//i.test(a.caminho)) await sb.storage.from('onboarding-anexos').remove([a.caminho]);
+    const {error:e}=await sb.from('onboarding_anexos').delete().eq('id',a.id);
+    if(e) showToast('Erro ao apagar: '+e.message); else showToast('Anexo apagado.');
+    renderAnexos(s);
+  }));
+  box.querySelectorAll('[data-upload]').forEach(inp=>inp.addEventListener('change',async()=>{
+    const cat=inp.dataset.upload;
+    for(const f of [...inp.files]){
+      if(f.size>50*1024*1024){ showToast('"'+f.name+'" passa de 50 MB. Para vídeo grande, use "Colar link".'); continue; }
+      const nomeSeguro=f.name.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w.\-]+/g,'_');
+      const caminho=s.dealId+'/'+cat+'/'+Date.now()+'_'+nomeSeguro;
+      showToast('Enviando '+f.name+'…');
+      const {error:e1}=await sb.storage.from('onboarding-anexos').upload(caminho,f,{contentType:f.type||undefined});
+      if(e1){ showToast('Erro ao enviar: '+e1.message); continue; }
+      const {error:e2}=await sb.from('onboarding_anexos').insert({deal_id:s.dealId,categoria:cat,nome:f.name,caminho,tamanho:f.size,tipo:f.type||null});
+      if(e2){ await sb.storage.from('onboarding-anexos').remove([caminho]); showToast('Erro ao registrar: '+e2.message); continue; }
+      showToast(f.name+' anexado.');
+    }
+    renderAnexos(s);
+  }));
+  box.querySelectorAll('[data-link]').forEach(b=>b.addEventListener('click',async()=>{
+    const url=(prompt('Cole o link do vídeo da reunião (Google Drive, YouTube, Meet…):')||'').trim(); if(!url) return;
+    if(!/^https?:\/\//i.test(url)){ showToast('Link inválido: precisa começar com http.'); return; }
+    const nome=(prompt('Nome para o vídeo:','Vídeo da reunião')||'Vídeo da reunião').trim();
+    const {error:e}=await sb.from('onboarding_anexos').insert({deal_id:s.dealId,categoria:'video',nome,caminho:url,tipo:'link'});
+    if(e) showToast('Erro: '+e.message); else showToast('Link do vídeo salvo.');
+    renderAnexos(s);
+  }));
+}
+
+// ---- Negociação do RD + consulta de CNPJ (28/09/2026) ----
 function infoHtml(k,v){ return `<div class="info"><div class="info-label">${esc(k)}</div><div class="info-value ${String(v).length>38?'soft':''}">${esc(v)}</div></div>`; }
 function renderNegociacaoRd(s){
   const el=document.getElementById('rdInfo'); const det=s.rd;
@@ -979,6 +1053,7 @@ async function consultarCnpj(s){
   const linhas=[['CNPJ',formatarCnpj(d)],['Razão social',r.razao],['Nome fantasia',r.fantasia],['Situação cadastral',r.situacao],['Abertura',r.abertura],['Natureza jurídica',r.natureza],['Porte',r.porte],['Simples / MEI',r.simples],['Atividade principal (CNAE)',r.cnae],['Capital social',r.capital],['Endereço',r.endereco],['CEP',r.cep],['Cidade/UF',r.cidadeUf],['Telefone',r.telefone],['E-mail',r.email]];
   el.innerHTML=linhas.map(([k,v])=>infoHtml(k,v||'—')).join('')+`<div class="cnpj-status">Fonte: ${esc(r.fonte)}.</div>`;
   if(!(s.partners||[]).length && r.socios.length){
+    document.getElementById('partnersSection').hidden=false;
     document.getElementById('partners').innerHTML=r.socios.map(p=>`<div class="partner"><div class="partner-top"><div class="partner-name">${esc(p.nome)}</div><div class="partner-share">${esc(p.qualificacao||'')}</div></div><div class="partner-grid"><div><div class="mini-label">Entrada na sociedade</div><div class="mini-value">${esc(p.entrada||'—')}</div></div><div><div class="mini-label">Fonte</div><div class="mini-value">Receita Federal</div></div></div></div>`).join('');
   }
   if((s.capital||'Não informado')==='Não informado' && r.capital && r.capital!=='—'){
@@ -1028,12 +1103,14 @@ function openSale(id){
             <div><div class="mini-label">E-mail</div><div class="mini-value">${esc(p.email)}</div></div>
             <div><div class="mini-label">Endereço</div><div class="mini-value">${esc(p.address)}</div></div>
           </div>
-        </div>`).join('') || '<div class="empty-row" style="padding:1rem">Nenhum sócio registrado.</div>';
+        </div>`).join('') || '';
       document.getElementById('capital').innerHTML=`<div class="info"><div class="info-label">Capital social</div><div class="info-value">${esc(s.capital || 'Não informado')}</div></div><div class="info"><div class="info-label">Participação societária</div><div class="info-value">${(s.partners || []).map(p=>`${esc(p.name)} · ${esc(p.share)}`).join('<br>') || 'Não informado'}</div></div>`;
       document.getElementById('notes').textContent=s.notes || 'Sem observações adicionais.';
-      document.getElementById('timeline').innerHTML=generatedHistory(s).map((h,i)=>`
+      (document.getElementById('timeline')||{}).innerHTML=generatedHistory(s).map((h,i)=>`
         <div class="timeline-item"><span class="timeline-dot"></span><div class="timeline-date">${esc(h.date || '—')}</div><div class="timeline-title">${esc(h.title || 'Atualização')}</div><div class="timeline-text">${esc(h.text || '')}</div></div>`).join('');
-      renderNegociacaoRd(s);
+      document.getElementById('partnersSection').hidden = !(s.partners||[]).length;
+    renderNegociacaoRd(s);
+    renderAnexos(s);
     consultarCnpj(s);
     const screen=document.getElementById('detailScreen');
       screen.classList.add('open');
