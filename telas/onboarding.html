@@ -109,7 +109,7 @@
 .onb th,.onb td{padding-left:.75rem;padding-right:.75rem}
 }
 .onb /* ===== Central de Vendas por Cards ===== */
-    .sales-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--gap);margin-bottom:1rem}
+    .sales-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--gap);margin-bottom:1rem}
 .onb .sales-kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.05rem;box-shadow:var(--shadow-sm);display:flex;align-items:center;gap:.8rem}
 .onb .sales-kpi-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;flex:0 0 auto}
 .onb .sales-kpi-icon svg{width:20px;height:20px}
@@ -348,7 +348,7 @@
             <div class="sales-kpi-icon indigo"><span data-icon="trend"></span></div>
             <div><div class="sales-kpi-label">Vendas registradas</div><div class="sales-kpi-value" id="kpiSales">6</div><div class="sales-kpi-foot">Cards criados automaticamente</div></div>
           </article>
-          <article class="sales-kpi">
+          <article class="sales-kpi" hidden>
             <div class="sales-kpi-icon green"><span data-icon="chart"></span></div>
             <div><div class="sales-kpi-label">Valor vendido</div><div class="sales-kpi-value" id="kpiRevenue">R$ 3.850,00</div><div class="sales-kpi-foot">Valor de entrada das vendas</div></div>
           </article>
@@ -446,13 +446,13 @@
                   <div class="detail-info-grid" id="currentInfo"></div>
                 </section>
 
-                <section class="detail-section">
+                <section class="detail-section" hidden>
                   <div class="section-title"><h3>Necessidade e expectativa</h3></div>
                   <div id="painBlocks"></div>
                   <div class="meeting-note" id="meetingNote"></div>
                 </section>
 
-                <section class="detail-section">
+                <section class="detail-section" hidden>
                   <div class="section-title"><h3>Documentos e acessos</h3><span>status atual</span></div>
                   <div class="docs" id="docs"></div>
                 </section>
@@ -462,7 +462,7 @@
                   <div class="partners" id="partners"></div>
                 </section>
 
-                <section class="detail-section">
+                <section class="detail-section" hidden>
                   <div class="section-title"><h3>Capital social e observações</h3></div>
                   <div class="detail-info-grid" id="capital"></div>
                   <div class="notes" id="notes"></div>
@@ -1002,7 +1002,7 @@ function renderNegociacaoRd(s){
   const campos=(det.campos||[]).map(c=>[c.label||'Campo', c.value!=null&&String(c.value).trim()!==''?String(c.value):'—']);
   const contatos=(det.contatos||[]).map(c=>`<div class="rd-contato"><strong>${esc(c.nome||'Contato')}</strong>${esc([c.cargo,...(c.telefones||[]),...(c.emails||[])].filter(Boolean).join(' · ')||'Sem telefone/e-mail')}</div>`).join('');
   const link=det.rd_deal_id?`<div class="cnpj-status"><a href="https://crm.rdstation.com/app/deals/${encodeURIComponent(det.rd_deal_id)}" target="_blank" rel="noopener">Abrir negociação no RD Station ↗</a></div>`:'';
-  el.innerHTML=[...base,...campos].map(([k,v])=>infoHtml(k,v)).join('')+(contatos?`<div class="rd-contatos">${contatos}</div>`:'')+link;
+  el.innerHTML=[...base,...campos].map(([k,v])=>infoHtml(k,v)).join('')+link;
 }
 const dataIsoBr=v=>{ const m=String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})/); return m?`${m[3]}/${m[2]}/${m[1]}`:(v||'—'); };
 const reaisCnpj=v=>v==null||v===''?'—':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
