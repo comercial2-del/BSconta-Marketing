@@ -368,6 +368,12 @@
 .onb .primary-btn.perigo{background:#dc2626}
 .onb .primary-btn:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:560px){.onb .anexo-link-linha{grid-template-columns:1fr auto}.onb .anexo-link-linha input[data-nome]{grid-column:1}}
+
+/* Constituição (28/09/2026) */
+.onb .constituicao-box{display:flex;gap:.5rem;align-items:flex-start;border:1px solid var(--border);border-radius:12px;padding:.75rem .85rem}
+.onb .constituicao-texto{flex:1;white-space:pre-wrap;font-size:.8rem;color:var(--text);line-height:1.5}
+.onb .constituicao-texto.vazio{color:var(--text-faint)}
+.onb .constituicao-input{min-height:12rem}
 </style>
 </head>
 <body>
@@ -469,7 +475,11 @@
                 <div class="section-title"><h3>Negociação</h3><span>RD Station</span></div>
                 <div class="detail-info-grid" id="rdInfo"></div>
               </section>
-              <section class="detail-section">
+              <section class="detail-section" id="constituicaoSection" hidden>
+                <div class="section-title"><h3>Dados do cliente para a Constituição</h3><span>enviados pelo cliente</span></div>
+                <div id="constituicaoBox"></div>
+              </section>
+              <section class="detail-section" id="cnpjSection">
                 <div class="section-title"><h3>Dados da empresa</h3><span>consulta CNPJ</span></div>
                 <div class="detail-info-grid" id="cnpjInfo"></div>
               </section>
@@ -486,7 +496,7 @@
                   <div class="detail-info-grid" id="saleInfo"></div>
                 </section>
 
-                <section class="detail-section">
+                <section class="detail-section" id="clienteSection">
                   <div class="section-title"><h3>Dados do cliente</h3><span>cadastro</span></div>
                   <div class="detail-info-grid" id="companyInfo"></div>
                 </section>
@@ -516,7 +526,7 @@
 
               <aside class="detail-side">
                 <section class="detail-section side-section">
-                  <div class="section-title"><h3>Alertas</h3><span>atenção</span></div>
+                  <div class="section-title"><h3 id="alertasTitulo">Alertas</h3><span>atenção</span></div>
                   <div class="alerts" id="alerts"></div>
                 </section>
               </aside>
@@ -609,7 +619,7 @@ async function carregarDetalhesRd(store) {
     for (const r of data || []) mapa.set(r.id, { ...(r.rd_details || {}), rd_deal_id: r.rd_deal_id });
   }
   // Alerta editado pelo Uriel (public.onboarding_notas, 28/09/2026).
-  const { data: notas, error: errNotas } = await sb.from("onboarding_notas").select("deal_id, alerta, atualizado_em");
+  const { data: notas, error: errNotas } = await sb.from("onboarding_notas").select("deal_id, alerta, dados_cliente, atualizado_em");
   if (errNotas) console.warn("Alertas do onboarding indisponíveis:", errNotas.message);
   for (const n of notas || []) mapa.set(n.deal_id, { ...(mapa.get(n.deal_id) || {}), __nota: n });
   return mapa;
@@ -637,6 +647,17 @@ const recorrenciaTxt=v=>v?(RECORRENCIAS[String(v).toLowerCase()]||String(v)):'';
 function produtosDoRd(det){ return (det?.produtos||[]).filter(p=>p&&p.nome); }
 function produtosTexto(det){ return produtosDoRd(det).map(p=>p.nome+(recorrenciaTxt(p.recorrencia)?' ('+recorrenciaTxt(p.recorrencia)+')':'')).join(', '); }
 function produtosDetalhe(det){ return produtosDoRd(det).map(p=>[p.nome,recorrenciaTxt(p.recorrencia),(p.quantidade!=null?p.quantidade+' × ':'')+(p.preco!=null?Number(p.preco).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):'')].filter(x=>x&&String(x).trim()).join(' · ')).join('\n'); }
+
+
+// Processo da venda pelo campo "Serviço contratado" do RD (28/09/2026):
+// Constituição, Troca de Contabilidade ou Transformação.
+function processoDaVenda(s){
+  const v=String((s&&s.service)||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  if(/transforma/.test(v)) return 'transformacao';
+  if(/constitui|abertura/.test(v)) return 'constituicao';
+  if(/troca/.test(v)) return 'troca';
+  return '';
+}
 
 function clientesDasVendas(store, detalhesRd = new Map()) {
       const deals = new Map((store.deals || []).map((d) => [d.id, d]));
@@ -998,7 +1019,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
 const ANEXO_CATS=[{id:'documento',titulo:'Documentos do cliente',accept:'',dica:'Contrato social, RG/CPF, comprovantes…'},{id:'video',titulo:'Vídeo da reunião',accept:'video/*',dica:'Até 50 MB por arquivo. Vídeo maior: use "Colar link" (Drive, YouTube, Meet…).'},{id:'anotacao',titulo:'Anotações da reunião',accept:'',dica:'PDF, Word, imagem ou texto.'}];
 const URIEL_ID='e99d1c7f-749e-4348-b34a-4fb0631ba371';
 let usuarioAtualId=null;
-sb.auth.getUser().then(r=>{ usuarioAtualId=r.data?.user?.id||null; if(selectedId!=null){ const x=sales.find(v=>v.id===selectedId); if(x){ renderAnexos(x); renderAlerta(x); } } });
+sb.auth.getUser().then(r=>{ usuarioAtualId=r.data?.user?.id||null; if(selectedId!=null){ const x=sales.find(v=>v.id===selectedId); if(x){ renderAnexos(x); renderAlerta(x); aplicarProcesso(x); } } });
 const podeAnexar=()=>usuarioAtualId===URIEL_ID;
 const tamanhoFmt=b=>b==null?'':b>1048576?(b/1048576).toFixed(1).replace('.',',')+' MB':Math.max(1,Math.round(b/1024))+' KB';
 
@@ -1136,6 +1157,7 @@ function renderAlerta(s){
   });
 }
 function renderSocios(s,r){
+  if(processoDaVenda(s)==='constituicao'){ const sec0=document.getElementById('partnersSection'); if(sec0) sec0.hidden=true; return; }
   const sec=document.getElementById('partnersSection'), box=document.getElementById('partners'); if(!sec||!box) return;
   if((s.partners||[]).length){ sec.hidden=false; return; }
   const cards=[];
@@ -1149,6 +1171,38 @@ function renderSocios(s,r){
   if(!cards.length){ sec.hidden=true; box.innerHTML=''; return; }
   sec.hidden=false;
   box.innerHTML=cards.map(c=>'<div class="partner"><div class="partner-top"><div class="partner-name">'+esc(c.nome)+' <span class="badge b-neutral" style="margin-left:.3rem">'+esc(c.fonte)+'</span></div><div class="partner-share">'+esc(c.papel)+'</div></div><div class="partner-grid">'+c.itens.filter(x=>x[1]&&x[1]!=='—').map(x=>'<div><div class="mini-label">'+esc(x[0])+'</div><div class="mini-value">'+esc(x[1])+'</div></div>').join('')+'</div></div>').join('');
+}
+
+
+// ---- Card conforme o processo (28/09/2026) ----
+// Transformação: "Alertas" vira "Informação de Transformação".
+// Constituição: sem dados automáticos de CNPJ/empresa/sócios; só um campo com o que o cliente enviou.
+function aplicarProcesso(s){
+  const p=processoDaVenda(s);
+  const titulo=document.getElementById('alertasTitulo'); if(titulo) titulo.textContent=p==='transformacao'?'Informação de Transformação':'Alertas';
+  const constituicao=p==='constituicao';
+  ['cnpjSection','clienteSection'].forEach(id=>{ const el=document.getElementById(id); if(el) el.hidden=constituicao; });
+  if(constituicao){ const ps=document.getElementById('partnersSection'); if(ps) ps.hidden=true; }
+  const sec=document.getElementById('constituicaoSection'); if(sec) sec.hidden=!constituicao;
+  if(constituicao) renderDadosConstituicao(s);
+}
+function renderDadosConstituicao(s){
+  const el=document.getElementById('constituicaoBox'); if(!el) return;
+  const texto=(s.nota&&s.nota.dados_cliente)||'';
+  const pode=podeAnexar()&&!!s.dealId;
+  el.innerHTML='<div class="constituicao-box"><div class="constituicao-texto'+(texto?'':' vazio')+'">'+(texto?esc(texto):'Nenhuma informação ainda. '+(pode?'Clique no lápis para colar os dados que o cliente enviou (nome, CPF, endereço, atividade, capital social, sócios…).':'O Uriel preenche com os dados que o cliente enviar.'))+'</div>'+(pode?'<button type="button" class="alerta-editar" data-editar-const title="Editar dados do cliente" aria-label="Editar dados do cliente">'+ICON_LAPIS+'</button>':'')+'</div>';
+  const btn=el.querySelector('[data-editar-const]'); if(!btn) return;
+  btn.addEventListener('click',()=>{
+    el.innerHTML='<textarea class="alerta-input constituicao-input" rows="10" placeholder="Cole aqui os dados que o cliente enviou: nome completo, CPF, RG, endereço, e-mail, telefone, atividade da empresa, nome desejado, capital social, sócios e participação…">'+esc(texto)+'</textarea><div class="alerta-acoes"><button type="button" class="ghost-btn" data-a="cancelar">Cancelar</button><button type="button" class="primary-btn" data-a="salvar">Salvar</button></div>';
+    const ta=el.querySelector('textarea'); ta.focus();
+    el.querySelector('[data-a="cancelar"]').onclick=()=>renderDadosConstituicao(s);
+    el.querySelector('[data-a="salvar"]').onclick=async()=>{
+      const dados=ta.value.trim();
+      const {data,error}=await sb.from('onboarding_notas').upsert({deal_id:s.dealId,dados_cliente:dados,atualizado_em:new Date().toISOString(),atualizado_por:usuarioAtualId},{onConflict:'deal_id'}).select().single();
+      if(error){ showToast('Erro ao salvar: '+error.message); return; }
+      s.nota=data; showToast('Dados do cliente salvos.'); renderDadosConstituicao(s);
+    };
+  });
 }
 
 // ---- Negociação do RD + consulta de CNPJ (28/09/2026) ----
@@ -1239,6 +1293,7 @@ function confereComRd(rdValor, reg){
 }
 
 async function consultarCnpj(s){
+  if(processoDaVenda(s)==='constituicao') return; // Constituição: sem consulta automática
   const el=document.getElementById('cnpjInfo'); const d=soDigitos(s.cnpj);
   if(d.length!==14){ el.innerHTML='<div class="cnpj-status">CNPJ não informado no RD. Quando o campo CNPJ da negociação for preenchido no RD, endereço, CEP, sócios e demais dados da Receita aparecem aqui automaticamente.</div>'; return; }
   el.innerHTML='<div class="cnpj-status">Consultando o CNPJ '+esc(formatarCnpj(d))+'…</div>';
@@ -1306,6 +1361,7 @@ function openSale(id){
       (document.getElementById('timeline')||{}).innerHTML=generatedHistory(s).map((h,i)=>`
         <div class="timeline-item"><span class="timeline-dot"></span><div class="timeline-date">${esc(h.date || '—')}</div><div class="timeline-title">${esc(h.title || 'Atualização')}</div><div class="timeline-text">${esc(h.text || '')}</div></div>`).join('');
       renderSocios(s,null);
+    aplicarProcesso(s);
     renderNegociacaoRd(s);
     renderAnexos(s);
     consultarCnpj(s);
