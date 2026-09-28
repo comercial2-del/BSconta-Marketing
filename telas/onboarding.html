@@ -325,6 +325,16 @@
 
 /* Itens escondidos do visual (28/09/2026) */
 .onb [hidden]{display:none!important}
+
+/* Alerta editável, tipo do serviço e sócios (28/09/2026) */
+.onb .alerta-texto{flex:1;white-space:pre-wrap}
+.onb .alerta-editar{border:0;background:none;color:var(--indigo-600);cursor:pointer;padding:.1rem;display:inline-flex;align-items:center;flex:0 0 auto}
+.onb .alerta-editar:hover{color:var(--text)}
+.onb .alerta-meta{font-size:.66rem;color:var(--text-faint);margin-top:.35rem}
+.onb .alerta-input{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:10px;padding:.55rem .65rem;font:inherit;font-size:.8rem;resize:vertical;background:var(--surface);color:var(--text)}
+.onb .alerta-acoes{display:flex;justify-content:flex-end;gap:.4rem;margin-top:.45rem}
+.onb .sale-service-tipo{font-size:.7rem;color:var(--text-faint);margin-top:.1rem}
+.onb #rdInfo .info-value{white-space:pre-line}
 </style>
 </head>
 <body>
@@ -566,6 +576,10 @@ async function carregarDetalhesRd(store) {
     if (error) { console.warn("Detalhes do RD indisponíveis:", error.message); break; }
     for (const r of data || []) mapa.set(r.id, { ...(r.rd_details || {}), rd_deal_id: r.rd_deal_id });
   }
+  // Alerta editado pelo Uriel (public.onboarding_notas, 28/09/2026).
+  const { data: notas, error: errNotas } = await sb.from("onboarding_notas").select("deal_id, alerta, atualizado_em");
+  if (errNotas) console.warn("Alertas do onboarding indisponíveis:", errNotas.message);
+  for (const n of notas || []) mapa.set(n.deal_id, { ...(mapa.get(n.deal_id) || {}), __nota: n });
   return mapa;
 }
 function campoRd(det, rotulo) {
@@ -584,6 +598,14 @@ function dataHoraRd(iso) {
   return Number.isNaN(d.getTime()) ? String(iso) : d.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
+
+// Produtos da negociação no RD (aba "Produtos"): nome + recorrência (28/09/2026).
+const RECORRENCIAS={monthly:'Mensal',mensal:'Mensal',yearly:'Anual',annual:'Anual',anual:'Anual',single:'Pagamento único',spare:'Pagamento único',unique:'Pagamento único',recurrent:'Recorrente'};
+const recorrenciaTxt=v=>v?(RECORRENCIAS[String(v).toLowerCase()]||String(v)):'';
+function produtosDoRd(det){ return (det?.produtos||[]).filter(p=>p&&p.nome); }
+function produtosTexto(det){ return produtosDoRd(det).map(p=>p.nome+(recorrenciaTxt(p.recorrencia)?' ('+recorrenciaTxt(p.recorrencia)+')':'')).join(', '); }
+function produtosDetalhe(det){ return produtosDoRd(det).map(p=>[p.nome,recorrenciaTxt(p.recorrencia),(p.quantidade!=null?p.quantidade+' × ':'')+(p.preco!=null?Number(p.preco).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}):'')].filter(x=>x&&String(x).trim()).join(' · ')).join('\n'); }
+
 function clientesDasVendas(store, detalhesRd = new Map()) {
       const deals = new Map((store.deals || []).map((d) => [d.id, d]));
       const sellers = new Map((store.sellers || []).map((s) => [s.id, s.name]));
@@ -598,6 +620,8 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
     const servicoRd = campoRd(det, "Serviço contratado");
     const inicioRd = campoRd(det, "Data de início");
     const contato = (det?.contatos || [])[0] || {};
+    const produtoRd = produtosTexto(det);
+    const nota = det?.__nota || null;
     const nome = empresaRd || d.company_name || d.client_name || "Cliente sem nome";
         const closer = (sellers.get(sale.seller_id || d.seller_id) || "—").split(" ")[0];
         const data = dataBrOnb(sale.closed_at);
@@ -615,19 +639,21 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
           amount: valor,
           monthly: sale.is_recurring ? valor : "—",
           discount: "—",
-          service: servicoRd || "A definir",
-          type: servicoRd || "A definir",
+          service: produtoRd || servicoRd || "A definir",
+      tipoRd: produtoRd && servicoRd ? servicoRd : "",
+      nota,
+          type: servicoRd || produtoRd || "A definir",
           status: "Novo",
           priority: "Normal",
           start: inicioRd || data,
           progress: 8,
-          saleInfo: { "Vendedor / closer": closer, Fechamento: data, "Valor da venda": valor, "Contato no RD": d.client_name || "—", Recorrente: sale.is_recurring ? "Sim" : "Não", Serviço: servicoRd || "A definir" },
+          saleInfo: { "Vendedor / closer": closer, Fechamento: data, "Valor da venda": valor, "Contato no RD": d.client_name || "—", Recorrente: sale.is_recurring ? "Sim" : "Não", Serviço: [produtoRd, servicoRd].filter(Boolean).join(" · ") || "A definir" },
           companyInfo: { Cliente: nome, Contato: d.client_name || "—", Telefone: (contato.telefones || []).join(", ") || "—", "E-mail": (contato.emails || []).join(", ") || "—", Empresa: empresaRd || d.company_name || "—", CNPJ: cnpjRd ? formatarCnpj(cnpjRd) : "Não informado no RD" },
           currentInfo: { "Processo contratado": "A definir", Situação: "Venda recebida do comercial" },
           pain: "A preencher no handoff comercial.",
           expectation: "A preencher no handoff comercial.",
           meeting: "Card criado automaticamente a partir da venda registrada no RD Station.",
-          alerts: ["Completar o cadastro do cliente e os próximos passos do handoff."],
+          alerts: [(nota && nota.alerta) || "Completar o cadastro do cliente e os próximos passos do handoff."],
           docs: [],
           partners: [],
           capital: "Não informado",
@@ -902,7 +928,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
           </div>
           <div class="sale-service">
             <div class="sale-service-label">Produto / serviço</div>
-            <div class="sale-service-value">${esc(s.service || s.type)}</div>
+            <div class="sale-service-value">${esc(s.service || s.type)}</div>${s.tipoRd?`<div class="sale-service-tipo">${esc(s.tipoRd)}</div>`:''}
           </div>
           <div class="badges">
             <span class="badge ${statusClass(s.status)}">${esc(s.status)}</span>
@@ -938,7 +964,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
 const ANEXO_CATS=[{id:'documento',titulo:'Documentos do cliente',accept:'',dica:'Contrato social, RG/CPF, comprovantes…'},{id:'video',titulo:'Vídeo da reunião',accept:'video/*',dica:'Até 50 MB por arquivo. Vídeo maior: use "Colar link" (Drive, YouTube, Meet…).'},{id:'anotacao',titulo:'Anotações da reunião',accept:'',dica:'PDF, Word, imagem ou texto.'}];
 const URIEL_ID='e99d1c7f-749e-4348-b34a-4fb0631ba371';
 let usuarioAtualId=null;
-sb.auth.getUser().then(r=>{ usuarioAtualId=r.data?.user?.id||null; if(selectedId!=null){ const x=sales.find(v=>v.id===selectedId); if(x) renderAnexos(x); } });
+sb.auth.getUser().then(r=>{ usuarioAtualId=r.data?.user?.id||null; if(selectedId!=null){ const x=sales.find(v=>v.id===selectedId); if(x){ renderAnexos(x); renderAlerta(x); } } });
 const podeAnexar=()=>usuarioAtualId===URIEL_ID;
 const tamanhoFmt=b=>b==null?'':b>1048576?(b/1048576).toFixed(1).replace('.',',')+' MB':Math.max(1,Math.round(b/1024))+' KB';
 async function renderAnexos(s){
@@ -995,6 +1021,43 @@ async function renderAnexos(s){
   }));
 }
 
+
+// ---- Alerta editável (só o Uriel) e cards de sócios (28/09/2026) ----
+const ICON_LAPIS='<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+function renderAlerta(s){
+  const el=document.getElementById('alerts'); if(!el) return;
+  const texto=(s.nota&&s.nota.alerta)||(s.alerts||[])[0]||'Nenhum alerta.';
+  const pode=podeAnexar()&&!!s.dealId;
+  el.innerHTML='<div class="alert-row"><span class="alert-dot"></span><span class="alerta-texto">'+esc(texto)+'</span>'+(pode?'<button type="button" class="alerta-editar" title="Editar alerta" aria-label="Editar alerta">'+ICON_LAPIS+'</button>':'')+'</div>'+(s.nota&&s.nota.atualizado_em?'<div class="alerta-meta">Editado em '+esc(formatDateTime(s.nota.atualizado_em))+'</div>':'');
+  const btn=el.querySelector('.alerta-editar'); if(!btn) return;
+  btn.addEventListener('click',()=>{
+    el.innerHTML='<textarea class="alerta-input" rows="4" placeholder="O que o cliente quer, pontos de atenção…">'+esc((s.nota&&s.nota.alerta)||'')+'</textarea><div class="alerta-acoes"><button type="button" class="ghost-btn" data-a="cancelar">Cancelar</button><button type="button" class="primary-btn" data-a="salvar">Salvar</button></div>';
+    const ta=el.querySelector('textarea'); ta.focus();
+    el.querySelector('[data-a="cancelar"]').onclick=()=>renderAlerta(s);
+    el.querySelector('[data-a="salvar"]').onclick=async()=>{
+      const alerta=ta.value.trim();
+      const {data,error}=await sb.from('onboarding_notas').upsert({deal_id:s.dealId,alerta,atualizado_em:new Date().toISOString(),atualizado_por:usuarioAtualId},{onConflict:'deal_id'}).select().single();
+      if(error){ showToast('Erro ao salvar: '+error.message); return; }
+      s.nota=data; s.alerts=[alerta||'Nenhum alerta.']; showToast('Alerta salvo.'); renderAlerta(s);
+    };
+  });
+}
+function renderSocios(s,r){
+  const sec=document.getElementById('partnersSection'), box=document.getElementById('partners'); if(!sec||!box) return;
+  if((s.partners||[]).length){ sec.hidden=false; return; }
+  const cards=[];
+  for(const p of (r&&r.socios)||[]) cards.push({nome:p.nome,papel:p.qualificacao||'Sócio',fonte:'Receita Federal',itens:[['Entrada na sociedade',p.entrada],['CPF/CNPJ (parcial)',p.cpf],['Faixa etária',p.faixa],['Representante legal',p.representante]]});
+  if(r&&!cards.length&&(r.optMei===true||/empres[áa]rio/i.test(r.natureza||''))){
+    const nome=String(r.razao||'').replace(/^[\d.\s]+/,'').trim();
+    if(nome) cards.push({nome,papel:r.optMei===true?'Titular (MEI)':'Titular (empresário individual)',fonte:'Receita Federal',itens:[['Empresa aberta em',r.abertura],['CNPJ',formatarCnpj(s.cnpj)]]});
+  }
+  const decisor=campoRd(s.rd,'Nome do Decisor');
+  if(decisor) cards.push({nome:decisor,papel:campoRd(s.rd,'Cargo do Decisor')||'Decisor',fonte:'RD Station',itens:[['Contato',campoRd(s.rd,'Contato do Decisor')]]});
+  if(!cards.length){ sec.hidden=true; box.innerHTML=''; return; }
+  sec.hidden=false;
+  box.innerHTML=cards.map(c=>'<div class="partner"><div class="partner-top"><div class="partner-name">'+esc(c.nome)+' <span class="badge b-neutral" style="margin-left:.3rem">'+esc(c.fonte)+'</span></div><div class="partner-share">'+esc(c.papel)+'</div></div><div class="partner-grid">'+c.itens.filter(x=>x[1]&&x[1]!=='—').map(x=>'<div><div class="mini-label">'+esc(x[0])+'</div><div class="mini-value">'+esc(x[1])+'</div></div>').join('')+'</div></div>').join('');
+}
+
 // ---- Negociação do RD + consulta de CNPJ (28/09/2026) ----
 function infoHtml(k,v){ return `<div class="info"><div class="info-label">${esc(k)}</div><div class="info-value ${String(v).length>38?'soft':''}">${esc(v)}</div></div>`; }
 // Campos do RD que não aparecem no card (pedido do usuário, 28/09/2026).
@@ -1003,7 +1066,7 @@ function renderNegociacaoRd(s){
   const el=document.getElementById('rdInfo'); const det=s.rd;
   if(!det){ el.innerHTML='<div class="cnpj-status">Detalhes do RD ainda não sincronizados para esta venda.</div>'; return; }
   const reais=v=>v==null?'—':Number(v).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-  const base=[['Nome',det.nome||'—'],['Qualificação',det.qualificacao!=null?String(det.qualificacao):'—'],['Data de fechamento',dataHoraRd(det.fechada_em)],['Fonte',det.fonte||'—'],['Campanha',det.campanha||'—'],['Criada em',dataHoraRd(det.criada_em)],['Valor total',reais(det.valor_total)]];
+  const base=[['Nome',det.nome||'—'],['Qualificação',det.qualificacao!=null?String(det.qualificacao):'—'],['Data de fechamento',dataHoraRd(det.fechada_em)],['Fonte',det.fonte||'—'],['Campanha',det.campanha||'—'],['Criada em',dataHoraRd(det.criada_em)],['Valor total',reais(det.valor_total)],['Produto / serviço',produtosDetalhe(det)||'Nenhum produto na negociação'],['Funil',det.funil||'—']];
   const campos=(det.campos||[]).map(c=>[c.label||'Campo', c.value!=null&&String(c.value).trim()!==''?String(c.value):'—']);
   const contatos=(det.contatos||[]).map(c=>`<div class="rd-contato"><strong>${esc(c.nome||'Contato')}</strong>${esc([c.cargo,...(c.telefones||[]),...(c.emails||[])].filter(Boolean).join(' · ')||'Sem telefone/e-mail')}</div>`).join('');
   const link=det.rd_deal_id?`<div class="cnpj-status"><a href="https://crm.rdstation.com/app/deals/${encodeURIComponent(det.rd_deal_id)}" target="_blank" rel="noopener">Abrir negociação no RD Station ↗</a></div>`:'';
@@ -1021,7 +1084,7 @@ function normBrasilApi(j){
     optMei:j.opcao_pelo_mei??null,dataMei:j.data_opcao_pelo_mei||'',exclusaoMei:j.data_exclusao_do_mei||'',
     regimes:(j.regime_tributario||[]).map(x=>({ano:x.ano,forma:x.forma_de_tributacao})).filter(x=>x.forma).sort((a,b)=>a.ano-b.ano),
     secundarias:(j.cnaes_secundarios||[]).filter(x=>x&&x.codigo).map(x=>[x.codigo,x.descricao].filter(Boolean).join(' — ')),
-    socios:(j.qsa||[]).map(q=>({nome:q.nome_socio,qualificacao:q.qualificacao_socio,entrada:dataIsoBr(q.data_entrada_sociedade)}))};
+    socios:(j.qsa||[]).map(q=>({nome:q.nome_socio,qualificacao:q.qualificacao_socio,entrada:dataIsoBr(q.data_entrada_sociedade),cpf:q.cnpj_cpf_do_socio||'',faixa:q.faixa_etaria||'',representante:q.nome_representante_legal||''}))};
 }
 function normCnpjWs(j){
   const e=j.estabelecimento||{};
@@ -1034,7 +1097,7 @@ function normCnpjWs(j){
     optMei:j.simples?(j.simples.mei==='Sim'):null,dataMei:j.simples?.data_opcao_mei||'',exclusaoMei:j.simples?.data_exclusao_mei||'',
     regimes:[],
     secundarias:(e.atividades_secundarias||[]).map(x=>[x.subclasse,x.descricao].filter(Boolean).join(' — ')),
-    socios:(j.socios||[]).map(q=>({nome:q.nome,qualificacao:q.qualificacao_socio?.descricao,entrada:dataIsoBr(q.data_entrada)}))};
+    socios:(j.socios||[]).map(q=>({nome:q.nome,qualificacao:q.qualificacao_socio?.descricao,entrada:dataIsoBr(q.data_entrada),cpf:q.cpf_cnpj_socio||'',faixa:q.faixa_etaria||'',representante:q.nome_representante||''}))};
 }
 const cacheCnpj=new Map();
 function buscarCnpj(d){
@@ -1091,7 +1154,8 @@ async function consultarCnpj(s){
   if(r.erro){ el.innerHTML='<div class="cnpj-status">'+esc(r.erro)+'</div>'; return; }
   const linhas=[['CNPJ',formatarCnpj(d)],['Razão social',r.razao],['Nome fantasia',r.fantasia],['Situação cadastral',r.situacao],['Abertura',r.abertura],['Natureza jurídica',r.natureza],['Porte',r.porte],['Regime tributário (Receita)',regimeDaReceita(r).texto],['Optante pelo Simples Nacional',linhaSimples(r.optSimples,r.dataSimples,r.exclusaoSimples)],['MEI',linhaSimples(r.optMei,r.dataMei,r.exclusaoMei)],['Atividade principal (CNAE)',r.cnae],['Atividades secundárias',(r.secundarias||[]).join('; ')||'Nenhuma'],['Capital social',r.capital],['Endereço',r.endereco],['CEP',r.cep],['Cidade/UF',r.cidadeUf],['Telefone',r.telefone],['E-mail',r.email]];
   el.innerHTML=linhas.map(([k,v])=>infoHtml(k,v||'—')).join('')+`<div class="cnpj-status">Fonte: ${esc(r.fonte)}.</div>`;
-  if(!(s.partners||[]).length && r.socios.length){
+  renderSocios(s,r);
+  if(false){
     document.getElementById('partnersSection').hidden=false;
     document.getElementById('partners').innerHTML=r.socios.map(p=>`<div class="partner"><div class="partner-top"><div class="partner-name">${esc(p.nome)}</div><div class="partner-share">${esc(p.qualificacao||'')}</div></div><div class="partner-grid"><div><div class="mini-label">Entrada na sociedade</div><div class="mini-value">${esc(p.entrada||'—')}</div></div><div><div class="mini-label">Fonte</div><div class="mini-value">Receita Federal</div></div></div></div>`).join('');
   }
@@ -1126,7 +1190,7 @@ function openSale(id){
         <div class="highlight"><div class="highlight-label">Principal necessidade</div><div class="highlight-text">${esc(s.pain || 'Não informado.')}</div></div>
         <div class="highlight"><div class="highlight-label">Expectativa com a BSconta</div><div class="highlight-text">${esc(s.expectation || 'Não informado.')}</div></div>`;
       document.getElementById('meetingNote').innerHTML=`<strong style="color:var(--text)">Informações conversadas / contexto</strong><br>${esc(s.meeting || 'Registro adicional não informado.')}`;
-      document.getElementById('alerts').innerHTML=(s.alerts || ['Nenhum alerta crítico.']).map(a=>`<div class="alert-row"><span class="alert-dot"></span><span>${esc(a)}</span></div>`).join('');
+      renderAlerta(s);
       document.getElementById('docs').innerHTML=(s.docs || []).map(d=>`<div class="doc-row"><div class="doc-left"><div class="doc-icon">DOC</div><div class="doc-name">${esc(d[0])}</div></div><span class="doc-status ${d[2]==='ok'?'doc-ok':d[2]==='review'?'doc-review':'doc-pending'}">${esc(d[1])}</span></div>`).join('') || '<div class="empty-row" style="padding:1rem">Nenhum documento registrado.</div>';
       document.getElementById('partners').innerHTML=(s.partners || []).map(p=>`
         <div class="partner">
@@ -1148,7 +1212,7 @@ function openSale(id){
       document.getElementById('notes').textContent=s.notes || 'Sem observações adicionais.';
       (document.getElementById('timeline')||{}).innerHTML=generatedHistory(s).map((h,i)=>`
         <div class="timeline-item"><span class="timeline-dot"></span><div class="timeline-date">${esc(h.date || '—')}</div><div class="timeline-title">${esc(h.title || 'Atualização')}</div><div class="timeline-text">${esc(h.text || '')}</div></div>`).join('');
-      document.getElementById('partnersSection').hidden = !(s.partners||[]).length;
+      renderSocios(s,null);
     renderNegociacaoRd(s);
     renderAnexos(s);
     consultarCnpj(s);
