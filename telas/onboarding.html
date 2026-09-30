@@ -604,11 +604,9 @@
     // automaticamente: o Uriel marcou como venda no RD -> na próxima
     // sincronização o Card aparece.
     //
-    // O que ainda é provisório (a pedido do usuário, 25/09/2026, "não precisa
-    // mexer nele agora"): o andamento das etapas do onboarding, os dados de
-    // cadastro e as vendas lançadas pelo botão "Nova venda" ficam salvos só
-    // neste navegador (localStorage). Para virar compartilhado entre a equipe,
-    // o próximo passo é uma tabela própria no Supabase.
+    // O andamento das etapas do onboarding é compartilhado entre a equipe
+    // (public.onboarding_etapas, 30/09/2026). Só as vendas lançadas pelo botão
+    // "Nova venda" continuam salvas apenas neste navegador (localStorage).
     // ---------------------------------------------------------------------
     let store = null;
 
@@ -630,8 +628,17 @@ async function carregarDetalhesRd(store) {
   const { data: notas, error: errNotas } = await sb.from("onboarding_notas").select("deal_id, alerta, dados_cliente, atualizado_em");
   if (errNotas) console.warn("Alertas do onboarding indisponíveis:", errNotas.message);
   for (const n of notas || []) mapa.set(n.deal_id, { ...(mapa.get(n.deal_id) || {}), __nota: n });
+  // Andamento das 10 etapas, compartilhado entre todos (public.onboarding_etapas, 30/09/2026).
+  // Antes ficava só no localStorage de cada navegador.
+  const { data: etapas, error: errEtapas } = await sb.from("onboarding_etapas").select("deal_id, dados, atualizado_em");
+  if (errEtapas) console.warn("Etapas do onboarding indisponíveis:", errEtapas.message);
+  else mapa.__etapasOk = true; // só migra o localStorage antigo quando o banco respondeu
+  for (const e of etapas || []) mapa.set(e.deal_id, { ...(mapa.get(e.deal_id) || {}), __etapas: e });
   return mapa;
 }
+// Vendas com gravação das etapas ainda a caminho do banco: a atualização de 60 s
+// espera, para não trocar o que o usuário acabou de marcar por uma cópia velha.
+const etapasPendentes = new Set();
 function campoRd(det, rotulo) {
   const alvo = rotulo.toLowerCase();
   const f = (det?.campos || []).find((c) => (c.label || "").trim().toLowerCase() === alvo);
@@ -705,6 +712,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       service: servicoRd || "A definir",
       tipoRd: produtoRd ? "Produto no RD: " + produtoRd : "",
       nota,
+      onboarding: det?.__etapas?.dados || null,
           type: servicoRd || "A definir",
           status: "Novo",
           priority: "Normal",
@@ -894,7 +902,8 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       const [d,m,y] = String(br || '').split('/');
       return d&&m&&y ? `${y}-${m}-${d}` : '';
     };
-    sales = [...BASE_SALES, ...storedSales].map(s => ({...s, onboarding: storedOnboarding[s.key || String(s.id)] || s.onboarding || defaultOnboarding(s)}));
+    // Prioridade: banco (onboarding_etapas) > localStorage antigo > padrão.
+    sales = [...BASE_SALES, ...storedSales].map(s => ({...s, onboarding: s.onboarding || storedOnboarding[s.key || String(s.id)] || defaultOnboarding(s)}));
     function formatInfo(obj){
       return Object.entries(obj || {}).map(([k,v]) =>
         `<div class="info"><div class="info-label">${esc(k)}</div><div class="info-value ${String(v).length>38?'soft':''}">${esc(v)}</div></div>`
@@ -912,11 +921,64 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       return [...base,...audit];
     }
 
-    function persistAll(){
-      const custom = sales.filter(s => !BASE_SALES.some(b => b.id===s.id));
+    // Vendas do RD (com dealId) gravam as etapas no banco (public.onboarding_etapas),
+    // para todos verem. O localStorage fica só para as vendas do botão "Nova venda".
+    function persistAll(s, opcoes={}){
+      const custom = sales.filter(x => !BASE_SALES.some(b => b.id===x.id));
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(custom)); } catch {}
-      const map={}; sales.forEach(s=>{map[s.key || String(s.id)]=normalizeOnboarding(s);});
+      const map={...storedOnboarding}; // mantém as marcações antigas até a migração
+      sales.forEach(x=>{ if(!x.dealId) map[x.key || String(x.id)]=normalizeOnboarding(x); });
       try { localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(map)); } catch {}
+      if(s && s.dealId) salvarEtapasNoBanco(s, opcoes.adiar ? 600 : 0);
+    }
+    const timersEtapas = new Map();
+    function salvarEtapasNoBanco(s, atraso=0){
+      const id=s.dealId; etapasPendentes.add(id);
+      clearTimeout(timersEtapas.get(id));
+      timersEtapas.set(id, setTimeout(async ()=>{
+        timersEtapas.delete(id);
+        const linha={deal_id:id, dados:normalizeOnboarding(s), atualizado_em:nowISO()};
+        if(usuarioAtualId) linha.atualizado_por=usuarioAtualId;
+        try{
+          const {data,error}=await sb.from('onboarding_etapas').upsert(linha,{onConflict:'deal_id'}).select('deal_id, dados, atualizado_em').single();
+          if(error) throw error;
+          guardarEtapasLocais(id, data || linha);
+        }catch(e){
+          console.error('Falha ao salvar as etapas do onboarding:', e);
+          alert('Não foi possível salvar o andamento do onboarding de '+(s.name||'esta venda')+'. Os outros usuários ainda não veem esta mudança. Verifique a conexão e tente de novo.\n\n'+(e&&e.message?e.message:''));
+        }finally{
+          if(!timersEtapas.has(id)) etapasPendentes.delete(id);
+        }
+      }, atraso));
+    }
+    // Mantém a cópia em memória igual ao banco (evita redesenho à toa na atualização de 60 s).
+    function guardarEtapasLocais(id, linha){
+      const atual=detalhesRd.get(id) || {};
+      detalhesRd.set(id, {...atual, __etapas:{deal_id:id, dados:linha.dados, atualizado_em:linha.atualizado_em}});
+    }
+    // Migração automática: marcações antigas deste navegador para vendas que ainda
+    // não estão no banco são enviadas uma vez, sem sobrescrever o banco.
+    const MIGRADO_KEY='bsconta_onboarding_migrado_v1';
+    function temMarcacaoAntiga(o){
+      if(!o || !Array.isArray(o.stages)) return false;
+      if(Array.isArray(o.auditHistory) && o.auditHistory.length>1) return true;
+      return o.stages.some(st=>st && ((st.responsible||'').trim() || (st.notes||'').trim() || st.dueDate));
+    }
+    async function migrarOnboardingAntigo(){
+      if(!detalhesRd.__etapasOk) return;
+      let migrados={}; try{ migrados=JSON.parse(localStorage.getItem(MIGRADO_KEY)||'{}'); }catch{}
+      for(const s of sales){
+        if(!s.dealId) continue;
+        const k=s.key || String(s.id);
+        const antigo=storedOnboarding[k];
+        if(migrados[k] || detalhesRd.get(s.dealId)?.__etapas || !temMarcacaoAntiga(antigo)) continue;
+        const linha={deal_id:s.dealId, dados:antigo, atualizado_em:nowISO()};
+        if(usuarioAtualId) linha.atualizado_por=usuarioAtualId;
+        const {data,error}=await sb.from('onboarding_etapas').upsert(linha,{onConflict:'deal_id',ignoreDuplicates:true}).select('deal_id, dados, atualizado_em').maybeSingle();
+        if(error){ console.warn('Migração das etapas antigas falhou:', error.message); continue; }
+        migrados[k]=nowISO(); try{ localStorage.setItem(MIGRADO_KEY, JSON.stringify(migrados)); }catch{}
+        if(data) guardarEtapasLocais(s.dealId, data);
+      }
     }
     function addOnboardingAudit(s, title, text){
       const o=normalizeOnboarding(s); o.auditHistory.push({at:nowISO(),title,text});
@@ -931,7 +993,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       addOnboardingAudit(s, `${st.title} — ${ONBOARDING_STATUS[nextStatus].label}`, `Status alterado de ${ONBOARDING_STATUS[prev]?.label || 'Pendente'} para ${ONBOARDING_STATUS[nextStatus].label}.`);
       const p=onboardingProgress(s); const next=p.stages[p.currentIndex];
       s.onboarding.nextStep=next?.title || 'Onboarding finalizado';
-      persistAll(); renderSales();
+      persistAll(s); renderSales();
     }
     function updateStageField(s,index,field,value){
       const st=getStage(s,index); const t=nowISO();
@@ -940,13 +1002,13 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       if(field==='notes') st.notes=value;
       if(field==='startedAt') { st.startedAt=value ? `${value}T12:00:00` : null; st.createdAt=st.createdAt||nowISO(); }
       st.updatedAt=t;
-      persistAll(); renderSales();
+      persistAll(s, {adiar: field==='responsible' || field==='notes'}); renderSales();
     }
     function toggleSubstep(s,index,subIndex,done){
       const st=getStage(s,index); const sub=st.substeps[subIndex]; if(!sub) return; const t=nowISO();
       sub.done=done; sub.completedAt=done?t:null; st.updatedAt=t;
       addOnboardingAudit(s, `${st.title} — atividade atualizada`, `${done?'Concluída':'Reaberta'}: ${sub.label}.`);
-      persistAll(); renderSales();
+      persistAll(s); renderSales();
     }
     function toggleStageExpanded(saleId,index,expand=true){
       const key=`${saleId}:${index}`; if(expand) expandedStages.add(key); else expandedStages.delete(key); renderSales();
@@ -1543,6 +1605,7 @@ document.getElementById('detailScreen').addEventListener('click',e=>{ if(!e.targ
     
     function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');clearTimeout(window.__toast);window.__toast=setTimeout(()=>t.classList.remove('show'),2600)}
     renderSales();
+    migrarOnboardingAntigo().catch(e=>console.warn(e));
     // A sincronização em segundo plano redesenha a tela: se um card estava aberto, ele continua aberto.
     if (window.__onbAberto) { const aberto = sales.find((x) => (x.key || String(x.id)) === window.__onbAberto); if (aberto) openSale(aberto.id); }
       
@@ -1567,15 +1630,19 @@ function ligarCalendarioOnboarding(root){
 let detalhesRd = new Map();
 // A cada minuto relê os detalhes do RD (ex.: "Serviço contratado") e redesenha
 // o board se algo mudou — sem precisar recarregar a página (28/09/2026).
-setInterval(async () => {
+async function atualizarOnboardingRemoto() {
   try {
-    if (!store || document.hidden) return;
+    if (!store || document.hidden || etapasPendentes.size) return;
     if (document.querySelector('.alerta-input') || document.querySelector('#anexoJanela.open') || document.querySelector('#onboardingAlert.open') || document.querySelector('#saleModal.open')) return;
     const novo = await carregarDetalhesRd(store);
-    const assinatura = (m) => JSON.stringify([...m.entries()].map(([k, v]) => [k, v.campos, v.produtos, v.__nota && v.__nota.alerta]));
+    if (etapasPendentes.size) return; // alguém salvou enquanto a leitura estava a caminho
+    // Inclui as etapas (atualizado_em): mudanças de outros usuários aparecem sem recarregar.
+    const assinatura = (m) => JSON.stringify([...m.entries()].map(([k, v]) => [k, v.campos, v.produtos, v.__nota && v.__nota.alerta, v.__etapas && v.__etapas.atualizado_em]));
     if (assinatura(novo) !== assinatura(detalhesRd)) { detalhesRd = novo; montar(); }
   } catch (e) { console.warn(e); }
-}, 60000);
+}
+window.__onbAtualizarRemoto = atualizarOnboardingRemoto; // usado pelo teste
+setInterval(atualizarOnboardingRemoto, 60000);
 function montar() {
       const content = document.getElementById("content");
       content.className = "";
