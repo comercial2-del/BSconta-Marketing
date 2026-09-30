@@ -60,6 +60,9 @@ const deals = [0, 1, 2].map((i) => ({
   seller_id: sellers[0].id, stage_id: stages[0].id, value: 1000 + i, status: "WON", probability: 100,
   closed_at: iso(10 - i), is_recurring: false, updated_at: iso(1), deleted_at: null, rd_details: null,
 }));
+// Venda de agosto/2026: fica fora do Onboarding (só setembro/2026 em diante).
+// É a mais antiga, então é a #0001; as de setembro são #0002, #0003 e #0004.
+deals.push({ ...deals[0], id: uuid(1999), rd_deal_id: "rd_deal_agosto", company_name: "Empresa Agosto", closed_at: "2026-08-15T15:00:00.000Z" });
 const sales = deals.map((d, i) => ({ id: uuid(9000 + i), deal_id: d.id, seller_id: d.seller_id, value: d.value, margin: 0, is_recurring: false, closed_at: d.closed_at }));
 const FIXAS = {
   sellers, stages, deals, sales, activities: [], goals: [], onboarding_notas: [], onboarding_anexos: [],
@@ -196,7 +199,20 @@ async function atualizar(p) {
   await p.pagina.evaluate(() => window.__onbAtualizarRemoto());
   await p.pagina.waitForTimeout(200);
 }
-const VENDA = "#0001"; // venda mais antiga (deal 1000)
+const VENDA = "#0002"; // venda mais antiga de setembro (deal 1000)
+
+// --- 0. Só vendas de setembro/2026 em diante --------------------------------
+{
+  const p = await abrir("bsconta");
+  const r = await p.pagina.evaluate(() => ({
+    cards: [...document.querySelectorAll(".sale-card .sale-id")].map((e) => e.textContent.trim()),
+    agosto: document.body.textContent.includes("Empresa Agosto"),
+    kpi: document.getElementById("kpiSales")?.textContent.trim(),
+  }));
+  ok(!r.agosto && r.cards.length === 3 && !r.cards.some((c) => c.includes("#0001")), `venda de agosto fica fora do board (${r.cards.join(", ")})`);
+  ok(r.kpi === "3", `total de vendas conta só setembro em diante (${r.kpi})`);
+  await p.contexto.close();
+}
 
 // --- 1. bsconta conclui a 01 -> todos veem --------------------------------
 const bsconta = await abrir("bsconta");
@@ -237,11 +253,11 @@ await atualizar(terceiro);
 ok((await card(terceiro, VENDA)).titulo.includes("2/10"), "terceiro usuário também vê 2/10");
 
 // Outras vendas continuam intactas
-ok((await card(gustavo, "#0002")).titulo.startsWith("0/10"), "as demais vendas continuam em 0/10");
+ok((await card(gustavo, "#0003")).titulo.startsWith("0/10"), "as demais vendas continuam em 0/10");
 
 // --- 3. Migração do localStorage antigo -----------------------------------
-// Um navegador com marcações antigas: 3 etapas concluídas na venda #0002
-// (ainda não está no banco) e marcações na #0001 (que JÁ está no banco).
+// Um navegador com marcações antigas: 3 etapas concluídas na venda #0003
+// (ainda não está no banco) e marcações na #0002 (que JÁ está no banco).
 const agora = new Date().toISOString();
 const ETAPAS_TITULOS = ["Handoff", "Início do Onboarding", "1ª Reunião", "Configuração / Implantação", "2ª Reunião", "Acompanhamento", "Onboarding Concluído", "Pesquisa de Satisfação", "Avaliação no Google", "Indicação"];
 const antigo = (feitas) => ({
@@ -254,9 +270,9 @@ const antes0001 = JSON.stringify(etapasDb.get(deals[0].id));
 const velho = await abrir("antigo", lsAntigo);
 const migr = log.filter((l) => l.usuario === USUARIOS.antigo.id);
 ok(migr.length === 1 && migr[0].deal_id === deals[1].id && migr[0].ignoreDuplicates, `migração enviou só a venda que faltava no banco, com ignoreDuplicates (${migr.length} envio)`);
-ok(JSON.stringify(etapasDb.get(deals[0].id)) === antes0001, "a migração NÃO sobrescreveu a #0001 que já estava no banco");
-ok((await card(velho, VENDA)).titulo.includes("2/10"), "no navegador antigo a #0001 mostra o banco (2/10), não o localStorage (5/10)");
-ok((await card(velho, "#0002")).titulo.includes("3/10"), "no navegador antigo a #0002 mostra as marcações migradas (3/10)");
+ok(JSON.stringify(etapasDb.get(deals[0].id)) === antes0001, "a migração NÃO sobrescreveu a #0002 que já estava no banco");
+ok((await card(velho, VENDA)).titulo.includes("2/10"), "no navegador antigo a #0002 mostra o banco (2/10), não o localStorage (5/10)");
+ok((await card(velho, "#0003")).titulo.includes("3/10"), "no navegador antigo a #0003 mostra as marcações migradas (3/10)");
 
 // Recarregar não envia de novo
 await velho.pagina.reload({ waitUntil: "load" });
@@ -264,9 +280,9 @@ await velho.pagina.waitForSelector(".sale-card .onboarding-title");
 await velho.pagina.waitForTimeout(500);
 ok(log.filter((l) => l.usuario === USUARIOS.antigo.id).length === 1, "recarregando, a migração não é enviada de novo");
 
-// E agora todos veem a #0002 migrada
+// E agora todos veem a #0003 migrada
 await atualizar(gustavo);
-ok((await card(gustavo, "#0002")).titulo.includes("3/10"), "Gustavo vê a #0002 migrada (3/10)");
+ok((await card(gustavo, "#0003")).titulo.includes("3/10"), "Gustavo vê a #0003 migrada (3/10)");
 
 // --- Sem erros de JavaScript nem alertas de falha --------------------------
 for (const p of [bsconta, gustavo, terceiro, velho]) {
