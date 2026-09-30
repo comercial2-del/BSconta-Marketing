@@ -674,6 +674,8 @@ function processoDaVenda(s){
   return '';
 }
 
+// Início do board de Onboarding: 01/09/2026 (mês em que ele passou a ser usado).
+const ONB_INICIO = new Date(2026, 8, 1);
 function clientesDasVendas(store, detalhesRd = new Map()) {
       const deals = new Map((store.deals || []).map((d) => [d.id, d]));
       const sellers = new Map((store.sellers || []).map((s) => [s.id, s.name]));
@@ -732,7 +734,9 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
           history: [{ date: data, title: "Venda registrada no RD Station", text: `Venda de ${valor} fechada por ${closer}.` }],
         };
       });
-      return lista.reverse(); // mais recentes primeiro na grade
+      // Só vendas de setembro/2026 em diante (pedido do usuário, 30/09/2026): as mais
+      // antigas saem do board e dos totais. O número do Card (#0165...) não muda.
+      return lista.filter((c, i) => vendas[i].closed_at >= ONB_INICIO).reverse(); // mais recentes primeiro na grade
     }
 
     function iniciarOnboarding(root, clientesReais, recarregar) {
