@@ -125,7 +125,7 @@
 .onb .sales-kicker{font-size:.66rem;text-transform:uppercase;letter-spacing:.075em;color:var(--indigo-600);font-weight:850;margin-bottom:.18rem}
 .onb .sales-board-head h2{font-size:1rem;margin:0;font-weight:850}
 .onb .sales-board-head p{font-size:.74rem;color:var(--text-faint);margin:.2rem 0 0}
-.onb .sales-filters{padding:.75rem 1.1rem;display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr;gap:.55rem;border-bottom:1px solid var(--surface-2)}
+.onb .sales-filters{padding:.75rem 1.1rem;display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr;gap:.55rem;border-bottom:1px solid var(--surface-2)}
 .onb .sales-filters .field input,.onb .sales-filters .field select{height:40px}
 .onb .sales-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.9rem;padding:1rem 1.1rem 1.15rem}
 .onb .sale-card{position:relative;background:linear-gradient(180deg,#fff,#fcfcff);border:1px solid var(--border);border-radius:14px;padding:.95rem;box-shadow:0 2px 7px rgba(15,23,42,.035);cursor:pointer;transition:transform .14s,box-shadow .14s,border-color .14s}
@@ -268,7 +268,7 @@
 .onb .modal-actions{display:flex;justify-content:flex-end;gap:.5rem;border-top:1px solid var(--surface-2);margin-top:1rem;padding-top:.85rem}
 @media(max-width:1180px){
 .onb .sales-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-.onb .sales-filters{grid-template-columns:repeat(4,minmax(0,1fr))}
+.onb .sales-filters{grid-template-columns:repeat(3,minmax(0,1fr))}
 .onb .sales-filters .field.search{grid-column:1 / -1}
 .onb .detail-info-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
@@ -440,7 +440,8 @@
           </div>
 
           <div class="sales-filters">
-            <div class="field search"><input id="search" type="search" placeholder="Buscar cliente, CNPJ, produto ou vendedor..." /></div>
+            <div class="field search"><input id="search" type="search" placeholder="Buscar cliente, CNPJ, produto, vendedor ou responsável..." /></div>
+            <div class="field"><select id="respFilter" aria-label="Filtrar pelo responsável atual do card"><option value="">Todos os responsáveis</option></select></div>
             <div class="field"><select id="statusFilter"><option value="">Todos os status</option><option>Novo</option><option>Aguardando informações</option><option>Documentação pendente</option><option>Em onboarding</option><option>Concluído</option></select></div>
             <div class="field"><select id="typeFilter"><option value="">Todos os serviços</option><option>Constituição</option><option>Regularização</option><option>Troca de contabilidade</option><option>Contabilidade</option><option>BPO Financeiro</option></select></div>
             <div class="field"><input id="saleDateFilter" type="date" aria-label="Filtrar pela data da venda" /></div>
@@ -858,6 +859,16 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       return {stages,completed,percent,currentIndex:currentIndex<0?ONBOARDING_STAGES.length-1:currentIndex};
     }
     function stageStatusMeta(status){ return ONBOARDING_STATUS[status] || ONBOARDING_STATUS.pending; }
+    // Responsável atual do card (01/10/2026, pedido do Gustavo):
+    // etapa 01 (Handoff) é do vendedor (ex.: Uriel), que realiza e confirma;
+    // da etapa 02 em diante é do onboarding (Gustavo), a não ser que a etapa
+    // atual tenha outro responsável preenchido no detalhe.
+    const RESPONSAVEL_ONBOARDING='Gustavo';
+    function responsavelAtual(s){
+      const p=onboardingProgress(s);
+      if(p.stages[0]?.status!=='done') return s.closer && s.closer!=='—' ? s.closer : 'Sem vendedor';
+      return (p.stages[p.currentIndex]?.responsible||'').trim() || RESPONSAVEL_ONBOARDING;
+    }
     function stageResponsible(st){ return st.responsible ? `Resp.: ${st.responsible}` : 'Responsável não definido'; }
     function stageDue(st){ return st.dueDate ? `Prazo: ${dateLabel(st.dueDate+'T12:00:00')}` : 'Prazo não definido'; }
     function stageFocus(st,index){
@@ -1085,9 +1096,17 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       const tf = document.getElementById('typeFilter').value;
       const saleDate = document.getElementById('saleDateFilter').value;
       const vista = document.getElementById('situacaoFilter')?.value || '';
+      const respSel = document.getElementById('respFilter');
+      const rf = respSel?.value || '';
+      if(respSel){ // opções = responsáveis atuais das vendas (mantém a escolha)
+        const nomes=[...new Set(sales.filter(s=>situacaoCard(s)!=='excluido').map(responsavelAtual))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
+        if(rf && !nomes.includes(rf)) nomes.push(rf);
+        respSel.innerHTML='<option value="">Todos os responsáveis</option>'+nomes.map(n=>`<option value="${esc(n)}"${n===rf?' selected':''}>${esc(n)}</option>`).join('');
+      }
       const perOnb = periodoOnboarding(); // filtro do calendário (data da venda)
       const base = sales.filter(s =>
-        (!q || [s.name,s.cnpj,s.closer,s.service,s.type].join(' ').toLowerCase().includes(q)) &&
+        (!q || [s.name,s.cnpj,s.closer,responsavelAtual(s),s.service,s.type].join(' ').toLowerCase().includes(q)) &&
+        (!rf || responsavelAtual(s)===rf) &&
         (!sf || s.status===sf) &&
         (!tf || s.type===tf) &&
         (!saleDate || s.sale === isoToBR(saleDate)) &&
@@ -1114,7 +1133,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
           </div>
           <div class="badges">
             <span class="badge ${statusClass(s.status)}">${esc(s.status)}</span>
-            <span class="badge b-neutral">${esc(s.closer || 'Sem vendedor')}</span>
+            <span class="badge b-neutral" title="Responsável atual · Vendedor: ${esc(s.closer || '—')}">${esc(responsavelAtual(s))}</span>
           </div>
           <div class="sale-card-bottom">
             <div><div class="sale-value">${esc(s.amount)}</div><div class="sale-value-label">valor da venda</div></div>
@@ -1605,7 +1624,7 @@ function openSale(id){
     }
 
     root.querySelectorAll('[data-icon]').forEach(el => { if (!el.innerHTML.trim()) el.innerHTML = ONB_ICONS[el.dataset.icon] || ''; });
-    ['search','statusFilter','typeFilter','saleDateFilter','situacaoFilter'].forEach(id => document.getElementById(id).addEventListener('input',renderSales));
+    ['search','statusFilter','typeFilter','saleDateFilter','situacaoFilter','respFilter'].forEach(id => document.getElementById(id).addEventListener('input',renderSales));
     // Botões Arquivar / Excluir card / Restaurar (no card e na janela da etapa 10).
     function tratarAcaoCard(e){
       const btn=e.target.closest('[data-card-acao]'); if(!btn) return false;
