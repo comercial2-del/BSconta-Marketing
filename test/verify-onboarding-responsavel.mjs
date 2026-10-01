@@ -219,12 +219,17 @@ ok(r[V] === "Gustavo", "etapa 01 concluída: card passa a mostrar Gustavo");
 ok(r["0003"] === "Uriel" && r["0004"] === "Uriel", "os outros cards continuam com o Uriel");
 ok((await opcoes(a)).join("|") === "Todos os responsáveis|Gustavo|Uriel", "filtro lista Gustavo e Uriel");
 
+const emAndamento = (p) => p.pagina.evaluate(() => [document.getElementById("kpiActive").textContent.trim(), document.getElementById("kpiActiveFoot").textContent.trim()].join(" | "));
+ok((await emAndamento(a)) === "3 | Vendas ainda em operação", "Em andamento sem filtro: total de vendas");
 await filtrar(a, "Gustavo");
 ok((await numeros(a)).join() === V, "filtro Gustavo mostra só o card dele");
+ok((await emAndamento(a)) === "1 | Gustavo tem 1 processo", "Em andamento mostra quantos processos estão com o Gustavo");
 await filtrar(a, "Uriel");
 ok((await numeros(a)).sort().join() === "0003,0004", "filtro Uriel mostra só os cards do Uriel");
+ok((await emAndamento(a)) === "2 | Uriel tem 2 processos", "Em andamento mostra quantos processos estão com o Uriel");
 await filtrar(a, "");
 ok((await numeros(a)).length === 3, "Todos os responsáveis mostra tudo");
+ok((await emAndamento(a)) === "3 | Vendas ainda em operação", "sem filtro volta ao texto normal");
 
 // Responsável preenchido na etapa atual (02) tem prioridade
 await a.pagina.evaluate((V) => {
