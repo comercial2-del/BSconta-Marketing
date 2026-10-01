@@ -308,6 +308,10 @@
 .onb .rd-contato{border:1px solid var(--border);border-radius:12px;padding:.55rem .7rem;font-size:.74rem}
 .onb .rd-contato strong{display:block;font-size:.78rem;color:var(--text)}
 .onb .cnpj-status{grid-column:1/-1;font-size:.74rem;color:var(--text-faint)}
+.onb .onb-email-aviso{margin-top:.8rem;padding:.65rem .8rem;border:1px solid var(--surface-2);border-radius:10px;display:flex;flex-wrap:wrap;align-items:center;gap:.4rem}
+.onb .onb-email-aviso:empty{display:none}
+.onb .onb-email-txt{font-size:.74rem;color:var(--text-soft)}
+.onb .onb-email-erro{flex-basis:100%;color:var(--red-600,#b91c1c)}
 .onb .rd-contato strong{margin-bottom:.1rem}
 
 /* Anexos do card (28/09/2026) */
@@ -1167,6 +1171,45 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
     }
 
     
+// ---- E-mail ao Gustavo quando a 1ª etapa é concluída (01/10/2026) ----
+// O banco (gatilho do SQL 25) registra a transferência e a Edge Function
+// notificar-transferencia envia o e-mail. Aqui só mostramos o status e o
+// botão "Tentar de novo" quando o envio falha.
+const EMAIL_STATUS_TXT={pendente:'Na fila de envio',enviando:'Enviando…',enviado:'Enviado',erro:'Falhou'};
+async function renderEmailAviso(dealId, tentativa=0){
+  const el=document.getElementById('onbEmailAviso'); if(!el || el.dataset.deal!==String(dealId)) return;
+  const {data,error}=await sb.from('onboarding_transferencias').select('id,email_status,email_enviado_em,email_erro,email_destinatarios,email_tentativas,transferido_em').eq('deal_id',dealId).order('transferido_em',{ascending:false}).limit(1).maybeSingle();
+  const box=document.getElementById('onbEmailAviso'); if(!box || box.dataset.deal!==String(dealId)) return;
+  if(error){ box.innerHTML=''; return; } // tabela ainda não criada: não mostra nada
+  if(!data){
+    if(tentativa<3){ box.innerHTML='<span class="onb-email-txt">Aviso por e-mail ao Gustavo: registrando…</span>'; setTimeout(()=>renderEmailAviso(dealId,tentativa+1),2500); }
+    else box.innerHTML='<span class="onb-email-txt">Aviso por e-mail ao Gustavo: não registrado (etapa concluída antes da automação).</span>';
+    return;
+  }
+  const st=data.email_status; const quando=data.email_enviado_em?formatDateTime(data.email_enviado_em):'';
+  const para=(data.email_destinatarios||[]).join(', ');
+  const cls=st==='enviado'?'b-green':st==='erro'?'b-red':'b-indigo';
+  box.innerHTML='<span class="onb-email-txt">Aviso por e-mail ao Gustavo:</span> <span class="badge '+cls+'">'+esc(EMAIL_STATUS_TXT[st]||st)+'</span>'
+    +(st==='enviado'?' <span class="onb-email-txt">'+esc(quando)+(para?' · '+esc(para):'')+'</span>':'')
+    +(st==='erro'?'<div class="onb-email-txt onb-email-erro">'+esc(data.email_erro||'Erro desconhecido')+'</div><button type="button" class="card-acao" data-reenviar-email="'+esc(data.id)+'">Tentar de novo</button>':'');
+  if((st==='pendente'||st==='enviando') && tentativa<6) setTimeout(()=>renderEmailAviso(dealId,tentativa+1),3000);
+}
+// O board é remontado na atualização: liga o clique só uma vez (usa as funções da montagem atual).
+window.__onbReenviarEmail=async e=>{
+  const b=e.target.closest('[data-reenviar-email]'); if(!b) return;
+  e.preventDefault(); e.stopPropagation(); b.disabled=true; b.textContent='Enviando…';
+  try{
+    const {data:ses}=await sb.auth.getSession();
+    const r=await fetch(window.SGCMP_CONFIG.SUPABASE_URL+'/functions/v1/notificar-transferencia',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+(ses?.session?.access_token||'')},body:JSON.stringify({id:b.dataset.reenviarEmail,manual:true})});
+    const j=await r.json().catch(()=>({}));
+    const res=(j.resultados||[])[0];
+    if(!r.ok || !res || res.status==='erro') showToast('Não foi possível enviar o e-mail: '+((res&&res.erro)||j.error||('erro '+r.status)));
+    else showToast('E-mail enviado ao Gustavo.');
+  }catch(err){ showToast('Não foi possível enviar o e-mail: '+(err&&err.message||err)); }
+  const box=document.getElementById('onbEmailAviso'); if(box) renderEmailAviso(box.dataset.deal, 6);
+};
+if(!window.__onbReenvioLigado){ window.__onbReenvioLigado=true; document.addEventListener('click',e=>window.__onbReenviarEmail(e)); }
+
 // ---- Anexos do card (28/09/2026): só o Uriel anexa; todos veem ----
 const ANEXO_CATS=[{id:'documento',titulo:'Documentos do cliente',accept:'',dica:'Contrato social, RG/CPF, comprovantes…'},{id:'video',titulo:'Vídeo da reunião',accept:'video/*',dica:'Até 50 MB por arquivo. Vídeo maior: use "Colar link" (Drive, YouTube, Meet…).'},{id:'anotacao',titulo:'Anotações da reunião',accept:'',dica:'PDF, Word, imagem ou texto.'}];
 const URIEL_ID='e99d1c7f-749e-4348-b34a-4fb0631ba371';
@@ -1606,6 +1649,8 @@ function openSale(id){
       const body=document.getElementById('onboardingAlertBody'); body.innerHTML=onboardingStageEditorHtml(s,idx);
   // 01 · Handoff sem Responsável, Data de início e Prazo (pedido do usuário, 28/09/2026).
   if(idx===0) body.querySelectorAll('[data-action="stage-responsible"],[data-action="stage-start"],[data-action="stage-due"]').forEach(i=>i.closest('label')?.remove());
+  // 01 concluída: status do e-mail de aviso ao Gustavo (01/10/2026).
+  if(idx===0 && st.status==='done' && s.dealId){ body.insertAdjacentHTML('beforeend','<div class="onb-email-aviso onboarding-interactive" id="onbEmailAviso" data-deal="'+esc(s.dealId)+'"></div>'); renderEmailAviso(s.dealId); }
   // Etapa 10 concluída: arquivar ou excluir o card direto daqui (01/10/2026).
   if(idx===ONBOARDING_STAGES.length-1 && st.status==='done') body.insertAdjacentHTML('beforeend', acoesCardHtml(s));
       const modal=document.getElementById('onboardingAlert'); modal.classList.add('open'); modal.setAttribute('aria-hidden','false');
