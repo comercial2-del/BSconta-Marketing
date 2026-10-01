@@ -13,7 +13,7 @@
     "teste:paginacao": "node test/verify-paginacao.mjs",
     "teste:responsivo": "node test/verify-responsivo.mjs",
     "medir": "node test/medir-velocidade.mjs",
-    "teste:onboarding": "node test/verify-onboarding-etapas.mjs"
+    "teste:onboarding": "node test/verify-onboarding-etapas.mjs && node test/verify-onboarding-situacao.mjs"
   },
   "devDependencies": {
     "chart.js": "4.5.1",
