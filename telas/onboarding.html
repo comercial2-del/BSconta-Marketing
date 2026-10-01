@@ -421,7 +421,7 @@
           </article>
           <article class="sales-kpi">
             <div class="sales-kpi-icon amber"><span data-icon="calendar"></span></div>
-            <div><div class="sales-kpi-label">Em andamento</div><div class="sales-kpi-value" id="kpiActive">3</div><div class="sales-kpi-foot">Vendas ainda em operação</div></div>
+            <div><div class="sales-kpi-label">Em andamento</div><div class="sales-kpi-value" id="kpiActive">3</div><div class="sales-kpi-foot" id="kpiActiveFoot">Vendas ainda em operação</div></div>
           </article>
           <article class="sales-kpi">
             <div class="sales-kpi-icon violet"><span data-icon="target"></span></div>
@@ -1081,7 +1081,11 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       document.getElementById('kpiSales').textContent = list.length;
       const total = list.reduce((sum,s)=>sum + moneyToNumber(s.amount),0);
       document.getElementById('kpiRevenue').textContent = formatBRL(total);
-      document.getElementById('kpiActive').textContent = list.filter(s=>!vendaConcluida(s)).length;
+      // Filtro "Responsável" (01/10/2026): Em andamento mostra quantos processos estão com a pessoa.
+      const rfKpi = document.getElementById('respFilter')?.value || '';
+      const emAndamento = list.filter(s=>!vendaConcluida(s) && (!rfKpi || responsavelAtual(s)===rfKpi)).length;
+      document.getElementById('kpiActive').textContent = emAndamento;
+      document.getElementById('kpiActiveFoot').textContent = rfKpi ? `${rfKpi} tem ${emAndamento} processo${emAndamento===1?'':'s'}` : 'Vendas ainda em operação';
       document.getElementById('kpiDone').textContent = list.filter(vendaConcluida).length;
       // Faixa de performance: progresso médio do onboarding das vendas.
       const medio = list.length ? Math.round(list.reduce((soma,s)=>soma+onboardingProgress(s).percent,0)/list.length) : 0;
