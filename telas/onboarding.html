@@ -676,6 +676,9 @@ function processoDaVenda(s){
 
 // Início do board de Onboarding: 01/09/2026 (mês em que ele passou a ser usado).
 const ONB_INICIO = new Date(2026, 8, 1);
+// Negociações do RD (rd_deal_id) de agosto/2026 que entram no board mesmo antes do início:
+// KM Serviços Médicos (Kleuber), Allan Carlos, Aluap (Ana Paula), Fenix Net (Ewerton) e ABESA (Roberto).
+const ONB_EXCECOES_RD = ["6a78937965fd0400011d0439", "6a7f41853d5bed00010b749c", "6a9599267855b20020316fdb", "69c90fd45ef9e60001524532", "69f3b49965cc5700151ce94b"];
 function clientesDasVendas(store, detalhesRd = new Map()) {
       const deals = new Map((store.deals || []).map((d) => [d.id, d]));
       const sellers = new Map((store.sellers || []).map((s) => [s.id, s.name]));
@@ -736,7 +739,9 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       });
       // Só vendas de setembro/2026 em diante (pedido do usuário, 30/09/2026): as mais
       // antigas saem do board e dos totais. O número do Card (#0165...) não muda.
-      return lista.filter((c, i) => vendas[i].closed_at >= ONB_INICIO).reverse(); // mais recentes primeiro na grade
+      // Exceções (30/09/2026): vendas ganhas no RD em agosto/2026 cujo handoff foi feito em
+      // setembro (lista "Clientes 09/2026" do Trello) continuam no board.
+      return lista.filter((c, i) => vendas[i].closed_at >= ONB_INICIO || ONB_EXCECOES_RD.includes(c.rd && c.rd.rd_deal_id)).reverse(); // mais recentes primeiro na grade
     }
 
     function iniciarOnboarding(root, clientesReais, recarregar) {
