@@ -312,6 +312,12 @@
 .onb .rd-contato strong{margin-bottom:.1rem}
 
 /* Anexos do card (28/09/2026) */
+.onb .onb-arquivo{margin-top:1rem}
+.onb .onb-arquivo-head{all:unset;box-sizing:border-box;display:flex;justify-content:space-between;align-items:center;gap:1rem;width:100%;padding:1rem 1.1rem;cursor:pointer}
+.onb .onb-arquivo-head:focus-visible{outline:2px solid var(--indigo-600);outline-offset:-2px;border-radius:12px}
+.onb .onb-arquivo-head h2{margin:.1rem 0}
+.onb .onb-arquivo-head p{margin:0;color:var(--text-faint);font-size:.8rem}
+.onb .onb-arquivo .sale-card{opacity:.92}
 .onb .anexos-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem}
 @media(max-width:800px){.onb .anexos-grid{grid-template-columns:1fr}}
 .onb .anexo-col{border:1px solid var(--border);border-radius:12px;padding:.7rem;display:flex;flex-direction:column;gap:.45rem;min-width:0}
@@ -445,6 +451,20 @@
             <strong>Nenhuma venda encontrada</strong>
             <span>Ajuste os filtros ou registre uma nova venda.</span>
           </div>
+        </section>
+
+        <!-- Concluídos / Arquivados (01/10/2026): quando a etapa 10 do onboarding é marcada
+             como Concluída, o card sai do board principal e é arquivado aqui. -->
+        <section class="sales-board onb-arquivo" id="onbArquivo" hidden>
+          <button type="button" class="onb-arquivo-head" id="onbArquivoToggle" aria-expanded="false" aria-controls="archivedGrid">
+            <div>
+              <div class="sales-kicker">Onboarding finalizado</div>
+              <h2>Concluídos / Arquivados</h2>
+              <p>Clientes com a etapa 10 concluída. Clique para mostrar ou esconder.</p>
+            </div>
+            <span class="preview-pill" id="archivedCount">0 vendas</span>
+          </button>
+          <div class="sales-grid" id="archivedGrid" hidden></div>
         </section>
 
         <section class="detail-screen" id="detailScreen" aria-hidden="true">
@@ -1023,12 +1043,15 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       const key=`${saleId}:${index}`; if(expand) expandedStages.add(key); else expandedStages.delete(key); renderSales();
     }
 
+    // Etapa 10 (Indicação, a última da reta) concluída = onboarding finalizado e card arquivado.
+    function onboardingArquivado(s){ const st=normalizeOnboarding(s).stages; return !!(st[st.length-1] && st[st.length-1].status==='done'); }
+    function vendaConcluida(s){ return s.status==='Concluído' || onboardingArquivado(s); }
     function updateKpis(list=sales){
       document.getElementById('kpiSales').textContent = list.length;
       const total = list.reduce((sum,s)=>sum + moneyToNumber(s.amount),0);
       document.getElementById('kpiRevenue').textContent = formatBRL(total);
-      document.getElementById('kpiActive').textContent = list.filter(s=>s.status!=='Concluído').length;
-      document.getElementById('kpiDone').textContent = list.filter(s=>s.status==='Concluído').length;
+      document.getElementById('kpiActive').textContent = list.filter(s=>!vendaConcluida(s)).length;
+      document.getElementById('kpiDone').textContent = list.filter(vendaConcluida).length;
       // Faixa de performance: progresso médio do onboarding das vendas.
       const medio = list.length ? Math.round(list.reduce((soma,s)=>soma+onboardingProgress(s).percent,0)/list.length) : 0;
       const semInicio = list.filter(s=>onboardingProgress(s).completed===0).length;
@@ -1049,10 +1072,13 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
         (!saleDate || s.sale === isoToBR(saleDate)) &&
       (!perOnb || ((dd) => dd && dd >= perOnb.start && dd < perOnb.end)(dataBrParaDate(s.sale)))
       );
-      document.getElementById('resultCount').textContent = `${rows.length} venda${rows.length===1?'':'s'}`;
+      // Concluídos / Arquivados (01/10/2026): etapa 10 concluída = card arquivado.
+      const arquivados = rows.filter(onboardingArquivado);
+      const ativos = rows.filter(s => !onboardingArquivado(s));
+      document.getElementById('resultCount').textContent = `${ativos.length} venda${ativos.length===1?'':'s'}`;
       // Muitas vendas no histórico: mostra as mais recentes e carrega o resto sob demanda.
       const limiteOnb = root.__limite || 24;
-      document.getElementById('salesGrid').innerHTML = rows.slice(0, limiteOnb).map(s => `
+      const cardHtml = s => `
         <article class="sale-card" tabindex="0" role="button" data-id="${s.id}" aria-label="Abrir detalhes da venda de ${esc(s.name)}">
           <div class="sale-card-top">
             <span class="sale-id">VENDA #${String(s.id).padStart(4,'0')}</span>
@@ -1076,11 +1102,22 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
           </div>
           ${renderOnboardingCard(s)}
           <div class="sale-arrow">Ver detalhes</div>
-        </article>`).join('');
-      document.getElementById('emptyState').hidden = rows.length > 0;
+        </article>`;
+      document.getElementById('salesGrid').innerHTML = ativos.slice(0, limiteOnb).map(cardHtml).join('');
+      document.getElementById('emptyState').hidden = ativos.length > 0;
+      const arqSec = document.getElementById('onbArquivo');
+      if (arqSec) {
+        arqSec.hidden = arquivados.length === 0;
+        document.getElementById('archivedCount').textContent = `${arquivados.length} venda${arquivados.length===1?'':'s'}`;
+        const aberto = root.__arquivoAberto === true;
+        const grid = document.getElementById('archivedGrid');
+        grid.hidden = !aberto;
+        document.getElementById('onbArquivoToggle').setAttribute('aria-expanded', String(aberto));
+        grid.innerHTML = aberto ? arquivados.map(cardHtml).join('') : '';
+      }
       let maisOnb = document.getElementById('onbMais');
       if (!maisOnb) { maisOnb = document.createElement('div'); maisOnb.id = 'onbMais'; maisOnb.style.cssText = 'display:flex;justify-content:center;padding:1rem'; document.getElementById('salesGrid').after(maisOnb); }
-      maisOnb.innerHTML = rows.length > limiteOnb ? `<button type="button" class="ghost-btn">Mostrar mais vendas (${rows.length - limiteOnb} restantes)</button>` : '';
+      maisOnb.innerHTML = ativos.length > limiteOnb ? `<button type="button" class="ghost-btn">Mostrar mais vendas (${ativos.length - limiteOnb} restantes)</button>` : '';
       maisOnb.onclick = (e) => { if (e.target.closest('button')) { root.__limite = limiteOnb + 48; renderSales(); } };
       document.querySelectorAll('.sale-card').forEach(card => {
         card.addEventListener('click', e => {
@@ -1556,18 +1593,22 @@ function openSale(id){
 
     root.querySelectorAll('[data-icon]').forEach(el => { if (!el.innerHTML.trim()) el.innerHTML = ONB_ICONS[el.dataset.icon] || ''; });
     ['search','statusFilter','typeFilter','saleDateFilter'].forEach(id => document.getElementById(id).addEventListener('input',renderSales));
-    document.getElementById('salesGrid').addEventListener('click',e=>{
-      const stageHead=e.target.closest('[data-action="toggle-stage"]');
-      if(stageHead){
-        const stage=stageHead.closest('.onboarding-stage');
-        if(stage) openOnboardingAlert(Number(stage.dataset.saleId), Number(stage.dataset.stageIndex));
-        return;
-      }
+    ['salesGrid','archivedGrid'].forEach(gid => {
+      const grid=document.getElementById(gid); if(!grid) return;
+      grid.addEventListener('click',e=>{
+        const stageHead=e.target.closest('[data-action="toggle-stage"]');
+        if(stageHead){
+          const stage=stageHead.closest('.onboarding-stage');
+          if(stage) openOnboardingAlert(Number(stage.dataset.saleId), Number(stage.dataset.stageIndex));
+          return;
+        }
+      });
+      grid.addEventListener('keydown',e=>{
+        const stageHead=e.target.closest('[data-action="toggle-stage"]');
+        if(stageHead && (e.key==='Enter'||e.key===' ')){e.preventDefault(); const stage=stageHead.closest('.onboarding-stage'); if(stage) openOnboardingAlert(Number(stage.dataset.saleId),Number(stage.dataset.stageIndex));}
+      });
     });
-    document.getElementById('salesGrid').addEventListener('keydown',e=>{
-      const stageHead=e.target.closest('[data-action="toggle-stage"]');
-      if(stageHead && (e.key==='Enter'||e.key===' ')){e.preventDefault(); const stage=stageHead.closest('.onboarding-stage'); if(stage) openOnboardingAlert(Number(stage.dataset.saleId),Number(stage.dataset.stageIndex));}
-    });
+    document.getElementById('onbArquivoToggle')?.addEventListener('click',()=>{ root.__arquivoAberto = !root.__arquivoAberto; renderSales(); });
     document.getElementById('onboardingAlertBody').addEventListener('change',e=>{
       const action=e.target.dataset.action; if(!action || !activeOnboardingAlert) return;
       const {saleId,idx}=activeOnboardingAlert, s=sales.find(x=>Number(x.id)===saleId); if(!s) return;
