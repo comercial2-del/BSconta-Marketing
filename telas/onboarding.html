@@ -380,6 +380,15 @@
 .onb .primary-btn:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:560px){.onb .anexo-link-linha{grid-template-columns:1fr auto}.onb .anexo-link-linha input[data-nome]{grid-column:1}}
 
+/* Dados da empresa (05/10/2026): quadros não esticam; atividades secundárias em lista na linha inteira */
+.onb #cnpjInfo .cnae-sec{grid-column:1/-1}
+.onb .cnae-lista{list-style:none;margin:.3rem 0 0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.3rem .9rem}
+.onb .cnae-lista li{display:flex;gap:.45rem;font-size:.72rem;line-height:1.35;color:var(--text-soft);font-weight:600}
+.onb .cnae-lista li[hidden]{display:none}
+.onb .cnae-cod{flex:0 0 auto;font-variant-numeric:tabular-nums;color:var(--text);font-weight:800}
+.onb .cnae-mais{margin-top:.45rem;border:0;background:none;padding:0;color:var(--indigo-600);font-size:.72rem;font-weight:800;cursor:pointer}
+@media(max-width:800px){.onb .cnae-lista{grid-template-columns:1fr}}
+
 /* Constituição (28/09/2026) */
 .onb .constituicao-box{display:flex;gap:.5rem;align-items:flex-start;border:1px solid var(--border);border-radius:12px;padding:.75rem .85rem}
 .onb .constituicao-texto{flex:1;white-space:pre-wrap;font-size:.8rem;color:var(--text);line-height:1.5}
@@ -1571,6 +1580,22 @@ function confereComRd(rdValor, reg){
   return bate ? 'Confere (RD: '+rdValor+')' : '⚠ Diferente — no RD está "'+rdValor+'", na Receita: '+reg.texto;
 }
 
+// Atividades secundárias (05/10/2026): ocupam a linha inteira, uma por linha, e com muitas
+// atividades mostram só as primeiras e um "Ver todas" — antes esticavam os quadros vizinhos.
+function secundariasHtml(lista){
+  const LIM=4;
+  if(!lista.length) return `<div class="info cnae-sec"><div class="info-label">Atividades secundárias</div><div class="info-value soft">Nenhuma</div></div>`;
+  const item=(t,i)=>{ const m=String(t).match(/^(\S+)\s+—\s+(.*)$/); return `<li${i>=LIM?' class="cnae-extra" hidden':''}>${m?`<span class="cnae-cod">${esc(m[1])}</span><span>${esc(m[2])}</span>`:`<span>${esc(t)}</span>`}</li>`; };
+  const botao=lista.length>LIM?`<button type="button" class="cnae-mais" data-cnae-mais data-total="${lista.length}">Ver todas (${lista.length})</button>`:'';
+  return `<div class="info cnae-sec"><div class="info-label">Atividades secundárias · ${lista.length}</div><ul class="cnae-lista">${lista.map(item).join('')}</ul>${botao}</div>`;
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('[data-cnae-mais]'); if(!b) return;
+  e.stopPropagation();
+  const box=b.closest('.cnae-sec'); const abrir=b.dataset.aberto!=='1';
+  box.querySelectorAll('.cnae-extra').forEach(li=>li.hidden=!abrir);
+  b.dataset.aberto=abrir?'1':''; b.textContent=abrir?'Mostrar menos':`Ver todas (${b.dataset.total})`;
+});
 async function consultarCnpj(s){
   if(processoDaVenda(s)==='constituicao') return; // Constituição: sem consulta automática
   const el=document.getElementById('cnpjInfo'); const d=soDigitos(s.cnpj);
@@ -1579,8 +1604,8 @@ async function consultarCnpj(s){
   const r=await buscarCnpj(d);
   if(selectedId!==s.id) return;
   if(r.erro){ el.innerHTML='<div class="cnpj-status">'+esc(r.erro)+'</div>'; return; }
-  const linhas=[['CNPJ',formatarCnpj(d)],['Razão social',r.razao],['Nome fantasia',r.fantasia],['Situação cadastral',r.situacao],['Abertura',r.abertura],['Natureza jurídica',r.natureza],['Porte',r.porte],['Regime tributário (Receita)',regimeDaReceita(r).texto],['Optante pelo Simples Nacional',linhaSimples(r.optSimples,r.dataSimples,r.exclusaoSimples)],['MEI',linhaSimples(r.optMei,r.dataMei,r.exclusaoMei)],['Atividade principal (CNAE)',r.cnae],['Atividades secundárias',(r.secundarias||[]).join('; ')||'Nenhuma'],['Capital social',r.capital],['Endereço',r.endereco],['CEP',r.cep],['Cidade/UF',r.cidadeUf],['Telefone',r.telefone],['E-mail',r.email]];
-  el.innerHTML=linhas.map(([k,v])=>infoHtml(k,v||'—')).join('')+`<div class="cnpj-status">Fonte: ${esc(r.fonte)}.</div>`;
+  const linhas=[['CNPJ',formatarCnpj(d)],['Razão social',r.razao],['Nome fantasia',r.fantasia],['Situação cadastral',r.situacao],['Abertura',r.abertura],['Natureza jurídica',r.natureza],['Porte',r.porte],['Regime tributário (Receita)',regimeDaReceita(r).texto],['Optante pelo Simples Nacional',linhaSimples(r.optSimples,r.dataSimples,r.exclusaoSimples)],['MEI',linhaSimples(r.optMei,r.dataMei,r.exclusaoMei)],['Atividade principal (CNAE)',r.cnae],['Capital social',r.capital],['Endereço',r.endereco],['CEP',r.cep],['Cidade/UF',r.cidadeUf],['Telefone',r.telefone],['E-mail',r.email]];
+  el.innerHTML=linhas.map(([k,v])=>infoHtml(k,v||'—')).join('')+secundariasHtml(r.secundarias||[])+`<div class="cnpj-status">Fonte: ${esc(r.fonte)}.</div>`;
   renderSocios(s,r);
   if(false){
     document.getElementById('partnersSection').hidden=false;
