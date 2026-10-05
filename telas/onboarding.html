@@ -1564,6 +1564,12 @@ function buscarCnpj(d){
   return p;
 }
 const tentativasCnpj=new Map();
+// E-mail que o cliente informou no RD (05/10/2026): e-mails dos contatos da negociação
+// e qualquer campo personalizado de e-mail. Fica ao lado do e-mail da Receita.
+function emailsDoRd(det){
+  const lista=[...(det?.contatos||[]).flatMap(c=>c.emails||[]), ...(det?.campos||[]).filter(c=>/e-?mail/i.test(c.label||'')).map(c=>c.value)];
+  return [...new Set(lista.map(e=>String(e||'').trim().toLowerCase()).filter(e=>e.includes('@')))].join(', ');
+}
 
 // Regime tributário pela Receita (28/09/2026): Simples/MEI com datas e, fora do Simples,
 // a forma de tributação declarada (Lucro Presumido / Real / Arbitrado), comparando com o RD.
@@ -1614,7 +1620,7 @@ async function consultarCnpj(s){
   const r=await buscarCnpj(d);
   if(selectedId!==s.id) return;
   if(r.erro){ el.innerHTML='<div class="cnpj-status">'+esc(r.erro)+'</div>'; return; }
-  const linhas=[['CNPJ',formatarCnpj(d)],['Razão social',r.razao],['Nome fantasia',r.fantasia],['Situação cadastral',r.situacao],['Abertura',r.abertura],['Natureza jurídica',r.natureza],['Porte',r.porte],['Regime tributário (Receita)',regimeDaReceita(r).texto],['Optante pelo Simples Nacional',linhaSimples(r.optSimples,r.dataSimples,r.exclusaoSimples)],['MEI',linhaSimples(r.optMei,r.dataMei,r.exclusaoMei)],['Atividade principal (CNAE)',r.cnae],['Capital social',r.capital],['Endereço',r.endereco],['CEP',r.cep],['Cidade/UF',r.cidadeUf],['Telefone',r.telefone],['E-mail',r.email]];
+  const linhas=[['CNPJ',formatarCnpj(d)],['Razão social',r.razao],['Nome fantasia',r.fantasia],['Situação cadastral',r.situacao],['Abertura',r.abertura],['Natureza jurídica',r.natureza],['Porte',r.porte],['Regime tributário (Receita)',regimeDaReceita(r).texto],['Optante pelo Simples Nacional',linhaSimples(r.optSimples,r.dataSimples,r.exclusaoSimples)],['MEI',linhaSimples(r.optMei,r.dataMei,r.exclusaoMei)],['Atividade principal (CNAE)',r.cnae],['Capital social',r.capital],['Endereço',r.endereco],['CEP',r.cep],['Cidade/UF',r.cidadeUf],['Telefone',r.telefone],['Endereço eletrônico (Receita)',r.email],['E-mail informado no RD',emailsDoRd(s.rd)||'Não informado no RD']];
   // Faltou e-mail/telefone/endereço porque o CNPJ.ws não respondeu (limite por minuto): tenta de novo sozinho.
   const n=tentativasCnpj.get(d)||0;
   let aviso='';
