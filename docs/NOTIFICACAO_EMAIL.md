@@ -74,3 +74,39 @@ Opcional (Secrets): `EMAIL_REMETENTE` (padrão comercial@bsconta.com.br) e
 4. Reabrir e concluir de novo a etapa 01 → **não** chega outro e-mail.
 5. Falha: se aparecer **Falhou**, o erro vem escrito; clique **Tentar de novo**
    (ou espere o cron de 10 min).
+
+---
+
+# Fluxo do Handoff — vermelho → verde → cinza → azul (05/10/2026, fase de teste)
+
+```
+VENDIDA → 01 · Handoff VERMELHO/BLOQUEADO → marcada VERDE → LIBERADA → E-MAIL DE HANDOFF
+        → etapa 02 com o Gustavo (CINZA, aguardando início) → Gustavo inicia (AZUL, em andamento)
+```
+
+| Cor | Onde aparece | Significado |
+|---|---|---|
+| 🔴 Vermelho | bolinha 01 + borda/selo do card "Bloqueado · aguardando validação" | Vendida e bloqueada. Nenhuma etapa avança e nenhum e-mail sai. |
+| 🟢 Verde | bolinha 01 | Validada e liberada. É neste momento que o e-mail de Handoff é disparado. |
+| ⚪ Cinza | bolinha 02 + borda/selo "Aguardando Gustavo" | Direcionada ao Gustavo, aguardando ele dar início. |
+| 🔵 Azul | bolinha 02 + borda/selo "Em andamento · Gustavo" | Gustavo assumiu (status da 02 = Em andamento). |
+
+Regras (tela `telas/onboarding.html`):
+- Toda venda nova entra com a 01 em **Bloqueado**. Cards que já existiam com a 01 ainda não concluída também passam a aparecer bloqueados.
+- A 01 só tem duas opções: **Bloqueado** e **Verde (liberado)**. Marcar verde pede confirmação.
+- Enquanto a 01 está vermelha, as etapas 02 a 10 ficam travadas (status, checklist e campos).
+- Ao marcar verde: a 02 fica "Aguardando início" com o responsável configurado (Gustavo) e o histórico registra a liberação.
+- Depois que o Gustavo inicia a 02, a 01 não pode voltar para vermelho.
+- O e-mail continua sendo disparado só pelo banco (gatilho), e **só** quando a 01 passa a "done" (verde) — vermelho nunca dispara.
+
+Responsável da etapa seguinte = **configuração** (`banco/26_onboarding_fluxo_handoff.sql`), não regra fixa:
+
+```sql
+update public.onboarding_config set valor = '"Fulano"', atualizado_em = now()
+ where chave = 'responsavel_proxima_etapa';
+```
+
+A tela e o gatilho passam a usar o novo nome. (O destinatário do e-mail ainda é buscado pelo
+nome "Gustavo" na Edge Function `notificar-transferencia`; ao trocar o responsável, ajustar lá também.)
+
+Teste automatizado: `test/verify-onboarding-fluxo.mjs`.
