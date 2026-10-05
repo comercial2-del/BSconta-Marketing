@@ -168,6 +168,7 @@ async function abrir(nomeUsuario, localStorageInicial = null) {
   }, { TAB: FIXAS, user: u, ls: localStorageInicial });
 
   const pagina = await contexto.newPage();
+  pagina.on("dialog", (d) => d.accept().catch(() => {})); // confirmação do verde (fluxo do Handoff, 05/10/2026)
   const erros = [];
   pagina.on("pageerror", (e) => erros.push(String(e.message)));
   await pagina.goto(`${BASE}/telas/onboarding.html`, { waitUntil: "load" });

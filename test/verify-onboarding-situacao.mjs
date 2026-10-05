@@ -158,6 +158,7 @@ async function abrir(nomeUsuario, localStorageInicial = null) {
   }, { TAB: FIXAS, user: u, ls: localStorageInicial });
 
   const pagina = await contexto.newPage();
+  pagina.on("dialog", (d) => d.accept().catch(() => {})); // confirmação do verde (fluxo do Handoff, 05/10/2026)
   const erros = [];
   pagina.on("pageerror", (e) => erros.push(String(e.message)));
   await pagina.goto(`${BASE}/telas/onboarding.html`, { waitUntil: "load" });
@@ -205,13 +206,14 @@ async function acao(p, numero, a) {
 }
 
 const a = await abrir("bsconta");
-a.pagina.on("dialog", (d) => d.accept());
+// (dialog já aceito na criação da página)
 const V = "0002";
 ok(!(await a.pagina.$("#onbArquivo")), "seção antiga Concluídos / Arquivados foi removida");
 ok((await a.pagina.$$eval("#situacaoFilter option", (o) => o.map((x) => x.textContent))).join("|") === "Ativos|Concluídos|Arquivados|Excluídos", "filtro tem Ativos, Concluídos, Arquivados, Excluídos");
 const ativosAntes = await numeros(a);
 ok(ativosAntes.includes(V), "venda #0002 começa em Ativos");
 
+await concluirEtapa(a, V, 0); // fluxo do Handoff (05/10/2026): libera (verde) antes de avançar
 await concluirEtapa(a, V, 9);
 ok(!(await numeros(a)).includes(V), "etapa 10 concluída: card sai de Ativos");
 await vista(a, "concluido");

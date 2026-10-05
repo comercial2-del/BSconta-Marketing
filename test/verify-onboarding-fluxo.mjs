@@ -1,19 +1,12 @@
 // ---------------------------------------------------------------------------
-// Onboarding: o andamento das 10 etapas é o MESMO para todos os usuários.
+// Onboarding: fluxo do Handoff (05/10/2026, fase de teste) — baseado no teste do e-mail.
 //
-// Por que este teste existe (30/09/2026): o andamento ficava só no
-// localStorage do navegador. O bsconta marcava a 01 como "Concluído" e via
-// 1/10 · 10%, mas o Gustavo (ADMIN) e o resto da equipe continuavam vendo 0/10.
-// Agora fica em public.onboarding_etapas.
+// O envio é feito no servidor (gatilho do SQL 25 + Edge Function
+// notificar-transferencia). Aqui conferimos a tela: a janela da etapa 01
+// concluída mostra o status do e-mail e, se falhou, o botão "Tentar de novo",
+// que chama a função com { id, manual: true } e a sessão do usuário.
 //
-// Aqui abrimos TRÊS navegadores separados (cada um com o próprio localStorage)
-// ligados a um único banco de mentira, compartilhado na memória deste processo:
-//   1. bsconta conclui a 01 -> Gustavo e um terceiro usuário veem 01 verde, 1/10.
-//   2. Gustavo conclui a 02 -> bsconta vê 2/10 (pela atualização automática).
-//   3. Um navegador com marcações antigas no localStorage envia essas marcações
-//      ao banco UMA única vez, sem sobrescrever o que já estava lá.
-//
-// Rodar: node test/verify-onboarding-etapas.mjs   (ou npm run teste:onboarding)
+// Rodar: node test/verify-onboarding-email.mjs
 // ---------------------------------------------------------------------------
 import { chromium } from "playwright";
 import http from "node:http";
@@ -66,6 +59,11 @@ deals.push({ ...deals[0], id: uuid(1999), rd_deal_id: "rd_deal_agosto", company_
 const sales = deals.map((d, i) => ({ id: uuid(9000 + i), deal_id: d.id, seller_id: d.seller_id, value: d.value, margin: 0, is_recurring: false, closed_at: d.closed_at }));
 const FIXAS = {
   sellers, stages, deals, sales, activities: [], goals: [], onboarding_notas: [], onboarding_anexos: [],
+  onboarding_transferencias: [
+    { id: uuid(7000), deal_id: uuid(1001), email_status: "erro", email_erro: "Gmail do remetente ainda não foi conectado", email_destinatarios: null, email_tentativas: 1, email_enviado_em: null, transferido_em: iso(0) },
+    { id: uuid(7001), deal_id: uuid(1000), email_status: "enviado", email_erro: null, email_destinatarios: ["gustavo@bsconta.com.br", "izadora@bsconta.com.br"], email_tentativas: 1, email_enviado_em: iso(0), transferido_em: iso(0) },
+  ],
+  onboarding_config: [{ chave: "responsavel_proxima_etapa", valor: "Gustavo" }],
   profiles: Object.values(USUARIOS).map((u) => ({ id: u.id, name: u.name, role: u.role, seller_id: null })),
 };
 
@@ -158,10 +156,16 @@ async function abrir(nomeUsuario, localStorageInicial = null) {
       }),
     };
     const fetchOriginal = window.fetch;
-    window.fetch = (url, opts) =>
-      String(url).includes("/functions/v1/")
+    window.__chamadas = [];
+    window.fetch = (url, opts) => {
+      if (String(url).includes("/functions/v1/notificar-transferencia")) {
+        window.__chamadas.push({ url: String(url), body: opts && opts.body, auth: opts && opts.headers && opts.headers.Authorization });
+        return Promise.resolve(new Response(JSON.stringify({ ok: true, resultados: [{ status: "enviado" }] }), { status: 200, headers: { "Content-Type": "application/json" } }));
+      }
+      return String(url).includes("/functions/v1/")
         ? Promise.resolve(new Response(JSON.stringify({ ok: true, registros: 0 }), { status: 200, headers: { "Content-Type": "application/json" } }))
         : fetchOriginal(url, opts);
+    };
   }, { TAB: FIXAS, user: u, ls: localStorageInicial });
 
   const pagina = await contexto.newPage();
@@ -200,118 +204,90 @@ async function atualizar(p) {
   await p.pagina.evaluate(() => window.__onbAtualizarRemoto());
   await p.pagina.waitForTimeout(200);
 }
-const VENDA = "#0002"; // venda mais antiga de setembro (deal 1000)
 
-// --- 0. Só vendas de setembro/2026 em diante --------------------------------
-{
-  const p = await abrir("bsconta");
-  const r = await p.pagina.evaluate(() => ({
-    cards: [...document.querySelectorAll(".sale-card .sale-id")].map((e) => e.textContent.trim()),
-    agosto: document.body.textContent.includes("Empresa Agosto"),
-    kpi: document.getElementById("kpiSales")?.textContent.trim(),
-  }));
-  ok(!r.agosto && r.cards.length === 3 && !r.cards.some((c) => c.includes("#0001")), `venda de agosto fica fora do board (${r.cards.join(", ")})`);
-  ok(r.kpi === "3", `total de vendas conta só setembro em diante (${r.kpi})`);
-  await p.contexto.close();
+const VENDA = "#0003"; // deal 1001: nenhuma etapa gravada no banco
+const D = uuid(1001);
+async function abrirEtapa(p, numero, indice) {
+  await p.pagina.evaluate(({ numero, indice }) => {
+    const c = [...document.querySelectorAll(".sale-card")].find((x) => x.querySelector(".sale-id")?.textContent.includes(numero));
+    c.querySelectorAll('[data-action="toggle-stage"]')[indice].click();
+  }, { numero, indice });
 }
-
-// --- 1. bsconta conclui a 01 -> todos veem --------------------------------
-const bsconta = await abrir("bsconta");
-const gustavo = await abrir("gustavo");
-const terceiro = await abrir("terceiro");
-
-let g0 = await card(gustavo, VENDA);
-ok(g0 && g0.titulo.startsWith("0/10"), `Gustavo começa em 0/10 (${g0?.titulo})`);
-
-await concluirEtapa(bsconta, VENDA, 0);
-const b1 = await card(bsconta, VENDA);
-ok(b1.titulo.includes("1/10") && b1.titulo.includes("10%") && /\bdone\b/.test(b1.m1), `bsconta vê 01 verde e ${b1.titulo}`);
-ok(etapasDb.has(deals[0].id), "a conclusão foi gravada em public.onboarding_etapas");
-ok(etapasDb.get(deals[0].id)?.atualizado_por === USUARIOS.bsconta.id, "atualizado_por = bsconta");
-
-// Gustavo: sem recarregar (atualização automática de 60 s)
-await atualizar(gustavo);
-const g1 = await card(gustavo, VENDA);
-ok(g1.titulo.includes("1/10") && g1.titulo.includes("10%"), `Gustavo vê ${g1.titulo} sem recarregar`);
-ok(/\bdone\b/.test(g1.m1), "Gustavo vê a bolinha 01 verde (done)");
-ok(/\bcurrent\b/.test(await gustavo.pagina.evaluate((n) => [...document.querySelectorAll(".sale-card")].find((x) => x.querySelector(".sale-id")?.textContent.includes(n)).querySelectorAll(".onboarding-stage")[1].className, VENDA)), "Gustavo vê a 02 como etapa atual (roxa)");
-ok(g1.proximo.startsWith("Primeiro contato realizado"), `próximo passo para o Gustavo: ${g1.proximo}`);
-
-// Terceiro usuário: recarregando a página
-await terceiro.pagina.reload({ waitUntil: "load" });
-await terceiro.pagina.waitForSelector(".sale-card .onboarding-title");
-await terceiro.pagina.waitForTimeout(400);
-const t1 = await card(terceiro, VENDA);
-ok(t1.titulo.includes("1/10") && /\bdone\b/.test(t1.m1), `terceiro usuário vê 01 verde e ${t1.titulo}`);
-
-// --- 2. Gustavo conclui a 02 -> bsconta vê 2/10 ---------------------------
-await concluirEtapa(gustavo, VENDA, 1);
-ok((await card(gustavo, VENDA)).titulo.includes("2/10"), "Gustavo vê 2/10 depois de concluir a 02");
-await atualizar(bsconta);
-const b2 = await card(bsconta, VENDA);
-ok(b2.titulo.includes("2/10") && b2.titulo.includes("20%") && /\bdone\b/.test(b2.m2), `bsconta vê ${b2.titulo}`);
-await atualizar(terceiro);
-ok((await card(terceiro, VENDA)).titulo.includes("2/10"), "terceiro usuário também vê 2/10");
-
-// Outras vendas continuam intactas
-ok((await card(gustavo, "#0003")).titulo.startsWith("0/10"), "as demais vendas continuam em 0/10");
-
-// --- 3. Migração do localStorage antigo -----------------------------------
-// Um navegador com marcações antigas: 3 etapas concluídas na venda #0003
-// (ainda não está no banco) e marcações na #0002 (que JÁ está no banco).
-const agora = new Date().toISOString();
-const ETAPAS_TITULOS = ["Handoff", "Início do Onboarding", "1ª Reunião", "Configuração / Implantação", "2ª Reunião", "Acompanhamento", "Onboarding Concluído", "Pesquisa de Satisfação", "Avaliação no Google", "Indicação"];
-const antigo = (feitas) => ({
-  stages: ETAPAS_TITULOS.map((title, i) => ({ title, status: i < feitas ? "done" : "pending", responsible: i === 0 ? "Uriel" : "", notes: "", dueDate: "", createdAt: agora, startedAt: agora, completedAt: i < feitas ? agora : null, updatedAt: agora })),
-  nextStep: ETAPAS_TITULOS[feitas],
-  auditHistory: [{ at: agora, title: "Timeline de onboarding criada", text: "" }, { at: agora, title: "Handoff — Concluído", text: "" }],
-});
-const lsAntigo = { bsconta_onboarding_timeline_v1: JSON.stringify({ [`sale_${sales[1].id}`]: antigo(3), [`sale_${sales[0].id}`]: antigo(5) }) };
-const antes0001 = JSON.stringify(etapasDb.get(deals[0].id));
-const velho = await abrir("antigo", lsAntigo);
-const migr = log.filter((l) => l.usuario === USUARIOS.antigo.id);
-ok(migr.length === 1 && migr[0].deal_id === deals[1].id && migr[0].ignoreDuplicates, `migração enviou só a venda que faltava no banco, com ignoreDuplicates (${migr.length} envio)`);
-ok(JSON.stringify(etapasDb.get(deals[0].id)) === antes0001, "a migração NÃO sobrescreveu a #0002 que já estava no banco");
-ok((await card(velho, VENDA)).titulo.includes("2/10"), "no navegador antigo a #0002 mostra o banco (2/10), não o localStorage (5/10)");
-ok((await card(velho, "#0003")).titulo.includes("3/10"), "no navegador antigo a #0003 mostra as marcações migradas (3/10)");
-
-// Recarregar não envia de novo
-await velho.pagina.reload({ waitUntil: "load" });
-await velho.pagina.waitForSelector(".sale-card .onboarding-title");
-await velho.pagina.waitForTimeout(500);
-ok(log.filter((l) => l.usuario === USUARIOS.antigo.id).length === 1, "recarregando, a migração não é enviada de novo");
-
-// E agora todos veem a #0003 migrada
-await atualizar(gustavo);
-ok((await card(gustavo, "#0003")).titulo.includes("3/10"), "Gustavo vê a #0003 migrada (3/10)");
-
-// --- Sem erros de JavaScript nem alertas de falha --------------------------
-for (const p of [bsconta, gustavo, terceiro, velho]) {
-  const alertas = await p.pagina.evaluate(() => window.__alertas || []);
-  ok(p.erros.length === 0 && alertas.length === 0, `${p.nome}: sem erros de JavaScript nem alerta de falha${p.erros.length ? " — " + p.erros.slice(0, 2).join(" | ") : ""}${alertas.length ? " — " + alertas[0] : ""}`);
+async function status(p, numero, indice, valor) {
+  await abrirEtapa(p, numero, indice);
+  await p.pagina.selectOption('#onboardingAlertBody select[data-action="stage-status"]', valor);
+  await p.pagina.waitForTimeout(300);
+  await p.pagina.click("#closeOnboardingAlert");
 }
+const estado = (p, numero) => p.pagina.evaluate((numero) => {
+  const c = [...document.querySelectorAll(".sale-card")].find((x) => x.querySelector(".sale-id")?.textContent.includes(numero));
+  return { classe: c.className, fluxo: c.querySelector("[data-fluxo]")?.dataset.fluxo || "", rotulo: c.querySelector("[data-fluxo]")?.textContent || "", m1: c.querySelectorAll(".stage-marker")[0].className, m2: c.querySelectorAll(".stage-marker")[1].className, titulo: c.querySelector(".onboarding-title").textContent };
+}, numero);
+const dados = () => etapasDb.get(D)?.dados;
 
-// --- Falha ao gravar mostra alerta ----------------------------------------
-{
-  // simula o banco recusando a gravação só para o terceiro
-  const antesLog = log.length;
-  await terceiro.pagina.evaluate(() => {
-    const from = sb.from.bind(sb);
-    sb.from = (t) => {
-      const q = from(t);
-      if (t !== "onboarding_etapas") return q;
-      const up = q.upsert;
-      q.upsert = (...a) => { up(...a); return { select: () => ({ single: () => Promise.resolve({ data: null, error: { message: "permission denied" } }) }) }; };
-      return q;
-    };
-  });
-  await concluirEtapa(terceiro, VENDA, 2);
-  const alertas = await terceiro.pagina.evaluate(() => window.__alertas || []);
-  ok(alertas.length === 1 && /Não foi possível salvar/.test(alertas[0]), "se a gravação falhar, o usuário recebe um alerta");
-  ok(log.length === antesLog, "nada foi gravado no banco nessa falha");
-}
+const u = await abrir("bsconta");
+// 1) Vendida: 01 vermelha/bloqueada
+let e = await estado(u, VENDA);
+ok(/blocked/.test(e.m1), "venda nova: bolinha 01 vermelha (blocked)");
+ok(e.fluxo === "bloqueado" && /fluxo-bloqueado/.test(e.classe), `card marcado em vermelho (${e.rotulo})`);
 
+// 2) Bloqueada: não avança
+await abrirEtapa(u, VENDA, 1);
+ok(await u.pagina.evaluate(() => document.querySelector("#onboardingAlertBody .stage-body").classList.contains("travada")), "etapa 02 travada enquanto a 01 está vermelha");
+await u.pagina.evaluate(() => { const s = document.querySelector('#onboardingAlertBody select[data-action="stage-status"]'); s.value = "progress"; s.dispatchEvent(new Event("change", { bubbles: true })); });
+await u.pagina.waitForTimeout(300);
+await u.pagina.click("#closeOnboardingAlert");
+e = await estado(u, VENDA);
+ok(!/in-progress/.test(e.m2) && e.fluxo === "bloqueado", "tentar avançar a 02 com a 01 vermelha não muda nada");
+ok(!dados() || dados().stages[0].status !== "done", "nada gravado como verde (o gatilho do e-mail não tem o que disparar)");
+
+// 3) A 01 só tem Bloqueado e Verde
+await abrirEtapa(u, VENDA, 0);
+const opcoes = await u.pagina.$$eval('#onboardingAlertBody select[data-action="stage-status"] option', (o) => o.map((x) => x.value).join("|"));
+ok(opcoes === "blocked|done", `01 · Handoff só tem Bloqueado e Verde (${opcoes})`);
+await u.pagina.click("#closeOnboardingAlert");
+
+// 4) Cancelar a confirmação mantém bloqueado
+u.pagina.removeAllListeners("dialog");
+u.pagina.once("dialog", (d) => d.dismiss());
+await status(u, VENDA, 0, "done");
+ok((await estado(u, VENDA)).fluxo === "bloqueado", "cancelando a confirmação, continua vermelho");
+u.pagina.on("dialog", (d) => d.accept().catch(() => {}));
+
+// 5) Verde: libera, grava (dispara o gatilho do e-mail) e direciona ao Gustavo (cinza)
+await status(u, VENDA, 0, "done");
+e = await estado(u, VENDA);
+ok(/done/.test(e.m1), "01 verde (done)");
+ok(dados()?.stages[0].status === "done", "verde gravado no banco (é o que dispara o e-mail no gatilho)");
+ok(dados()?.stages[1].responsible === "Gustavo" && dados()?.stages[1].status === "pending", "etapa 02 direcionada ao Gustavo, aguardando início");
+ok(e.fluxo === "aguardando" && /fluxo-aguardando/.test(e.classe) && /aguardando/.test(e.m2), `card cinza (${e.rotulo})`);
+ok((await u.pagina.textContent("#toast")).includes("E-mail de Handoff disparado"), "aviso de liberação + e-mail");
+ok(dados().auditHistory.some((h) => h.title === "Venda liberada"), "histórico registra a liberação");
+
+// 6) Filtro de responsável continua funcionando
+const opcResp = await u.pagina.$$eval("#respFilter option", (o) => o.map((x) => x.value));
+ok(opcResp.includes("Gustavo"), "filtro de responsável tem o Gustavo");
+
+// 7) Gustavo assume: azul/em andamento
+const g = await abrir("gustavo");
+e = await estado(g, VENDA);
+ok(e.fluxo === "aguardando", "Gustavo vê a venda cinza aguardando ele");
+await status(g, VENDA, 1, "progress");
+e = await estado(g, VENDA);
+ok(e.fluxo === "andamento" && /fluxo-andamento/.test(e.classe) && /in-progress/.test(e.m2), `card azul (${e.rotulo})`);
+ok(dados()?.stages[1].status === "progress", "em andamento gravado no banco");
+
+// 8) Com a 02 iniciada, a 01 não volta para vermelho
+await status(g, VENDA, 0, "blocked");
+ok(dados()?.stages[0].status === "done", "não dá para bloquear de novo depois que o Gustavo iniciou");
+
+// 9) Cards que já existiam com a 01 em andamento passam a aparecer bloqueados
+etapasDb.set(uuid(1002), { deal_id: uuid(1002), dados: { stages: Array.from({ length: 10 }, (_, i) => ({ status: i === 0 ? "progress" : "pending", substeps: [] })), auditHistory: [] }, atualizado_em: new Date().toISOString() });
+const t = await abrir("terceiro");
+ok((await estado(t, "#0004")).fluxo === "bloqueado", "card antigo com a 01 em andamento aparece vermelho/bloqueado");
+
+ok(!u.erros.length && !g.erros.length && !t.erros.length, "sem erros de JavaScript");
 await navegador.close();
 servidor.close();
-console.log(falhas === 0 ? "\nTodos os testes passaram." : `\n${falhas} teste(s) falharam.`);
-process.exit(falhas === 0 ? 0 : 1);
+console.log(falhas ? `\n${falhas} teste(s) falharam.` : "\nTodos os testes passaram.");
+process.exit(falhas ? 1 : 0);
