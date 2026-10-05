@@ -6,6 +6,22 @@
   <title>BSconta + Marketing</title>
   <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
   <link rel="stylesheet" href="../css/styles.css?v=20260914" />
+  <style>
+    /* Campanhas mais vendidas (05/10/2026) — mesmo visual de "Motivos de perda" (tela Leads) */
+    .camp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
+    .camp-head h2{margin:0}
+    .camp-head p{font-size:.78rem;color:var(--text-faint);margin:.2rem 0 0}
+    .camp-lista{display:flex;flex-direction:column;gap:.45rem;margin-top:.9rem}
+    .camp-row{box-sizing:border-box;display:grid;grid-template-columns:1fr auto;gap:.3rem .8rem;align-items:center;padding:.55rem .7rem;border:1px solid var(--border);border-radius:11px;background:var(--surface)}
+    .camp-row.top{border-color:var(--emerald-500);background:var(--emerald-50)}
+    .camp-nome{font-size:.8rem;font-weight:750;color:var(--text)}
+    .camp-nome small{font-weight:600;color:var(--text-faint);margin-left:.35rem}
+    .camp-num{font-size:.74rem;color:var(--text-soft);text-align:right;white-space:nowrap}
+    .camp-num strong{color:var(--text)}
+    .camp-track{grid-column:1/-1;height:7px;border-radius:999px;background:var(--surface-2);overflow:hidden}
+    .camp-track span{display:block;height:100%;border-radius:999px;background:var(--emerald-500)}
+    @media (max-width:760px){.camp-head{flex-direction:column}.camp-row{grid-template-columns:1fr}.camp-num{text-align:left;white-space:normal}}
+  </style>
 </head>
 <body>
   <div class="app-shell">
@@ -31,6 +47,7 @@
   <script src="../js/ui.js?v=20260926"></script>
   <script src="../js/charts.js?v=20260914"></script>
   <script src="../js/sync.js?v=20260914"></script>
+  <script src="../js/origens.js?v=20260928"></script>
   <script>
     let store = null;
 
@@ -57,6 +74,30 @@
       const countOpenByStage = (stageId) => (stageId ? store.deals.filter((d) => d.stage_id === stageId && d.status === "OPEN").length : 0);
 
       const wonInPeriod = saleRows.length;
+
+      // Campanhas mais vendidas (pedido do usuário, 05/10/2026): vendas do
+      // período agrupadas pela campanha do RD Station (deals.campaign) — as
+      // mesmas campanhas de "Origem dos leads" (aba Marketing, js/origens.js).
+      const campanhasVendidas = (() => {
+        const mapa = new Map();
+        for (const s of saleRows) {
+          const deal = dealById.get(s.deal_id) || {};
+          const rd = (deal.campaign || "").trim();
+          const nome = !rd || /^sem campanha$/i.test(rd) ? "Sem campanha" : rd;
+          const atual = mapa.get(nome) || { nome, n: 0, valor: 0, canais: new Map() };
+          atual.n += 1;
+          atual.valor += Number(s.value) || 0;
+          const canal = typeof canalDaFonte === "function" ? canalDaFonte(deal.origin).nome : "";
+          if (canal) atual.canais.set(canal, (atual.canais.get(canal) || 0) + 1);
+          mapa.set(nome, atual);
+        }
+        const total = saleRows.length || 1;
+        return [...mapa.values()]
+          .map((c) => ({ ...c, pct: (c.n / total) * 100, canal: [...c.canais.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "" }))
+          .sort((a, b) => b.n - a.n || b.valor - a.valor || a.nome.localeCompare(b.nome, "pt-BR"));
+      })();
+      const campanhaTop = campanhasVendidas.find((c) => c.nome !== "Sem campanha");
+      const maxCampanha = Math.max(1, ...campanhasVendidas.map((c) => c.n));
 
       const perSeller = store.sellers
         .filter((seller) => /uriel/i.test(seller.name))
@@ -105,6 +146,25 @@
                 ${perSeller.length === 0 ? `<tr><td colspan="3" class="text-empty">Nenhum vendedor cadastrado ainda.</td></tr>` : ""}
               </tbody>
             </table>
+          </div>
+
+          <div class="card card-p">
+            <div class="camp-head">
+              <div>
+                <h2>Campanhas mais vendidas</h2>
+                <p>Ranking das campanhas (RD Station) pelo número de vendas fechadas no período — as mesmas campanhas de "Origem dos leads".</p>
+              </div>
+              ${campanhaTop ? `<span class="client-count-pill">Mais vendida: ${esc(campanhaTop.nome)}</span>` : ""}
+            </div>
+            ${campanhasVendidas.length ? `
+              <div class="camp-lista">
+                ${campanhasVendidas.map((c, i) => `
+                  <div class="camp-row ${i === 0 && c.nome !== "Sem campanha" ? "top" : ""}">
+                    <span class="camp-nome">${i === 0 ? "🏆 " : `${i + 1}º `}${esc(c.nome)}${c.canal ? `<small>${esc(c.canal)}</small>` : ""}</span>
+                    <span class="camp-num"><strong>${c.n} venda${c.n === 1 ? "" : "s"}</strong> · ${c.pct.toFixed(0)}% · ${brl(c.valor)}</span>
+                    <span class="camp-track"><span style="width:${(c.n / maxCampanha) * 100}%"></span></span>
+                  </div>`).join("")}
+              </div>` : `<p class="text-empty">Nenhuma venda no período selecionado.</p>`}
           </div>
 
           <div class="card card-p table-scroll">
