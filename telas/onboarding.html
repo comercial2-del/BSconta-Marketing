@@ -127,7 +127,7 @@
 .onb .sales-board-head p{font-size:.74rem;color:var(--text-faint);margin:.2rem 0 0}
 .onb .sales-filters{padding:.75rem 1.1rem;display:grid;grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr;gap:.55rem;border-bottom:1px solid var(--surface-2)}
 .onb .sales-filters .field input,.onb .sales-filters .field select{height:40px}
-.onb .sales-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.9rem;padding:1rem 1.1rem 1.15rem}
+.onb .sales-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.85rem;padding:1rem 1.1rem 1.15rem}
 .onb .sale-card{position:relative;background:linear-gradient(180deg,#fff,#fcfcff);border:1px solid var(--border);border-radius:14px;padding:.95rem;box-shadow:0 2px 7px rgba(15,23,42,.035);cursor:pointer;transition:transform .14s,box-shadow .14s,border-color .14s}
 .onb .sale-card:hover{transform:translateY(-2px);box-shadow:0 11px 24px rgba(15,23,42,.08);border-color:var(--indigo-100)}
 .onb .sale-card:focus{outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.12),0 10px 22px rgba(15,23,42,.07)}
@@ -379,6 +379,21 @@
 .onb .primary-btn.perigo{background:#dc2626}
 .onb .primary-btn:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:560px){.onb .anexo-link-linha{grid-template-columns:1fr auto}.onb .anexo-link-linha input[data-nome]{grid-column:1}}
+
+/* Cards mais compactos, 3 por linha (05/10/2026): menos espaço vazio, nome e próximo passo em 1 linha */
+.onb .sale-card{padding:.8rem .85rem}
+.onb .sale-card-top{margin-bottom:.5rem}
+.onb .sale-client-name{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.onb .sale-service{margin:.55rem 0;padding:.45rem .6rem}
+.onb .sale-service-tipo{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.onb .sale-card-bottom{padding-top:.5rem}
+.onb .onboarding-box{margin-top:.55rem;padding:.55rem .6rem}
+.onb .onboarding-next{margin-top:.4rem;padding:.35rem .5rem}
+.onb .onboarding-next-main{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.onb .onboarding-timeline{margin-top:.45rem}
+.onb .stage-head{min-height:0}
+.onb .onboarding-hint{display:none}
+.onb .sale-arrow{margin-top:.45rem}
 
 /* Dados da empresa (05/10/2026): quadros não esticam; atividades secundárias em lista na linha inteira */
 .onb #cnpjInfo .cnae-sec{grid-column:1/-1}
@@ -953,7 +968,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       return `<section class="onboarding-box onboarding-interactive" data-onboarding-box="${s.id}">
         <div class="onboarding-box-head"><div><div class="onboarding-eyebrow">Onboarding do Cliente</div><div class="onboarding-title">${p.completed}/${ONBOARDING_STAGES.length} etapas concluídas · ${p.percent}%</div></div><span class="badge ${p.percent===100?'b-green':'b-indigo'}">${p.percent===100?'Concluído':'Em acompanhamento'}</span></div>
         <div class="onboarding-progress"><span style="width:${p.percent}%"></span></div>
-        <div class="onboarding-next"><div class="onboarding-next-label">Próximo passo</div><div class="onboarding-next-main">${current===0&&next?.status==='blocked'?'Venda concluída · Bloqueado — marque a 01 como verde para liberar':esc(stageFocus(next,current) || 'Onboarding finalizado')+(next?.status==='blocked'?' · Bloqueado':'')}</div></div>
+        <div class="onboarding-next"><div class="onboarding-next-label">Próximo passo</div><div class="onboarding-next-main">${current===0&&next?.status==='blocked'?'Bloqueado · marque a 01 como verde':esc(stageFocus(next,current) || 'Onboarding finalizado')+(next?.status==='blocked'?' · Bloqueado':'')}</div></div>
         <div class="onboarding-timeline">${stageHtml}</div>
         <div class="onboarding-hint">Clique em um número para ver o status e adicionar informações.</div>
       </section>`;
@@ -1209,7 +1224,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
           </div>
           <div class="sale-client-row">
             <div class="sale-client-avatar">${esc(s.abbr || initials(s.name))}</div>
-            <div><div class="sale-client-name">${esc(s.name)}</div><div class="sale-client-meta">${esc(s.cnpj || 'CNPJ não informado')}</div></div>
+            <div><div class="sale-client-name" title="${esc(s.name)}">${esc(s.name)}</div><div class="sale-client-meta">${esc(s.cnpj || 'CNPJ não informado')}</div></div>
           </div>
           <div class="sale-service">
             <div class="sale-service-label">Produto / serviço</div>
