@@ -12,14 +12,23 @@
     .camp-head h2{margin:0}
     .camp-head p{font-size:.78rem;color:var(--text-faint);margin:.2rem 0 0}
     .camp-lista{display:flex;flex-direction:column;gap:.45rem;margin-top:.9rem}
-    .camp-row{box-sizing:border-box;display:grid;grid-template-columns:1fr auto;gap:.3rem .8rem;align-items:center;padding:.55rem .7rem;border:1px solid var(--border);border-radius:11px;background:var(--surface)}
-    .camp-row.top{border-color:var(--emerald-500);background:var(--emerald-50)}
+    .camp-item{display:flex;flex-direction:column;gap:.35rem}
+    .camp-row{all:unset;cursor:pointer;transition:border-color .12s,background .12s;box-sizing:border-box;display:grid;grid-template-columns:1fr auto;gap:.3rem .8rem;align-items:center;padding:.55rem .7rem;border:1px solid var(--border);border-radius:11px;background:var(--surface)}
+    .camp-row:hover{background:var(--surface-2)}
+    .camp-row:focus-visible{outline:2px solid var(--indigo-500);outline-offset:2px}
+    .camp-row.ativo{border-color:var(--emerald-500);background:var(--emerald-50)}
+    .camp-row.vazio{cursor:default;opacity:.65}
+    .camp-dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:.45rem;vertical-align:middle}
+    .camp-seta{font-size:.7rem;color:var(--text-faint);margin-left:.35rem}
+    .camp-pessoas{border:1px solid var(--border);border-radius:11px;overflow:auto;margin:0 0 .3rem}
+    .camp-pessoas table{width:100%;font-size:.76rem}
+    .camp-pessoas td small{display:block;color:var(--text-faint);font-size:.68rem}
     .camp-nome{font-size:.8rem;font-weight:750;color:var(--text)}
     .camp-nome small{font-weight:600;color:var(--text-faint);margin-left:.35rem}
     .camp-num{font-size:.74rem;color:var(--text-soft);text-align:right;white-space:nowrap}
     .camp-num strong{color:var(--text)}
     .camp-track{grid-column:1/-1;height:7px;border-radius:999px;background:var(--surface-2);overflow:hidden}
-    .camp-track span{display:block;height:100%;border-radius:999px;background:var(--emerald-500)}
+    .camp-track span{display:block;height:100%;border-radius:999px}
     @media (max-width:760px){.camp-head{flex-direction:column}.camp-row{grid-template-columns:1fr}.camp-num{text-align:left;white-space:normal}}
   </style>
 </head>
@@ -50,6 +59,7 @@
   <script src="../js/origens.js?v=20260928"></script>
   <script>
     let store = null;
+    let canalAberto = ""; // canal clicado em "Campanhas mais vendidas" (mostra as pessoas)
 
     function render() {
       const { period } = currentPeriodFromUrl("this_month");
@@ -76,28 +86,23 @@
       const wonInPeriod = saleRows.length;
 
       // Campanhas mais vendidas (pedido do usuário, 05/10/2026): vendas do
-      // período agrupadas pela campanha do RD Station (deals.campaign) — as
-      // mesmas campanhas de "Origem dos leads" (aba Marketing, js/origens.js).
-      const campanhasVendidas = (() => {
-        const mapa = new Map();
-        for (const s of saleRows) {
-          const deal = dealById.get(s.deal_id) || {};
-          const rd = (deal.campaign || "").trim();
-          const nome = !rd || /^sem campanha$/i.test(rd) ? "Sem campanha" : rd;
-          const atual = mapa.get(nome) || { nome, n: 0, valor: 0, canais: new Map() };
-          atual.n += 1;
-          atual.valor += Number(s.value) || 0;
-          const canal = typeof canalDaFonte === "function" ? canalDaFonte(deal.origin).nome : "";
-          if (canal) atual.canais.set(canal, (atual.canais.get(canal) || 0) + 1);
-          mapa.set(nome, atual);
-        }
-        const total = saleRows.length || 1;
-        return [...mapa.values()]
-          .map((c) => ({ ...c, pct: (c.n / total) * 100, canal: [...c.canais.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || "" }))
-          .sort((a, b) => b.n - a.n || b.valor - a.valor || a.nome.localeCompare(b.nome, "pt-BR"));
-      })();
-      const campanhaTop = campanhasVendidas.find((c) => c.nome !== "Sem campanha");
-      const maxCampanha = Math.max(1, ...campanhasVendidas.map((c) => c.n));
+      // período agrupadas pelos mesmos canais de "Origem dos leads" (aba
+      // Marketing, js/origens.js), na ordem fixa dos canais. Clicar num canal
+      // mostra quem comprou e por qual campanha do RD Station.
+      const canaisVenda = [...CANAIS_LEAD, CANAL_OUTROS].map((c) => ({ id: c.id, nome: c.nome, cor: c.cor, n: 0, valor: 0, pessoas: [] }));
+      const canalPorId = new Map(canaisVenda.map((c) => [c.id, c]));
+      for (const s of saleRows) {
+        const deal = dealById.get(s.deal_id) || {};
+        const rd = (deal.campaign || "").trim();
+        const campanha = !rd || /^sem campanha$/i.test(rd) ? "Sem campanha" : rd;
+        const alvo = canalPorId.get(canalDaFonte(deal.origin).id) || canalPorId.get("outros");
+        alvo.n += 1;
+        alvo.valor += Number(s.value) || 0;
+        alvo.pessoas.push({ ...s, campanha, fonte: deal.origin || "" });
+      }
+      const totalVendasCanais = saleRows.length || 1;
+      const maxCanal = Math.max(1, ...canaisVenda.map((c) => c.n));
+      const canalTop = [...canaisVenda].sort((x, y) => y.n - x.n || y.valor - x.valor)[0];
 
       const perSeller = store.sellers
         .filter((seller) => /uriel/i.test(seller.name))
@@ -152,19 +157,35 @@
             <div class="camp-head">
               <div>
                 <h2>Campanhas mais vendidas</h2>
-                <p>Ranking das campanhas (RD Station) pelo número de vendas fechadas no período — as mesmas campanhas de "Origem dos leads".</p>
+                <p>Vendas fechadas no período por canal — os mesmos canais de "Origem dos leads". Clique num canal para ver quem comprou e por qual campanha.</p>
               </div>
-              ${campanhaTop ? `<span class="client-count-pill">Mais vendida: ${esc(campanhaTop.nome)}</span>` : ""}
+              ${canalTop && canalTop.n ? `<span class="client-count-pill">Mais vendido: ${esc(canalTop.nome)}</span>` : ""}
             </div>
-            ${campanhasVendidas.length ? `
-              <div class="camp-lista">
-                ${campanhasVendidas.map((c, i) => `
-                  <div class="camp-row ${i === 0 && c.nome !== "Sem campanha" ? "top" : ""}">
-                    <span class="camp-nome">${i === 0 ? "🏆 " : `${i + 1}º `}${esc(c.nome)}${c.canal ? `<small>${esc(c.canal)}</small>` : ""}</span>
-                    <span class="camp-num"><strong>${c.n} venda${c.n === 1 ? "" : "s"}</strong> · ${c.pct.toFixed(0)}% · ${brl(c.valor)}</span>
-                    <span class="camp-track"><span style="width:${(c.n / maxCampanha) * 100}%"></span></span>
-                  </div>`).join("")}
-              </div>` : `<p class="text-empty">Nenhuma venda no período selecionado.</p>`}
+            <div class="camp-lista">
+              ${canaisVenda.map((c) => `
+                <div class="camp-item">
+                  <button type="button" class="camp-row ${c.n ? "" : "vazio"} ${canalAberto === c.id && c.n ? "ativo" : ""}" data-canal="${c.id}" ${c.n ? "" : "disabled"} aria-expanded="${canalAberto === c.id}">
+                    <span class="camp-nome"><i class="camp-dot" style="background:${c.cor}"></i>${esc(c.nome)}${c.n ? `<span class="camp-seta">${canalAberto === c.id ? "▲ ocultar pessoas" : "▼ ver pessoas"}</span>` : ""}</span>
+                    <span class="camp-num"><strong>${c.n} venda${c.n === 1 ? "" : "s"}</strong> · ${((c.n / totalVendasCanais) * 100).toFixed(0)}% · ${brl(c.valor)}</span>
+                    <span class="camp-track"><span style="width:${(c.n / maxCanal) * 100}%;background:${c.cor}"></span></span>
+                  </button>
+                  ${canalAberto === c.id && c.n ? `
+                    <div class="camp-pessoas">
+                      <table>
+                        <thead><tr><th>Data</th><th>Cliente</th><th>Campanha</th><th>Vendedor</th><th class="cell-num">Valor</th></tr></thead>
+                        <tbody>
+                          ${c.pessoas.map((p) => `<tr>
+                            <td>${p.closed_at.toLocaleDateString("pt-BR")}</td>
+                            <td>${esc(p.clientName) || "—"}${p.companyName ? `<small>${esc(p.companyName)}</small>` : ""}</td>
+                            <td>${esc(p.campanha)}${p.fonte ? `<small>${esc(p.fonte)}</small>` : ""}</td>
+                            <td>${esc(p.sellerName) || "—"}</td>
+                            <td class="cell-num cell-green">${brl(p.value)}</td>
+                          </tr>`).join("")}
+                        </tbody>
+                      </table>
+                    </div>` : ""}
+                </div>`).join("")}
+            </div>
           </div>
 
           <div class="card card-p table-scroll">
@@ -199,6 +220,12 @@
           </div>
         </div>
       `;
+
+      document.querySelectorAll(".camp-row[data-canal]").forEach((btn) => btn.addEventListener("click", () => {
+        const id = btn.dataset.canal;
+        canalAberto = canalAberto === id ? "" : id;
+        render();
+      }));
 
       renderBarrasPorPessoa(
         "chart-vendas-vendedor",
