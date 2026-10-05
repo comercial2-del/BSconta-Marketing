@@ -391,6 +391,22 @@
 .onb .onb-cal svg{width:18px;height:18px}
 .onb .onb-periodo{border:1px solid var(--indigo-200,#c7d2fe);background:rgba(99,102,241,.08);color:var(--indigo-600);border-radius:999px;padding:.35rem .75rem;font-size:.74rem;font-weight:750;cursor:pointer}
 .onb .onb-periodo b{margin-left:.3rem}
+
+/* Fluxo do Handoff (05/10/2026, fase de teste):
+   vermelho = vendida/bloqueada · verde = liberada (e-mail) · cinza = aguardando o responsável · azul = em andamento */
+.onb .sale-card.fluxo-bloqueado{border-left:4px solid var(--red-500,#ef4444)}
+.onb .sale-card.fluxo-aguardando{border-left:4px solid #9ca3af}
+.onb .sale-card.fluxo-andamento{border-left:4px solid #2563eb}
+.onb .b-gray{background:#e5e7eb;color:#374151}
+.onb .b-blue{background:#dbeafe;color:#1d4ed8}
+.onb .stage-marker.aguardando{background:#e5e7eb;border-color:#9ca3af;color:#374151}
+.onb .stage-marker.in-progress{background:#2563eb;border-color:#2563eb;box-shadow:0 0 0 4px #dbeafe}
+.onb .fluxo-aviso{margin:.1rem 0 .7rem;padding:.6rem .75rem;border-radius:10px;font-size:.72rem;line-height:1.45;font-weight:650}
+.onb .fluxo-aviso.vermelho{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
+.onb .fluxo-aviso.cinza{background:#f3f4f6;border:1px solid #d1d5db;color:#374151}
+.onb .fluxo-aviso.azul{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+.onb .fluxo-aviso.verde{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
+.onb .stage-body.travada .stage-controls,.onb .stage-body.travada .stage-checklist{opacity:.5;pointer-events:none}
 </style>
 </head>
 <body>
@@ -647,6 +663,11 @@ async function carregarDetalhesRd(store) {
   if (errEtapas) console.warn("Etapas do onboarding indisponíveis:", errEtapas.message);
   else mapa.__etapasOk = true; // só migra o localStorage antigo quando o banco respondeu
   for (const e of etapas || []) mapa.set(e.deal_id, { ...(mapa.get(e.deal_id) || {}), __etapas: e });
+  // Configuração do fluxo (SQL 26): quem recebe a etapa seguinte ao Handoff. Sem a tabela, fica 'Gustavo'.
+  try {
+    const { data: cfg, error: errCfg } = await sb.from("onboarding_config").select("chave, valor");
+    if (!errCfg) { const c = {}; for (const r of cfg || []) c[r.chave] = r.valor; window.__onbConfig = c; }
+  } catch (e) {}
   return mapa;
 }
 // Vendas com gravação das etapas ainda a caminho do banco: a atualização de 60 s
@@ -832,7 +853,8 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       else if(status==='Em onboarding') statuses=['done','done','done','progress','pending','pending','pending','pending','pending','pending'];
       else if(status==='Documentação pendente') statuses=['done','done','done','blocked','pending','pending','pending','pending','pending','pending'];
       else if(status==='Aguardando informações') statuses=['done','progress','pending','pending','pending','pending','pending','pending','pending','pending'];
-      else statuses=['progress','pending','pending','pending','pending','pending','pending','pending','pending','pending'];
+      // Vendida = 01 · Handoff vermelha/bloqueada até ser marcada como verde (05/10/2026).
+      else statuses=['blocked','pending','pending','pending','pending','pending','pending','pending','pending','pending'];
       const stages=ONBOARDING_STAGES.map((stage,i)=>createStageTemplate(stage,statuses[i],baseISO));
       const currentIndex=Math.max(0,statuses.findIndex(x=>x!=='done'));
       if(currentIndex>=0 && stages[currentIndex] && !stages[currentIndex].startedAt){
@@ -851,6 +873,9 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       if(s.onboarding && Array.isArray(s.onboarding.stages) && s.onboarding.stages.length===ONBOARDING_STAGES.length){
         s.onboarding.stages=s.onboarding.stages.map((st,i)=>({...createStageTemplate(ONBOARDING_STAGES[i]),...st,substeps:Array.isArray(st.substeps)&&st.substeps.length===ONBOARDING_STAGES[i].items.length ? st.substeps.map((x,j)=>({...x,label:ONBOARDING_STAGES[i].items[j]})) : ONBOARDING_STAGES[i].items.map(label=>({label,done:false,completedAt:null}))}));
         s.onboarding.auditHistory=Array.isArray(s.onboarding.auditHistory)?s.onboarding.auditHistory:[];
+        // Regra do fluxo (05/10/2026): enquanto a 01 · Handoff não foi marcada como verde,
+        // ela fica vermelha/bloqueada — inclusive nos cards que já existiam.
+        const h=s.onboarding.stages[0]; if(h && h.status!=='done') h.status='blocked';
         return s.onboarding;
       }
       s.onboarding=defaultOnboarding(s); return s.onboarding;
@@ -867,7 +892,22 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
     // etapa 01 (Handoff) é do vendedor (ex.: Uriel), que realiza e confirma;
     // da etapa 02 em diante é do onboarding (Gustavo), a não ser que a etapa
     // atual tenha outro responsável preenchido no detalhe.
-    const RESPONSAVEL_ONBOARDING='Gustavo';
+    // Responsável da etapa seguinte ao Handoff: CONFIGURAÇÃO do fluxo atual (não regra fixa).
+    // Vem de public.onboarding_config (chave 'responsavel_proxima_etapa', SQL 26); sem a
+    // tabela, usa 'Gustavo'. Para trocar o responsável no futuro basta mudar essa configuração.
+    const RESPONSAVEL_ONBOARDING=(window.__onbConfig&&window.__onbConfig.responsavel_proxima_etapa)||'Gustavo';
+    // Fluxo do Handoff (05/10/2026, fase de teste):
+    // VENDIDA → 01 vermelha/bloqueada → marcada verde → libera + e-mail → 02 direcionada ao
+    // responsável (cinza, aguardando) → responsável inicia (azul, em andamento).
+    function fluxoHandoff(s){
+      const st=normalizeOnboarding(s).stages;
+      if(st[0]?.status!=='done') return {chave:'bloqueado',rotulo:'Bloqueado · aguardando validação',badge:'b-red'};
+      const resp=(st[1]?.responsible||'').trim()||RESPONSAVEL_ONBOARDING;
+      if(st[1]?.status==='pending') return {chave:'aguardando',rotulo:`Aguardando ${resp}`,badge:'b-gray'};
+      if(st[1]?.status==='progress') return {chave:'andamento',rotulo:`Em andamento · ${resp}`,badge:'b-blue'};
+      return null; // já passou da etapa 02: segue o fluxo normal
+    }
+    const handoffLiberado=s=>normalizeOnboarding(s).stages[0]?.status==='done';
     function responsavelAtual(s){
       const p=onboardingProgress(s);
       if(p.stages[0]?.status!=='done') return s.closer && s.closer!=='—' ? s.closer : 'Sem vendedor';
@@ -896,7 +936,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
         const concise=stageFocus(st,i);
         return `<div class="onboarding-stage ${meta.className==='done'?'done':''} ${meta.className==='blocked'?'blocked':''} ${i===current?'current':''}" data-sale-id="${s.id}" data-stage-index="${i}">
           <div class="stage-head onboarding-interactive" data-action="toggle-stage" role="button" tabindex="0" aria-expanded="false" title="${esc(st.title)} — ${esc(meta.label)}">
-            <span class="stage-marker ${meta.className}">${String(i+1).padStart(2,'0')}</span>
+            <span class="stage-marker ${meta.className} ${i===1&&st.status==='pending'&&stages[0].status==='done'?'aguardando':''}">${String(i+1).padStart(2,'0')}</span>
             <div class="stage-copy"><div class="stage-title">${esc(st.title)}</div><div class="stage-focus">${esc(concise)}</div></div>
           </div>
         </div>`;
@@ -904,7 +944,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       return `<section class="onboarding-box onboarding-interactive" data-onboarding-box="${s.id}">
         <div class="onboarding-box-head"><div><div class="onboarding-eyebrow">Onboarding do Cliente</div><div class="onboarding-title">${p.completed}/${ONBOARDING_STAGES.length} etapas concluídas · ${p.percent}%</div></div><span class="badge ${p.percent===100?'b-green':'b-indigo'}">${p.percent===100?'Concluído':'Em acompanhamento'}</span></div>
         <div class="onboarding-progress"><span style="width:${p.percent}%"></span></div>
-        <div class="onboarding-next"><div class="onboarding-next-label">Próximo passo</div><div class="onboarding-next-main">${esc(stageFocus(next,current) || 'Onboarding finalizado')} ${next?.status==='blocked'?'· Bloqueado':''}</div></div>
+        <div class="onboarding-next"><div class="onboarding-next-label">Próximo passo</div><div class="onboarding-next-main">${current===0&&next?.status==='blocked'?'Venda concluída · Bloqueado — marque a 01 como verde para liberar':esc(stageFocus(next,current) || 'Onboarding finalizado')+(next?.status==='blocked'?' · Bloqueado':'')}</div></div>
         <div class="onboarding-timeline">${stageHtml}</div>
         <div class="onboarding-hint">Clique em um número para ver o status e adicionar informações.</div>
       </section>`;
@@ -1017,7 +1057,19 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
     }
     function getStage(s,index){ return normalizeOnboarding(s).stages[index]; }
     function updateStageStatus(s,index,nextStatus){
-      const st=getStage(s,index); const prev=st.status; if(prev===nextStatus) return;
+      // Regra de segurança do fluxo (05/10/2026). Atenção: normalizeOnboarding() recria os objetos
+      // das etapas, por isso as conferências vêm ANTES de pegar a etapa que será alterada.
+      const prev=getStage(s,index).status; if(prev===nextStatus) return;
+      if(index>0 && !handoffLiberado(s)){ showToast('Bloqueado: marque a 01 · Handoff como verde para liberar a venda.'); return; }
+      if(index===0){
+        if(nextStatus!=='done' && nextStatus!=='blocked') nextStatus='blocked'; if(prev===nextStatus) return;
+        if(prev==='done' && nextStatus==='blocked'){
+          const seg=getStage(s,1);
+          if(seg && seg.status!=='pending'){ showToast(`Não dá para bloquear de novo: ${seg.responsible||RESPONSAVEL_ONBOARDING} já iniciou a etapa 02.`); return; }
+        }
+        if(nextStatus==='done' && !confirm(`Marcar a 01 · Handoff de ${s.name} como VERDE?\n\nIsso libera a venda, dispara o e-mail de Handoff e direciona a etapa 02 para ${RESPONSAVEL_ONBOARDING}.`)) return;
+      }
+      const st=getStage(s,index);
       const t=nowISO(); st.status=nextStatus; st.updatedAt=t; st.createdAt=st.createdAt||t;
       if(nextStatus==='progress' && !st.startedAt) st.startedAt=t;
       if(nextStatus==='done') { st.startedAt=st.startedAt||t; st.completedAt=t; }
@@ -1025,12 +1077,26 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       const ultima = index===ONBOARDING_STAGES.length-1;
       if(ultima && prev==='done' && nextStatus!=='done') delete normalizeOnboarding(s).situacao; // reabriu a 10: volta para Ativos
       addOnboardingAudit(s, `${st.title} — ${ONBOARDING_STATUS[nextStatus].label}`, `Status alterado de ${ONBOARDING_STATUS[prev]?.label || 'Pendente'} para ${ONBOARDING_STATUS[nextStatus].label}.`);
+      let liberou=false;
+      if(index===0 && nextStatus==='done'){
+        // Verde: libera, e a etapa 02 vai para o responsável configurado (cinza, aguardando início).
+        const seg=getStage(s,1);
+        if(seg && seg.status!=='done'){
+          seg.status='pending'; seg.responsible=(seg.responsible||'').trim()||RESPONSAVEL_ONBOARDING; seg.createdAt=seg.createdAt||t; seg.updatedAt=t;
+          addOnboardingAudit(s, 'Venda liberada', `Handoff validado (verde). E-mail de Handoff disparado e etapa 02 direcionada para ${seg.responsible}.`);
+        }
+        liberou=true;
+      }
+      if(index===0 && nextStatus==='blocked') addOnboardingAudit(s, 'Venda bloqueada', 'Handoff voltou para vermelho/bloqueado.');
+      if(index===1 && nextStatus==='progress' && prev==='pending') addOnboardingAudit(s, 'Etapa 02 iniciada', `${st.responsible||RESPONSAVEL_ONBOARDING} assumiu a venda (azul/em andamento).`);
       const p=onboardingProgress(s); const next=p.stages[p.currentIndex];
       s.onboarding.nextStep=next?.title || 'Onboarding finalizado';
       persistAll(s); renderSales();
+      if(liberou) showToast(`${s.name}: liberada (verde). E-mail de Handoff disparado — agora está com ${getStage(s,1)?.responsible||RESPONSAVEL_ONBOARDING} (cinza, aguardando início).`);
       if(ultima && nextStatus==='done') showToast(`${s.name}: onboarding concluído. O card foi para "Concluídos" — lá você pode arquivar ou excluir.`);
     }
     function updateStageField(s,index,field,value){
+      if(index>0 && !handoffLiberado(s)) return; // bloqueada: nada avança antes do verde
       const st=getStage(s,index); const t=nowISO();
       if(field==='responsible') st.responsible=value.trim();
       if(field==='dueDate') st.dueDate=value;
@@ -1040,6 +1106,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       persistAll(s, {adiar: field==='responsible' || field==='notes'}); renderSales();
     }
     function toggleSubstep(s,index,subIndex,done){
+      if(index>0 && !handoffLiberado(s)) return; // bloqueada: nada avança antes do verde
       const st=getStage(s,index); const sub=st.substeps[subIndex]; if(!sub) return; const t=nowISO();
       sub.done=done; sub.completedAt=done?t:null; st.updatedAt=t;
       addOnboardingAudit(s, `${st.title} — atividade atualizada`, `${done?'Concluída':'Reaberta'}: ${sub.label}.`);
@@ -1126,7 +1193,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       // Muitas vendas no histórico: mostra as mais recentes e carrega o resto sob demanda.
       const limiteOnb = root.__limite || 24;
       const cardHtml = s => `
-        <article class="sale-card ${situacaoCard(s)}" tabindex="0" role="button" data-id="${s.id}" aria-label="Abrir detalhes da venda de ${esc(s.name)}">
+        <article class="sale-card ${situacaoCard(s)} ${fluxoHandoff(s)?'fluxo-'+fluxoHandoff(s).chave:''}" tabindex="0" role="button" data-id="${s.id}" aria-label="Abrir detalhes da venda de ${esc(s.name)}">
           <div class="sale-card-top">
             <span class="sale-id">VENDA #${String(s.id).padStart(4,'0')}</span>
             <span class="sale-date">${esc(s.sale)}</span>
@@ -1142,6 +1209,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
           <div class="badges">
             <span class="badge ${statusClass(s.status)}">${esc(s.status)}</span>
             <span class="badge b-neutral" title="Responsável atual · Vendedor: ${esc(s.closer || '—')}">${esc(responsavelAtual(s))}</span>
+            ${fluxoHandoff(s)?`<span class="badge ${fluxoHandoff(s).badge}" data-fluxo="${fluxoHandoff(s).chave}">${esc(fluxoHandoff(s).rotulo)}</span>`:''}
           </div>
           <div class="sale-card-bottom">
             <div><div class="sale-value">${esc(s.amount)}</div><div class="sale-value-label">valor da venda</div></div>
@@ -1626,9 +1694,18 @@ function openSale(id){
     let activeOnboardingAlert = null;
     function onboardingStageEditorHtml(s, idx){
       const st=getStage(s,idx);
-      return `<div class="stage-body">
+      const travada=idx>0 && !handoffLiberado(s);
+      const f=fluxoHandoff(s);
+      const aviso = idx===0 && st.status!=='done' ? '<div class="fluxo-aviso vermelho">🔴 Venda bloqueada, aguardando validação. Nada avança e o e-mail de Handoff não é enviado até marcar como <strong>verde</strong>.</div>'
+        : idx===0 ? `<div class="fluxo-aviso verde">🟢 Handoff validado e liberado. O e-mail de Handoff foi disparado e a etapa 02 foi direcionada para ${esc(getStage(s,1)?.responsible||RESPONSAVEL_ONBOARDING)}.</div>`
+        : travada ? '<div class="fluxo-aviso vermelho">🔴 Bloqueada: marque a 01 · Handoff como verde para liberar esta venda.</div>'
+        : idx===1 && f && f.chave==='aguardando' ? `<div class="fluxo-aviso cinza">⚪ Direcionada para ${esc(st.responsible||RESPONSAVEL_ONBOARDING)}, aguardando início. Ao assumir, mude o status para <strong>Em andamento</strong> (azul).</div>`
+        : idx===1 && f && f.chave==='andamento' ? `<div class="fluxo-aviso azul">🔵 ${esc(st.responsible||RESPONSAVEL_ONBOARDING)} assumiu a venda. Em andamento.</div>` : '';
+      return `${aviso}<div class="stage-body${travada?' travada':''}">
         <div class="stage-controls">
-          <label class="stage-field"><span>Status</span><select data-action="stage-status"><option value="done" ${st.status==='done'?'selected':''}>Concluído</option><option value="progress" ${st.status==='progress'?'selected':''}>Em andamento</option><option value="pending" ${st.status==='pending'?'selected':''}>Pendente</option><option value="blocked" ${st.status==='blocked'?'selected':''}>Bloqueado</option></select></label>
+          <label class="stage-field"><span>Status</span><select data-action="stage-status">${idx===0
+            ? `<option value="blocked" ${st.status!=='done'?'selected':''}>🔴 Bloqueado (aguardando validação)</option><option value="done" ${st.status==='done'?'selected':''}>🟢 Verde · liberado (dispara o e-mail)</option>`
+            : `<option value="done" ${st.status==='done'?'selected':''}>Concluído</option><option value="progress" ${st.status==='progress'?'selected':''}>${idx===1?'🔵 ':''}Em andamento</option><option value="pending" ${st.status==='pending'?'selected':''}>${idx===1?'⚪ Aguardando início':'Pendente'}</option><option value="blocked" ${st.status==='blocked'?'selected':''}>Bloqueado</option>`}</select></label>
           <label class="stage-field"><span>Responsável</span><input data-action="stage-responsible" value="${esc(st.responsible||'')}" placeholder="Ex.: João" /></label>
           <label class="stage-field"><span>Data de início</span><input data-action="stage-start" type="date" value="${esc(dateInputValue(st.startedAt))}" /></label>
           <label class="stage-field"><span>Prazo</span><input data-action="stage-due" type="date" value="${esc(st.dueDate||'')}" /></label>
