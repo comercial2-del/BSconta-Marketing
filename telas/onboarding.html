@@ -1535,25 +1535,35 @@ function normCnpjWs(j){
     socios:(j.socios||[]).map(q=>({nome:q.nome,qualificacao:q.qualificacao_socio?.descricao,entrada:dataIsoBr(q.data_entrada),cpf:q.cpf_cnpj_socio||'',faixa:q.faixa_etaria||'',representante:q.nome_representante||''}))};
 }
 const cacheCnpj=new Map();
+// Cópia das consultas COMPLETAS neste navegador por 7 dias (05/10/2026): o CNPJ.ws público
+// aceita poucas consultas por minuto; sem a cópia, abrir vários cards seguidos esgotava o limite
+// e MEI ficava sem e-mail/telefone/endereço (a BrasilAPI esconde esses dados de MEI).
+const CNPJ_CACHE_KEY='bsconta_cnpj_cache_v1', CNPJ_CACHE_DIAS=7;
+function cnpjCacheLer(d){ try{ const c=JSON.parse(localStorage.getItem(CNPJ_CACHE_KEY)||'{}')[d]; return c&&Date.now()-c.em<CNPJ_CACHE_DIAS*864e5?c.r:null; }catch{ return null; } }
+function cnpjCacheGravar(d,r){ try{ const c=JSON.parse(localStorage.getItem(CNPJ_CACHE_KEY)||'{}'); c[d]={em:Date.now(),r}; const ks=Object.keys(c); if(ks.length>300) ks.sort((a,b)=>c[a].em-c[b].em).slice(0,ks.length-300).forEach(k=>delete c[k]); localStorage.setItem(CNPJ_CACHE_KEY,JSON.stringify(c)); }catch{} }
 function buscarCnpj(d){
   if(cacheCnpj.has(d)) return cacheCnpj.get(d);
+  const salvo=cnpjCacheLer(d); if(salvo){ const p0=Promise.resolve(salvo); cacheCnpj.set(d,p0); return p0; }
   const p=(async()=>{
     // BrasilAPI esconde endereço/telefone/e-mail de MEI; o CNPJ.ws traz.
     // Por isso consultamos a BrasilAPI e completamos o que faltar com o CNPJ.ws.
-    let base=null, naoExiste=false;
+    let base=null, naoExiste=false, wsFalhou=false;
     try{ const r=await fetch(`https://brasilapi.com.br/api/cnpj/v1/${d}`); if(r.ok) base={fonte:'BrasilAPI',...normBrasilApi(await r.json())}; else if(r.status===404) naoExiste=true; }catch(e){}
     const incompleto=!base || !/\d|rua|av|rod|trav|pra/i.test(base.endereco||'') || !base.telefone || !base.email;
     if(incompleto){
       try{ const r=await fetch(`https://publica.cnpj.ws/cnpj/${d}`); if(r.ok){ const ws={fonte:'CNPJ.ws',...normCnpjWs(await r.json())};
         if(!base) base=ws; else { for(const k of Object.keys(ws)){ const v=base[k]; const vazio=v==null||v===''||(Array.isArray(v)&&!v.length); if(k==='endereco'? (String(ws[k]||'').length>String(v||'').length) : vazio) base[k]=ws[k]; } base.fonte='BrasilAPI + CNPJ.ws'; }
-      } }catch(e){}
+      } else if(r.status!==404) wsFalhou=true; }catch(e){ wsFalhou=true; }
     }
-    if(base) return {...base, fonte:base.fonte+' (Receita Federal)'};
+    if(base) return {...base, fonte:base.fonte+' (Receita Federal)', parcial:wsFalhou};
     if(naoExiste) return {erro:'CNPJ não encontrado na Receita Federal. Confira o número no RD.'};
     return {erro:'Não foi possível consultar o CNPJ agora. Tente abrir o card de novo em instantes.'};
   })();
-  cacheCnpj.set(d,p); p.then(x=>{ if(x.erro) cacheCnpj.delete(d); }); return p;
+  cacheCnpj.set(d,p);
+  p.then(x=>{ if(x.erro||x.parcial) cacheCnpj.delete(d); else cnpjCacheGravar(d,x); });
+  return p;
 }
+const tentativasCnpj=new Map();
 
 // Regime tributário pela Receita (28/09/2026): Simples/MEI com datas e, fora do Simples,
 // a forma de tributação declarada (Lucro Presumido / Real / Arbitrado), comparando com o RD.
@@ -1600,12 +1610,21 @@ async function consultarCnpj(s){
   if(processoDaVenda(s)==='constituicao') return; // Constituição: sem consulta automática
   const el=document.getElementById('cnpjInfo'); const d=soDigitos(s.cnpj);
   if(d.length!==14){ el.innerHTML='<div class="cnpj-status">CNPJ não informado no RD. Quando o campo CNPJ da negociação for preenchido no RD, endereço, CEP, sócios e demais dados da Receita aparecem aqui automaticamente.</div>'; return; }
-  el.innerHTML='<div class="cnpj-status">Consultando o CNPJ '+esc(formatarCnpj(d))+'…</div>';
+  if(!tentativasCnpj.has(d)) el.innerHTML='<div class="cnpj-status">Consultando o CNPJ '+esc(formatarCnpj(d))+'…</div>'; // nova tentativa: mantém o que já aparece
   const r=await buscarCnpj(d);
   if(selectedId!==s.id) return;
   if(r.erro){ el.innerHTML='<div class="cnpj-status">'+esc(r.erro)+'</div>'; return; }
   const linhas=[['CNPJ',formatarCnpj(d)],['Razão social',r.razao],['Nome fantasia',r.fantasia],['Situação cadastral',r.situacao],['Abertura',r.abertura],['Natureza jurídica',r.natureza],['Porte',r.porte],['Regime tributário (Receita)',regimeDaReceita(r).texto],['Optante pelo Simples Nacional',linhaSimples(r.optSimples,r.dataSimples,r.exclusaoSimples)],['MEI',linhaSimples(r.optMei,r.dataMei,r.exclusaoMei)],['Atividade principal (CNAE)',r.cnae],['Capital social',r.capital],['Endereço',r.endereco],['CEP',r.cep],['Cidade/UF',r.cidadeUf],['Telefone',r.telefone],['E-mail',r.email]];
-  el.innerHTML=linhas.map(([k,v])=>infoHtml(k,v||'—')).join('')+secundariasHtml(r.secundarias||[])+`<div class="cnpj-status">Fonte: ${esc(r.fonte)}.</div>`;
+  // Faltou e-mail/telefone/endereço porque o CNPJ.ws não respondeu (limite por minuto): tenta de novo sozinho.
+  const n=tentativasCnpj.get(d)||0;
+  let aviso='';
+  if(r.parcial && n<4){
+    tentativasCnpj.set(d,n+1);
+    aviso=`<div class="cnpj-status">E-mail, telefone e endereço completo ainda não vieram: a BrasilAPI não mostra esses dados de MEI e o CNPJ.ws está ocupado. Tentando de novo em 20 s…</div>`;
+    setTimeout(()=>{ if(selectedId===s.id) consultarCnpj(s); }, 20000);
+  } else if(r.parcial) aviso=`<div class="cnpj-status">O CNPJ.ws não respondeu; e-mail, telefone e endereço completo podem estar faltando. Feche e abra o card de novo em alguns minutos.</div>`;
+  else tentativasCnpj.delete(d);
+  el.innerHTML=linhas.map(([k,v])=>infoHtml(k,v||'—')).join('')+secundariasHtml(r.secundarias||[])+`<div class="cnpj-status">Fonte: ${esc(r.fonte)}.</div>`+aviso;
   renderSocios(s,r);
   if(false){
     document.getElementById('partnersSection').hidden=false;
