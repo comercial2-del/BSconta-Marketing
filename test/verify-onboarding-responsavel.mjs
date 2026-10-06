@@ -157,7 +157,7 @@ async function abrir(nomeUsuario, localStorageInicial = null) {
   }, { TAB: FIXAS, user: u, ls: localStorageInicial });
 
   const pagina = await contexto.newPage();
-  pagina.on("dialog", (d) => d.accept().catch(() => {})); // confirmação do verde (fluxo do Handoff, 05/10/2026)
+  await pagina.addInitScript(() => { new MutationObserver(() => { const b = document.querySelector('#onbDialogo [data-dlg="' + (window.__dlgResposta || "sim") + '"]'); if (b && !b.__clicado) { b.__clicado = true; window.__dlgResposta = undefined; b.click(); } }).observe(document, { childList: true, subtree: true }); }); // confirmação personalizada (06/10/2026)
   const erros = [];
   pagina.on("pageerror", (e) => erros.push(String(e.message)));
   await pagina.goto(`${BASE}/telas/onboarding.html`, { waitUntil: "load" });
