@@ -431,6 +431,38 @@
 .onb .fluxo-aviso.azul{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
 .onb .fluxo-aviso.verde{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
 .onb .stage-body.travada .stage-controls,.onb .stage-body.travada .stage-checklist{opacity:.5;pointer-events:none}
+/* Avisos do fluxo e status da 01 (06/10/2026) — visual novo */
+.onb .fluxo-box{display:flex;gap:.75rem;align-items:flex-start;margin:.15rem 0 .85rem;padding:.8rem .9rem;border-radius:14px;border:1px solid;position:relative;overflow:hidden}
+.onb .fluxo-box::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
+.onb .fluxo-box .fb-ic{flex:none;width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:#fff}
+.onb .fluxo-box .fb-ic svg{width:18px;height:18px}
+.onb .fluxo-box .fb-txt{min-width:0;flex:1}
+.onb .fluxo-box .fb-tit{display:block;font-size:.8rem;font-weight:850;line-height:1.3}
+.onb .fluxo-box .fb-sub{display:block;font-size:.7rem;line-height:1.45;margin-top:.15rem;font-weight:550;opacity:.9}
+.onb .fluxo-box .fb-chip{flex:none;align-self:center;font-size:.62rem;font-weight:850;padding:.28rem .55rem;border-radius:999px;background:#fff;white-space:nowrap}
+.onb .fluxo-box.vermelho{background:linear-gradient(180deg,#fff5f5,#fef2f2);border-color:#fecaca;color:#991b1b}
+.onb .fluxo-box.vermelho::before{background:#ef4444}.onb .fluxo-box.vermelho .fb-ic{color:#dc2626;box-shadow:0 0 0 1px #fecaca}.onb .fluxo-box.vermelho .fb-chip{color:#b91c1c;box-shadow:0 0 0 1px #fecaca}
+.onb .fluxo-box.verde{background:linear-gradient(180deg,#f0fdf8,#ecfdf5);border-color:#a7f3d0;color:#065f46}
+.onb .fluxo-box.verde::before{background:#10b981}.onb .fluxo-box.verde .fb-ic{color:#059669;box-shadow:0 0 0 1px #a7f3d0}.onb .fluxo-box.verde .fb-chip{color:#047857;box-shadow:0 0 0 1px #a7f3d0}
+.onb .fluxo-box.cinza{background:#f8fafc;border-color:#e2e8f0;color:#334155}
+.onb .fluxo-box.cinza::before{background:#94a3b8}.onb .fluxo-box.cinza .fb-ic{color:#64748b;box-shadow:0 0 0 1px #e2e8f0}
+.onb .fluxo-box.azul{background:#eff6ff;border-color:#bfdbfe;color:#1e40af}
+.onb .fluxo-box.azul::before{background:#2563eb}.onb .fluxo-box.azul .fb-ic{color:#2563eb;box-shadow:0 0 0 1px #bfdbfe}
+.onb .handoff-status{position:relative;display:block}
+.onb .handoff-status select{width:100%;appearance:none;-webkit-appearance:none;height:42px;padding:0 2.2rem 0 2.1rem;border-radius:12px;border:1.5px solid;font-weight:800;font-size:.76rem;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right .8rem center;transition:box-shadow .15s ease,border-color .15s ease}
+.onb .handoff-status::before{content:"";position:absolute;left:.85rem;top:50%;width:10px;height:10px;margin-top:-5px;border-radius:50%;pointer-events:none;z-index:1}
+.onb .handoff-status.vermelho select{background-color:#fef2f2;border-color:#fca5a5;color:#991b1b}
+.onb .handoff-status.vermelho::before{background:#ef4444;box-shadow:0 0 0 3px rgba(239,68,68,.18)}
+.onb .handoff-status.verde select{background-color:#ecfdf5;border-color:#6ee7b7;color:#065f46}
+.onb .handoff-status.verde::before{background:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.18)}
+.onb .handoff-status select:hover{box-shadow:0 2px 10px rgba(15,23,42,.06)}
+.onb .handoff-status select:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.25)}
+.onb .handoff-dica{display:flex;align-items:center;gap:.35rem;margin-top:.35rem;font-size:.64rem;font-weight:650;color:var(--text-soft,#6b6d85)}
+.onb .stage-field.stage-field-handoff{grid-column:1/-1}
+.onb .stage-field .handoff-status{font-size:inherit;text-transform:none;letter-spacing:0;color:inherit;font-weight:inherit}
+.onb .stage-field .handoff-dica{font-size:.66rem;text-transform:none;letter-spacing:0;color:var(--text-soft,#6b6d85);font-weight:600}
+.onb .stage-field .handoff-dica strong{color:#047857}
+.onb .handoff-dica i{font-style:normal;display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981}
 
 /* Confirmação personalizada (06/10/2026) — substitui o confirm()/alert() do navegador */
 .onb-dlg{position:fixed;inset:0;z-index:120;display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(15,23,42,.45);backdrop-filter:blur(4px);opacity:0;transition:opacity .16s ease}
@@ -1866,16 +1898,25 @@ function openSale(id){
       const st=getStage(s,idx);
       const travada=idx>0 && !handoffLiberado(s);
       const f=fluxoHandoff(s);
-      const aviso = idx===0 && st.status!=='done' ? '<div class="fluxo-aviso vermelho">🔴 Venda bloqueada, aguardando validação. Nada avança e o e-mail de Handoff não é enviado até marcar como <strong>verde</strong>.</div>'
-        : idx===0 ? `<div class="fluxo-aviso verde">🟢 Handoff validado e liberado. O e-mail de Handoff foi disparado e a etapa 02 foi direcionada para ${esc(getStage(s,1)?.responsible||RESPONSAVEL_ONBOARDING)}.</div>`
-        : travada ? '<div class="fluxo-aviso vermelho">🔴 Bloqueada: marque a 01 · Handoff como verde para liberar esta venda.</div>'
-        : idx===1 && f && f.chave==='aguardando' ? `<div class="fluxo-aviso cinza">⚪ Direcionada para ${esc(st.responsible||RESPONSAVEL_ONBOARDING)}, aguardando início. Ao assumir, mude o status para <strong>Em andamento</strong> (azul).</div>`
-        : idx===1 && f && f.chave==='andamento' ? `<div class="fluxo-aviso azul">🔵 ${esc(st.responsible||RESPONSAVEL_ONBOARDING)} assumiu a venda. Em andamento.</div>` : '';
+      const FB_IC={
+        cadeado:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+        ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+        relogio:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+        play:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'
+      };
+      const fbox=(cor,ic,tit,sub,chip)=>`<div class="fluxo-aviso fluxo-box ${cor}" role="status"><span class="fb-ic">${FB_IC[ic]}</span><span class="fb-txt"><span class="fb-tit">${tit}</span><span class="fb-sub">${sub}</span></span>${chip?`<span class="fb-chip">${chip}</span>`:''}</div>`;
+      const respProx=esc(getStage(s,1)?.responsible||RESPONSAVEL_ONBOARDING);
+      const respAqui=esc(st.responsible||RESPONSAVEL_ONBOARDING);
+      const aviso = idx===0 && st.status!=='done' ? fbox('vermelho','cadeado','Venda bloqueada · aguardando validação','Nada avança e o e-mail de Handoff só é enviado quando a 01 for marcada como <strong>verde</strong>.','Bloqueada')
+        : idx===0 ? fbox('verde','ok','Handoff validado e liberado',`O e-mail de Handoff foi disparado e a etapa 02 foi direcionada para <strong>${respProx}</strong>.`,'Liberada')
+        : travada ? fbox('vermelho','cadeado','Etapa travada','Marque a <strong>01 · Handoff</strong> como verde para liberar esta venda.','Bloqueada')
+        : idx===1 && f && f.chave==='aguardando' ? fbox('cinza','relogio',`Aguardando ${respAqui} iniciar`,'Ao assumir, mude o status para <strong>Em andamento</strong> (azul).','Aguardando')
+        : idx===1 && f && f.chave==='andamento' ? fbox('azul','play',`${respAqui} assumiu a venda`,'Etapa 02 em andamento.','Em andamento') : '';
       return `${aviso}<div class="stage-body${travada?' travada':''}">
         <div class="stage-controls">
-          <label class="stage-field"><span>Status</span><select data-action="stage-status">${idx===0
-            ? `<option value="blocked" ${st.status!=='done'?'selected':''}>🔴 Bloqueado (aguardando validação)</option><option value="done" ${st.status==='done'?'selected':''}>🟢 Verde · liberado (dispara o e-mail)</option>`
-            : `<option value="done" ${st.status==='done'?'selected':''}>Concluído</option><option value="progress" ${st.status==='progress'?'selected':''}>${idx===1?'🔵 ':''}Em andamento</option><option value="pending" ${st.status==='pending'?'selected':''}>${idx===1?'⚪ Aguardando início':'Pendente'}</option><option value="blocked" ${st.status==='blocked'?'selected':''}>Bloqueado</option>`}</select></label>
+          <label class="stage-field${idx===0?' stage-field-handoff':''}"><span>Status</span>${idx===0?`<span class="handoff-status ${st.status==='done'?'verde':'vermelho'}">`:''}<select data-action="stage-status">${idx===0
+            ? `<option value="blocked" ${st.status!=='done'?'selected':''}>Bloqueado · aguardando validação</option><option value="done" ${st.status==='done'?'selected':''}>Verde · liberado (envia o e-mail)</option>`
+            : `<option value="done" ${st.status==='done'?'selected':''}>Concluído</option><option value="progress" ${st.status==='progress'?'selected':''}>${idx===1?'🔵 ':''}Em andamento</option><option value="pending" ${st.status==='pending'?'selected':''}>${idx===1?'⚪ Aguardando início':'Pendente'}</option><option value="blocked" ${st.status==='blocked'?'selected':''}>Bloqueado</option>`}</select>${idx===0?`</span>${st.status!=='done'?'<span class="handoff-dica"><i></i>Para liberar, escolha <strong>Verde</strong> na lista.</span>':''}`:''}</label>
           <label class="stage-field"><span>Responsável</span><input data-action="stage-responsible" value="${esc(st.responsible||'')}" placeholder="Ex.: João" /></label>
           <label class="stage-field"><span>Data de início</span><input data-action="stage-start" type="date" value="${esc(dateInputValue(st.startedAt))}" /></label>
           <label class="stage-field"><span>Prazo</span><input data-action="stage-due" type="date" value="${esc(st.dueDate||'')}" /></label>
