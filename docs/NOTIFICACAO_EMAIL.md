@@ -25,7 +25,7 @@ Janela da etapa 01 → mostra o status e o botão "Tentar de novo"
 | Requisito | Onde |
 |---|---|
 | Detectar a transferência | gatilho no banco: 1ª etapa passou de "não concluída" para "done", com conclusão recente (até 2 h) e próxima etapa sem outro responsável (= Gustavo) |
-| Sem duplicidade | `UNIQUE (deal_id, etapa_anterior)` + reserva da linha (pendente/erro → enviando) antes de enviar; reabrir e concluir de novo a etapa 01 não manda outro e-mail |
+| Sem duplicidade | O gatilho só dispara na troca para verde + reserva da linha (pendente/erro → enviando) antes de enviar. Desde o SQL 28: voltar a 01 para bloqueado e marcar verde de novo **envia outro e-mail** (a trava UNIQUE foi removida) |
 | Log | `public.onboarding_transferencias`: cliente, responsável anterior, novo responsável, etapa anterior, nova etapa, data/hora, quem marcou, status, tentativas, erro, destinatários, id da mensagem no Gmail |
 | Falha não perde a etapa | o gatilho nunca bloqueia o salvamento; o e-mail é assíncrono e fica na fila |
 | Nova tentativa | automática (cron) e manual (botão na etapa 01, só usuário logado) |
