@@ -68,8 +68,8 @@
 .onb .highlight-label{font-size:.63rem;text-transform:uppercase;letter-spacing:.05em;color:var(--indigo-600);font-weight:800}
 .onb .highlight-text{margin:.25rem 0 0;font-size:.77rem;line-height:1.45;font-weight:650}
 .onb .meeting-note{background:#fbfcff;border:1px dashed #dfe2f1;border-radius:11px;padding:.72rem;font-size:.73rem;line-height:1.5;color:var(--text-soft)}
-.onb .alerts{border:1px solid var(--amber-100);background:linear-gradient(180deg,#fffdf5,#fffbeb);border-radius:11px;padding:.74rem}
-.onb .alert-row{display:flex;align-items:flex-start;gap:.55rem;padding:.28rem 0;font-size:.72rem;color:#7a5810}
+.onb .alerts{border:1px solid var(--amber-100);background:linear-gradient(180deg,#fffdf5,#fffbeb);border-radius:11px;padding:.74rem;min-width:0}
+.onb .alert-row{min-width:0;display:flex;align-items:flex-start;gap:.55rem;padding:.28rem 0;font-size:.72rem;color:#7a5810}
 .onb .alert-dot{width:7px;height:7px;border-radius:50%;background:var(--amber-500);margin-top:.32rem;flex:0 0 auto}
 .onb .docs{display:grid;gap:.42rem}
 .onb .doc-row{display:flex;align-items:center;justify-content:space-between;gap:.6rem;border:1px solid #eef0f5;border-radius:9px;padding:.55rem .62rem}
@@ -235,7 +235,7 @@
 .onb .detail-progress-copy strong{color:var(--indigo-700)}
 .onb .detail-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(280px,.5fr);gap:1.05rem;align-items:start;padding:1.1rem 1.3rem 1.3rem}
 .onb .detail-main{min-width:0}
-.onb .detail-side{min-width:0;position:sticky;top:4.1rem}
+.onb .detail-side{min-width:0}
 .onb .detail-section{margin-bottom:1rem}
 .onb .detail-section:last-child{margin-bottom:0}
 .onb .detail-section.side-section{background:var(--surface-2);border:1px solid #eef0f5;border-radius:13px;padding:.82rem}
@@ -338,7 +338,7 @@
 .onb [hidden]{display:none!important}
 
 /* Alerta editável, tipo do serviço e sócios (28/09/2026) */
-.onb .alerta-texto{flex:1;white-space:pre-wrap}
+.onb .alerta-texto{flex:1;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word;line-height:1.55}
 .onb .alerta-editar{border:0;background:none;color:var(--indigo-600);cursor:pointer;padding:.1rem;display:inline-flex;align-items:center;flex:0 0 auto}
 .onb .alerta-editar:hover{color:var(--text)}
 .onb .alerta-meta{font-size:.66rem;color:var(--text-faint);margin-top:.35rem}
@@ -406,7 +406,7 @@
 
 /* Constituição (28/09/2026) */
 .onb .constituicao-box{display:flex;gap:.5rem;align-items:flex-start;border:1px solid var(--border);border-radius:12px;padding:.75rem .85rem}
-.onb .constituicao-texto{flex:1;white-space:pre-wrap;font-size:.8rem;color:var(--text);line-height:1.5}
+.onb .constituicao-texto{flex:1;min-width:0;overflow-wrap:anywhere;word-break:break-word;white-space:pre-wrap;font-size:.8rem;color:var(--text);line-height:1.5}
 .onb .constituicao-texto.vazio{color:var(--text-faint)}
 .onb .constituicao-input{min-height:12rem}
 
