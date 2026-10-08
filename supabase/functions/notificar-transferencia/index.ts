@@ -61,12 +61,82 @@ const dataHora = (iso: string) =>
 const LOGO_JPG_B64 = "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";
 
 type Transf = {
-  id: string; cliente: string; responsavel_anterior: string; novo_responsavel: string;
+  id: string; deal_id: string | null; cliente: string; responsavel_anterior: string; novo_responsavel: string;
   etapa_anterior: string; nova_etapa: string; transferido_em: string;
   email_status: string; email_tentativas: number; email_atualizado_em: string;
 };
 
-function montarEmail(t: Transf) {
+// ---- Identificação do cliente no texto do e-mail (07/10/2026) ----------------
+// "O processo de [IDENTIFICAÇÃO] avançou da 1ª etapa..." passa a mostrar:
+//   1) com CNPJ:            <processo>, <razão social> com CNPJ: <cnpj>
+//   2) sem CNPJ, com CPF:   <processo>, <nome/razão social> com CPF: <cpf>
+//   3) sem CNPJ nem CPF:    <processo>  (igual a antes)
+// Dados lidos do cadastro existente: campo "CNPJ" e "Nome da empresa" do RD
+// (deals.rd_details) e "Dados do cliente" do onboarding (onboarding_notas.dados_cliente).
+// A razão social vem da Receita (BrasilAPI / CNPJ.ws, como a tela do onboarding);
+// sem resposta, usa o "Nome da empresa" do RD. Parte que faltar é omitida; qualquer
+// falha mantém só o nome do processo — nunca impede o envio.
+const soDigitos = (v: unknown) => String(v ?? "").replace(/\D/g, "");
+const fmtCnpj = (d: string) => d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+const fmtCpf = (d: string) => d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+const limpo = (v: unknown) => {
+  const t = String(v ?? "").replace(/\s+/g, " ").trim();
+  return t && !/^(null|undefined|-|—)$/i.test(t) ? t : "";
+};
+// deno-lint-ignore no-explicit-any
+function campoRd(det: any, rotulo: string) {
+  const alvo = rotulo.toLowerCase();
+  // deno-lint-ignore no-explicit-any
+  const f = (det?.campos || []).find((c: any) => String(c?.label || "").trim().toLowerCase() === alvo);
+  return limpo(f?.value);
+}
+async function getJson(url: string) {
+  try {
+    const r = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+async function razaoSocialReceita(cnpj: string) {
+  const a = await getJson(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+  if (limpo(a?.razao_social)) return limpo(a.razao_social);
+  const b = await getJson(`https://publica.cnpj.ws/cnpj/${cnpj}`);
+  return limpo(b?.razao_social);
+}
+async function identificacaoCliente(sb: SB, t: Transf): Promise<string> {
+  const nome = limpo(t.cliente) || "Cliente";
+  if (!t.deal_id) return nome;
+  try {
+    const [{ data: deal }, { data: nota }] = await Promise.all([
+      sb.from("deals").select("rd_details").eq("id", t.deal_id).maybeSingle(),
+      sb.from("onboarding_notas").select("dados_cliente").eq("deal_id", t.deal_id).maybeSingle(),
+    ]);
+    const det = deal?.rd_details || null;
+    const dados = String(nota?.dados_cliente || "");
+    const docRd = soDigitos(campoRd(det, "CNPJ"));
+    const empresaRd = campoRd(det, "Nome da empresa");
+    const junta = (razao: string, doc: string) => `${nome}${razao && razao.toLowerCase() !== nome.toLowerCase() ? ", " + razao : ""} com ${doc}`;
+
+    if (docRd.length === 14) {
+      const razao = (await razaoSocialReceita(docRd)) || empresaRd;
+      return junta(razao, `CNPJ: ${fmtCnpj(docRd)}`);
+    }
+    // Sem CNPJ: CPF digitado no campo do RD ou informado nos "Dados do cliente".
+    let cpf = docRd.length === 11 ? docRd : "";
+    if (!cpf) {
+      const m = dados.match(/\bCPF\b[^\d\n]{0,20}(\d{3}\.?\d{3}\.?\d{3}-?\d{2})(?!\d)/i);
+      if (m) cpf = soDigitos(m[1]);
+    }
+    if (cpf.length === 11) {
+      const nomeCad = empresaRd || limpo((dados.match(/nome\s+completo[^:\n]*:\s*([^\n]+)/i) || [])[1]);
+      return junta(nomeCad, `CPF: ${fmtCpf(cpf)}`);
+    }
+  } catch (e) {
+    console.warn("notificar-transferencia: identificação do cliente indisponível:", t.id, String((e as Error)?.message || e));
+  }
+  return nome;
+}
+
+function montarEmail(t: Transf, identificacao = t.cliente) {
   const quando = dataHora(t.transferido_em);
   const itens: [string, string][] = [
     ["Responsável anterior", t.responsavel_anterior],
@@ -77,10 +147,10 @@ function montarEmail(t: Transf) {
     ["Cliente/Processo", t.cliente],
   ];
   const texto = [
-    `Olá, ${t.novo_responsavel}!`, "",
+    `Olá! Tudo bem? Espero que sim!`, "",
     "Você tem uma nova notificação no sistema SGCMP — BSconta.",
     "Sistema de Gestão Comercial, Marketing e Performance", "",
-    `O processo de ${t.cliente} avançou da 1ª etapa e foi encaminhado para você.`, "",
+    `O processo de ${identificacao} avançou da 1ª etapa e foi encaminhado para você.`, "",
     "Informações da transferência:",
     ...itens.map(([k, v]) => `* ${k}: ${v}`), "",
     "Para visualizar os detalhes e dar continuidade ao processo, acesse:",
@@ -98,7 +168,7 @@ function montarEmail(t: Transf) {
   const html = `<!doctype html>
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Nova notificação no SGCMP — BSconta</title></head>
 <body style="margin:0;padding:0;background:#f1f5f9;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0f172a">
-  <div style="display:none;max-height:0;overflow:hidden">O processo de ${esc(t.cliente)} avançou da 1ª etapa e foi encaminhado para você.</div>
+  <div style="display:none;max-height:0;overflow:hidden">O processo de ${esc(identificacao)} avançou da 1ª etapa e foi encaminhado para você.</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:28px 12px">
     <tr><td align="center">
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0">
@@ -111,19 +181,19 @@ function montarEmail(t: Transf) {
           <div style="font-size:12px;color:#64748b;margin-top:2px">Sistema de Gestão Comercial, Marketing e Performance</div>
         </td></tr>
         <tr><td style="padding:0 28px">
-          <h1 style="margin:0 0 10px;font-size:20px;line-height:1.3;color:#0f172a">Olá, ${esc(t.novo_responsavel)}!</h1>
+          <h1 style="margin:0 0 10px;font-size:20px;line-height:1.3;color:#0f172a">Olá! Tudo bem? Espero que sim!</h1>
           <p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#334155">Você tem uma nova notificação no sistema <strong>SGCMP — BSconta</strong>.</p>
           <div style="background:#eff6ff;border-left:4px solid #2563eb;border-radius:8px;padding:12px 14px;font-size:14px;line-height:1.55;color:#1e3a8a">
-            O processo de <strong>${esc(t.cliente)}</strong> avançou da 1ª etapa e foi encaminhado para você.
+            O processo de <strong>${esc(identificacao)}</strong> avançou da 1ª etapa e foi encaminhado para você.
           </div>
           <h2 style="margin:22px 0 8px;font-size:14px;color:#0f172a">Informações da transferência</h2>
           <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;border-collapse:separate;overflow:hidden">${linhasTabela}
           </table>
           <p style="margin:22px 0 14px;font-size:14px;line-height:1.6;color:#334155">Para visualizar os detalhes e dar continuidade ao processo, acesse:</p>
-          <table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border-radius:8px;background:#2563eb">
+          <table role="presentation" align="center" cellpadding="0" cellspacing="0" style="margin:0 auto"><tr><td style="border-radius:8px;background:#2563eb">
             <a href="${LINK_SISTEMA}" style="display:inline-block;padding:12px 22px;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:8px">Acessar o SGCMP</a>
           </td></tr></table>
-          <p style="margin:10px 0 0;font-size:12px;color:#64748b;word-break:break-all"><a href="${LINK_SISTEMA}" style="color:#2563eb">${LINK_SISTEMA}</a></p>
+          
           <p style="margin:24px 0 0;font-size:14px;line-height:1.6;color:#334155">Atenciosamente,<br><strong>SGCMP — BSconta</strong><br><span style="color:#64748b;font-size:13px">Sistema de Gestão Comercial, Marketing e Performance</span></p>
         </td></tr>
         <tr><td style="padding:22px 28px 26px">
@@ -219,7 +289,7 @@ async function processar(sb: SB, t: Transf, manual: boolean) {
   try {
     const remetente = env("EMAIL_REMETENTE", "comercial@bsconta.com.br");
     para = await destinatarios(sb);
-    const { texto, html } = montarEmail(t);
+    const { texto, html } = montarEmail(t, await identificacaoCliente(sb, t));
     const mime = montarMime(remetente, para, "Nova notificação no SGCMP — BSconta", texto, html, t.id);
     const token = await accessTokenGmail(sb, remetente);
     const raw = b64(new TextEncoder().encode(mime)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -251,7 +321,7 @@ Deno.serve(async (req: Request) => {
   try {
     const sb = createClient(env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), { auth: { persistSession: false } });
     const corpo = await req.json().catch(() => ({}));
-    const campos = "id, cliente, responsavel_anterior, novo_responsavel, etapa_anterior, nova_etapa, transferido_em, email_status, email_tentativas, email_atualizado_em";
+    const campos = "id, deal_id, cliente, responsavel_anterior, novo_responsavel, etapa_anterior, nova_etapa, transferido_em, email_status, email_tentativas, email_atualizado_em";
 
     let manual = false;
     if (corpo.manual) {
