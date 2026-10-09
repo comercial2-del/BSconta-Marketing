@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>BSconta + Marketing</title>
   <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
-  <link rel="stylesheet" href="../css/styles.css?v=20260916.2" />
+  <link rel="stylesheet" href="../css/styles.css?v=20261009" />
   <style>
     /* Organização da Visão geral (26/09/2026) */
     .kpi-span-2{grid-column:span 2;min-width:0;display:flex}
@@ -13,7 +13,11 @@
     .vendas-duo{display:grid;grid-template-columns:minmax(280px,1fr) 2.2fr;gap:var(--gap);align-items:start}
     .vendas-duo > *{min-width:0;margin:0 !important}
     /* O card do valor total tem altura própria: não estica junto com a lista de clientes. */
-    .vendas-duo .sales-highlight-card{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:1.2rem;align-self:start;position:sticky;top:1rem}
+    .vendas-duo .sales-highlight-card{display:flex;flex-direction:column;justify-content:flex-start;align-items:stretch;gap:1.2rem;margin:0}
+    /* Coluna da esquerda: valor total + resumo financeiro (únicas x recorrentes), juntos e fixos ao rolar. */
+    .vendas-coluna{display:flex;flex-direction:column;gap:var(--gap);align-self:start;position:sticky;top:1rem}
+    .vendas-coluna > .card{margin:0}
+    @media (max-width:1100px){.vendas-coluna{position:static}}
     .vendas-duo .sales-highlight-main{align-items:flex-start}
     .vendas-duo .sales-highlight-meta{text-align:left;align-items:flex-start;border-top:1px solid var(--border);padding-top:.9rem;width:100%}
     @media (max-width:1100px){.vendas-duo{grid-template-columns:1fr}}
@@ -38,8 +42,8 @@
   <script src="../js/config.js?v=20260916"></script>
   <script src="../js/supabaseClient.js?v=20260916"></script>
   <script src="../js/auth.js?v=20260916"></script>
-  <script src="../js/data.js?v=20260925b"></script>
-  <script src="../js/calc.js?v=20260925b"></script>
+  <script src="../js/data.js?v=20261009"></script>
+  <script src="../js/calc.js?v=20261009"></script>
   <script src="../js/ui.js?v=20260925b"></script>
   <script src="../js/lancamentos.js?v=20260916"></script>
   <script src="../js/sync.js?v=20260916"></script>
@@ -161,8 +165,43 @@
       return `${date.toLocaleDateString("pt-BR")} <span class="client-time">${date.toLocaleTimeString("pt-BR", {hour:"2-digit", minute:"2-digit"})}</span>`;
     }
 
+    /** Selo do tipo de cobrança: "Recorrente · Mensal" ou "Único". */
+    function tipoVendaHtml(r) {
+      return r.tipo === "RECORRENTE"
+        ? `<span class="tipo-venda tipo-venda-recorrente">Recorrente${r.recorrencia && r.recorrencia !== "Recorrente" ? ` · ${esc(r.recorrencia)}` : ""}</span>`
+        : `<span class="tipo-venda tipo-venda-unico">Único</span>`;
+    }
+
+    function produtoVendaHtml(r) {
+      const nome = r.produto
+        ? `<span class="produto-venda-nome">${esc(r.produto)}${r.quantidade > 1 ? ` × ${r.quantidade}` : ""}</span>`
+        : `<span class="produto-venda-nome sem-produto">Sem produto no RD</span>`;
+      const seq = r.totalLinhas > 1 ? `<span class="produto-venda-seq">Produto ${r.indice} de ${r.totalLinhas} · venda de ${brl(r.saleValue)}</span>` : "";
+      return `<div class="produto-venda">${nome}${tipoVendaHtml(r)}${seq}</div>`;
+    }
+
+    /** Card "Resumo financeiro": vendas únicas, recorrentes e total (mesma base do valor total). */
+    function resumoFinanceiroHtml(split) {
+      const pctU = split.total > 0 ? (split.unique / split.total) * 100 : 0;
+      const pctR = split.total > 0 ? 100 - pctU : 0;
+      const qtd = (n) => `${n} venda${n === 1 ? "" : "s"}`;
+      return `
+        <h2>Resumo financeiro das vendas</h2>
+        <p class="resumo-financeiro-sub">Vendas fechadas no período, separadas pelo tipo de cobrança dos produtos no RD Station.</p>
+        <ul class="resumo-financeiro-lista">
+          <li class="resumo-financeiro-item unico"><i aria-hidden="true"></i><span class="resumo-financeiro-rotulo">Vendas únicas<small>Pagamento único · ${qtd(split.countUnique)}</small></span><span class="resumo-financeiro-valor" data-resumo="unico">${brl(split.unique)}</span></li>
+          <li class="resumo-financeiro-item recorrente"><i aria-hidden="true"></i><span class="resumo-financeiro-rotulo">Vendas recorrentes<small>Mensalidades · ${qtd(split.countRecurring)}</small></span><span class="resumo-financeiro-valor" data-resumo="recorrente">${brl(split.recurring)}</span></li>
+          <li class="resumo-financeiro-item total"><i aria-hidden="true"></i><span class="resumo-financeiro-rotulo">Total de vendas<small>Únicas + recorrentes · ${qtd(split.count)}</small></span><span class="resumo-financeiro-valor" data-resumo="total">${brl(split.total)}</span></li>
+        </ul>
+        ${split.total > 0 ? `<div class="resumo-financeiro-barra" role="img" aria-label="${pctU.toFixed(0)}% único, ${pctR.toFixed(0)}% recorrente"><span style="width:${pctU}%"></span><span style="width:${pctR}%"></span></div>` : ""}
+      `;
+    }
+
     function renderClientEntries(store, range, sellerId) {
       const rows = getClientEntries(store, { range, sellerId });
+      // Um cliente com produto mensal + único vira 2 linhas (uma por produto),
+      // mas continua sendo UM cliente / UMA venda.
+      const nClientes = new Set(rows.map((r) => r.saleId)).size;
       const wrap = document.getElementById("client-entries");
       if (!wrap) return;
       wrap.innerHTML = `
@@ -171,28 +210,29 @@
             <h2>Clientes das vendas realizadas no período</h2>
             <p>Somente clientes com venda efetivamente registrada no período selecionado.</p>
           </div>
-          <span class="client-count-pill">${rows.length} cliente${rows.length === 1 ? "" : "s"}</span>
+          <span class="client-count-pill">${nClientes} cliente${nClientes === 1 ? "" : "s"}${rows.length !== nClientes ? ` · ${rows.length} produtos` : ""}</span>
         </div>
         <div class="table-scroll client-table-wrap">
           <table class="client-entries-table">
             <thead><tr>
-              <th>Cliente</th><th>Data da venda</th><th>Valor</th><th>Status</th><th>Etapa</th><th>Vendedor</th><th>Campanha / origem</th>
+              <th>Cliente</th><th>Produto / tipo</th><th>Data da venda</th><th>Valor</th><th>Status</th><th>Etapa</th><th>Vendedor</th><th>Campanha / origem</th>
             </tr></thead>
             <tbody>
               ${rows.length ? rows.slice(0, 100).map((r) => `
                 <tr>
                   <td><div class="client-primary">${esc(r.clientName)}</div><div class="client-secondary">${esc(r.companyName)}</div></td>
+                  <td>${produtoVendaHtml(r)}</td>
                   <td>${formatDateTimePt(r.enteredAt)}</td>
                   <td class="client-value">${brl(r.value)}</td>
                   <td>${clientStatusBadge(r.status)}</td>
                   <td>${esc(r.stage)}</td>
                   <td>${esc(r.sellerName)}</td>
                   <td>${esc(r.campaign)}</td>
-                </tr>`).join("") : `<tr><td colspan="7" class="text-empty">Nenhuma venda registrada no período selecionado.</td></tr>`}
+                </tr>`).join("") : `<tr><td colspan="8" class="text-empty">Nenhuma venda registrada no período selecionado.</td></tr>`}
             </tbody>
           </table>
         </div>
-        ${rows.length > 100 ? `<p class="client-table-note">Exibindo os 100 clientes mais recentes do período.</p>` : ""}
+        ${rows.length > 100 ? `<p class="client-table-note">Exibindo as 100 linhas mais recentes do período.</p>` : ""}
       `;
     }
 
@@ -281,7 +321,17 @@
       vendasDuo.className = "vendas-duo";
       const salesCard = content.querySelector(".sales-highlight-card");
       salesCard.replaceWith(vendasDuo);
-      vendasDuo.appendChild(salesCard);
+      // Resumo financeiro (09/10/2026): vendas únicas, recorrentes e total,
+      // logo abaixo do valor total — mesma fonte (tabela sales) e mesmo filtro.
+      const vendasColuna = document.createElement("div");
+      vendasColuna.className = "vendas-coluna";
+      const resumoCard = document.createElement("div");
+      resumoCard.id = "resumo-financeiro";
+      resumoCard.className = "card card-p resumo-financeiro-card";
+      resumoCard.innerHTML = resumoFinanceiroHtml(getSalesSplit(store, { range, sellerId: allowedSellerId }));
+      vendasColuna.appendChild(salesCard);
+      vendasColuna.appendChild(resumoCard);
+      vendasDuo.appendChild(vendasColuna);
       vendasDuo.appendChild(clientEntriesHost);
 
       renderPeriodFilter(document.getElementById("period-filter"), vendedores, render, { defaultPeriod: "this_week", defaultSellerId: allowedSellerId || "" });

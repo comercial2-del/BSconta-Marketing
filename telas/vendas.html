@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>BSconta + Marketing</title>
   <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
-  <link rel="stylesheet" href="../css/styles.css?v=20260914" />
+  <link rel="stylesheet" href="../css/styles.css?v=20261009" />
   <style>
     /* Campanhas mais vendidas (05/10/2026) — mesmo visual de "Motivos de perda" (tela Leads) */
     .camp-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
@@ -51,8 +51,8 @@
   <script src="../js/config.js?v=20260914"></script>
   <script src="../js/supabaseClient.js?v=20260914"></script>
   <script src="../js/auth.js?v=20260914"></script>
-  <script src="../js/data.js?v=20260914"></script>
-  <script src="../js/calc.js?v=20260914"></script>
+  <script src="../js/data.js?v=20261009"></script>
+  <script src="../js/calc.js?v=20261009"></script>
   <script src="../js/ui.js?v=20260926"></script>
   <script src="../js/charts.js?v=20260914"></script>
   <script src="../js/sync.js?v=20260914"></script>
@@ -78,6 +78,15 @@
         .sort((a, b) => a.closed_at - b.closed_at);
 
       const totalValue = saleRows.reduce((a, s) => a + Number(s.value), 0);
+
+      // Uma linha por PRODUTO na tabela "Vendas do período" (09/10/2026): um
+      // cliente com produto mensal + único aparece em 2 linhas, cada uma com
+      // o seu tipo de cobrança. Contagens e totais continuam por venda.
+      const produtosDoCard = produtosPorNegociacao(store);
+      const linhasTabela = saleRows.flatMap((s) => linhasDaVenda(s, produtosDoCard.get(s.deal_id)).map((l) => ({ ...s, ...l })));
+      const tipoHtml = (l) => l.tipo === "RECORRENTE"
+        ? `<span class="tipo-venda tipo-venda-recorrente">Recorrente${l.recorrencia && l.recorrencia !== "Recorrente" ? ` · ${esc(l.recorrencia)}` : ""}</span>`
+        : `<span class="tipo-venda tipo-venda-unico">Único</span>`;
 
       const proposalStage = store.stages.find((s) => s.name === "Enviar Proposta");
       const probableStage = store.stages.find((s) => s.name === "Provável Fechamento");
@@ -190,31 +199,33 @@
 
           <div class="card card-p table-scroll">
             <h2>Vendas do período</h2>
-            <table>
+            <table class="vendas-linhas">
               <thead>
                 <tr>
                   <th>Data</th>
                   <th>Cliente</th>
                   <th>Empresa</th>
                   <th>Vendedor</th>
+                  <th>Produto</th>
                   <th class="cell-num">Valor</th>
-                  <th class="cell-num">Recorrente</th>
+                  <th class="cell-num">Tipo</th>
                 </tr>
               </thead>
               <tbody>
-                ${saleRows
+                ${linhasTabela
                   .map(
                     (s) => `<tr>
                       <td>${s.closed_at.toLocaleDateString("pt-BR")}</td>
-                      <td>${esc(s.clientName) || "—"}</td>
+                      <td>${esc(s.clientName) || "—"}${s.totalLinhas > 1 ? `<small>Produto ${s.indice} de ${s.totalLinhas}</small>` : ""}</td>
                       <td>${esc(s.companyName) || "—"}</td>
                       <td><div class="person-cell"><span class="avatar avatar-sm">${initials(s.sellerName)}</span>${esc(s.sellerName) || "—"}</div></td>
+                      <td>${s.produto ? esc(s.produto) : `<span class="text-empty">Sem produto no RD</span>`}</td>
                       <td class="cell-num cell-green">${brl(s.value)}</td>
-                      <td class="cell-num"><span class="badge ${s.is_recurring ? "badge-green" : "badge-neutral"}">${s.is_recurring ? "Sim" : "Não"}</span></td>
+                      <td class="cell-num">${tipoHtml(s)}</td>
                     </tr>`
                   )
                   .join("")}
-                ${saleRows.length === 0 ? `<tr><td colspan="6" class="text-empty">Nenhuma venda no período selecionado.</td></tr>` : ""}
+                ${linhasTabela.length === 0 ? `<tr><td colspan="7" class="text-empty">Nenhuma venda no período selecionado.</td></tr>` : ""}
               </tbody>
             </table>
           </div>
