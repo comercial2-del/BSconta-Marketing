@@ -4,7 +4,7 @@
   "private": true,
   "description": "SGCMP — sistema comercial da BSconta. HTML/CSS/JS puro + Supabase.",
   "scripts": {
-    "teste": "npm run teste:estrutura && npm run teste:calc && npm run teste:telas && npm run teste:ligacoes && npm run teste:exclusoes && npm run teste:paginacao && npm run teste:responsivo && npm run teste:onboarding",
+    "teste": "npm run teste:estrutura && npm run teste:calc && npm run teste:vendas-tipo && npm run teste:telas && npm run teste:ligacoes && npm run teste:exclusoes && npm run teste:paginacao && npm run teste:responsivo && npm run teste:onboarding",
     "teste:estrutura": "node test/verify-estrutura.mjs",
     "teste:calc": "node test/verify-calc.mjs",
     "teste:telas": "node test/verify-telas.mjs",
@@ -13,7 +13,8 @@
     "teste:paginacao": "node test/verify-paginacao.mjs",
     "teste:responsivo": "node test/verify-responsivo.mjs",
     "medir": "node test/medir-velocidade.mjs",
-    "teste:onboarding": "node test/verify-onboarding-etapas.mjs && node test/verify-onboarding-situacao.mjs && node test/verify-onboarding-responsavel.mjs && node test/verify-onboarding-email.mjs && node test/verify-onboarding-fluxo.mjs && node test/verify-onboarding-cnpj.mjs"
+    "teste:onboarding": "node test/verify-onboarding-etapas.mjs && node test/verify-onboarding-situacao.mjs && node test/verify-onboarding-responsavel.mjs && node test/verify-onboarding-email.mjs && node test/verify-onboarding-fluxo.mjs && node test/verify-onboarding-cnpj.mjs",
+    "teste:vendas-tipo": "node test/verify-vendas-tipo.mjs"
   },
   "devDependencies": {
     "chart.js": "4.5.1",

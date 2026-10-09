@@ -91,6 +91,7 @@ Os mais importantes de conhecer:
 - `banco/09_meeting_confirmation.sql` — confirmação manual "a reunião aconteceu?".
 - `banco/15_sincronizar_exclusoes.sql` — o que é apagado no RD/Agenda some do sistema (sem apagar de verdade).
 - `banco/16_ocultar_dados_demo.sql` — escondeu 467 ligações de demonstração que inflavam os números.
+- `banco/29_vendas_unicas_recorrentes.sql` — produtos de cada card do RD (`deal_products`) e a divisão de cada venda em parte única + parte recorrente.
 
 Detalhes de instalação passo a passo estão no **`docs/GUIA.md`**; o que já foi
 para produção e o que ainda está pendente, no **`docs/DEPLOY.md`**; a conexão com o
@@ -112,6 +113,12 @@ negócio, não escolhas técnicas:
   "BSconta x <cliente>".
 - **O mesmo evento na agenda de duas pessoas conta uma vez.** O Google grava uma
   cópia por participante; o sistema agrupa pelo identificador do evento.
+- **Venda é uma por negociação; produto é uma linha por produto.** O tipo de
+  cobrança (mensal ou único) vem de cada produto do card no RD. Um cliente com
+  os dois tipos aparece em duas linhas nas tabelas, mas conta como uma venda e
+  um cliente. Toda venda é dividida em parte única + parte recorrente, e as
+  duas partes somam exatamente o valor da venda — por isso o Resumo financeiro
+  nunca diverge do "Valor total de vendas realizadas".
 - **Nada é apagado de verdade.** Exclusão no RD ou na Agenda marca `deleted_at`
   e o registro some das telas — mas continua no banco e volta sozinho se
   reaparecer na origem.
