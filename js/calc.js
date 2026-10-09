@@ -437,6 +437,147 @@ function getKpis(store, { range, sellerId }) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// VENDAS ÚNICAS x RECORRENTES (09/10/2026)
+//
+// No RD, o tipo de cobrança fica em cada PRODUTO do card (Mensal ou Único),
+// não no card. Um mesmo cliente pode ter os dois — ex.: Ingrid Figueira Baeta
+// Neves, R$ 290 mensal + R$ 800 único = R$ 1.090.
+//
+// Regras:
+//   - A venda continua sendo UMA por negociação (tabela `sales`). Metas,
+//     ranking, "Vendas realizadas" e "Clientes que entraram" não mudam.
+//   - Cada venda é dividida em parte única + parte recorrente, e a soma das
+//     partes é SEMPRE o valor da venda. Por isso o card de resumo financeiro
+//     nunca diverge do "Valor total de vendas realizadas".
+//   - As tabelas mostram UMA LINHA POR PRODUTO (deal_products), com o mesmo
+//     cliente em cada linha — nada do cliente é duplicado no banco.
+// ---------------------------------------------------------------------------
+const RECORRENCIA_UNICA = /^(spare|unique|unico|único|once|one[_ -]?time|avulso|single)$/;
+
+/** "Mensal", "Único", "Anual"... a partir do texto do RD (monthly, spare...). */
+function rotuloRecorrencia(recurrence) {
+  const r = String(recurrence ?? "").trim().toLowerCase();
+  if (!r || RECORRENCIA_UNICA.test(r)) return "Único";
+  const nomes = { monthly: "Mensal", quarterly: "Trimestral", semiannual: "Semestral", yearly: "Anual", annual: "Anual", weekly: "Semanal" };
+  return nomes[r] || r.charAt(0).toUpperCase() + r.slice(1);
+}
+
+/** deal_id -> produtos do card, na ordem do RD. */
+function produtosPorNegociacao(store) {
+  const mapa = new Map();
+  for (const p of store.deal_products || []) {
+    if (!mapa.has(p.deal_id)) mapa.set(p.deal_id, []);
+    mapa.get(p.deal_id).push(p);
+  }
+  for (const lista of mapa.values()) lista.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+  return mapa;
+}
+
+/**
+ * Parte única e parte recorrente de UMA venda. unique + recurring = total.
+ * Fonte, em ordem: sales.value_recurring (gravado pela sincronização) →
+ * soma dos produtos recorrentes do card → venda antiga, ainda não
+ * reprocessada (usa o antigo "Recorrente: Sim/Não").
+ */
+function partesDaVenda(sale, produtosDoCard) {
+  const total = Number(sale.value) || 0;
+  let recorrente;
+  if (sale.value_recurring !== null && sale.value_recurring !== undefined) {
+    recorrente = Number(sale.value_recurring) || 0;
+  } else if (produtosDoCard && produtosDoCard.length > 0) {
+    recorrente = produtosDoCard.filter((p) => p.is_recurring).reduce((a, p) => a + (Number(p.total) || 0), 0);
+  } else {
+    recorrente = sale.is_recurring ? total : 0;
+  }
+  recorrente = Math.min(Math.max(recorrente, 0), Math.max(total, 0));
+  return { unique: total - recorrente, recurring: recorrente, total };
+}
+
+function vendasDoPeriodo(store, { range, sellerId }) {
+  return (store.sales || []).filter(
+    (s) => s.closed_at && inRange(s.closed_at, range) && (!sellerId || s.seller_id === sellerId)
+  );
+}
+
+/**
+ * Resumo financeiro da Visão geral: vendas únicas, recorrentes e total.
+ * Mesma fonte e mesmo filtro do card "Valor total de vendas realizadas"
+ * (getKpis → revenue), então `total` é exatamente o mesmo número.
+ */
+function getSalesSplit(store, { range, sellerId }) {
+  const produtos = produtosPorNegociacao(store);
+  const out = { unique: 0, recurring: 0, total: 0, count: 0, countUnique: 0, countRecurring: 0 };
+  for (const sale of vendasDoPeriodo(store, { range, sellerId })) {
+    const partes = partesDaVenda(sale, produtos.get(sale.deal_id));
+    out.unique += partes.unique;
+    out.recurring += partes.recurring;
+    out.total += partes.total;
+    out.count += 1;
+    if (partes.unique > 0) out.countUnique += 1;
+    if (partes.recurring > 0) out.countRecurring += 1;
+  }
+  return out;
+}
+
+/**
+ * Uma linha por PRODUTO de cada venda (para as tabelas).
+ *   - Card com produtos no RD: uma linha por produto, valor = subtotal do produto.
+ *   - Card sem produtos lidos: uma linha por parte (única / recorrente), para
+ *     um card misto nunca aparecer como se fosse só um dos tipos.
+ * Cada linha carrega a venda de origem (saleId) — o cliente é o mesmo.
+ */
+function linhasDaVenda(sale, produtosDoCard) {
+  const base = { saleId: sale.id, dealId: sale.deal_id, saleValue: Number(sale.value) || 0 };
+  let linhas;
+  if (produtosDoCard && produtosDoCard.length > 0) {
+    linhas = produtosDoCard.map((p) => ({
+      ...base,
+      produto: p.name || "Produto",
+      tipo: p.is_recurring ? "RECORRENTE" : "UNICO",
+      recorrencia: rotuloRecorrencia(p.recurrence),
+      quantidade: Number(p.quantity) || 1,
+      value: Number(p.total) || 0,
+    }));
+  } else {
+    const partes = partesDaVenda(sale, null);
+    linhas = [];
+    if (partes.recurring > 0) linhas.push({ ...base, produto: null, tipo: "RECORRENTE", recorrencia: "Recorrente", quantidade: 1, value: partes.recurring });
+    if (partes.unique > 0 || linhas.length === 0) linhas.push({ ...base, produto: null, tipo: "UNICO", recorrencia: "Único", quantidade: 1, value: partes.unique });
+  }
+  return linhas.map((l, i) => ({ ...l, linhaId: `${sale.id}:${i}`, indice: i + 1, totalLinhas: linhas.length }));
+}
+
+/**
+ * CLIENTES DAS VENDAS DO PERÍODO — Visão geral.
+ * Somente clientes com venda efetivamente registrada no período (fonte: a
+ * tabela `sales`, exatamente como o card "Vendas realizadas"). Uma linha por
+ * produto vendido; um cliente com produto mensal + único aparece em 2 linhas.
+ */
+function getClientEntries(store, { range, sellerId }) {
+  const sellers = new Map((store.sellers || []).map((s) => [s.id, s.name]));
+  const stages = new Map((store.stages || []).map((s) => [s.id, s.name]));
+  const deals = new Map((store.deals || []).map((d) => [d.id, d]));
+  const produtos = produtosPorNegociacao(store);
+
+  return vendasDoPeriodo(store, { range, sellerId })
+    .sort((a, b) => b.closed_at - a.closed_at)
+    .flatMap((sale) => {
+      const d = deals.get(sale.deal_id) || {};
+      const cliente = {
+        id: sale.id,
+        clientName: d.client_name || "Sem nome",
+        companyName: d.company_name || "—",
+        enteredAt: sale.closed_at,
+        status: "WON",
+        stage: stages.get(d.stage_id) || "Vendido",
+        sellerName: sellers.get(sale.seller_id || d.seller_id) || "—",
+        campaign: d.origin || "Não informado",
+      };
+      return linhasDaVenda(sale, produtos.get(sale.deal_id)).map((linha) => ({ ...cliente, ...linha }));
+    });
+}
+
 /**
  * LEADS DO PERÍODO — quantos entraram e quantos foram perdidos.
  *
@@ -452,39 +593,6 @@ function getKpis(store, { range, sellerId }) {
  * em setembro conta como perdido aqui sem ter chegado aqui. O cartão compara
  * dois fluxos do período, não o destino de uma safra.
  */
-/**
- * CLIENTES QUE ENTRARAM — safra criada no período.
- * A data de entrada é deals.created_at (nascimento do lead no RD), não a
- * data da sincronização. A lista é usada diretamente na Visão geral.
- */
-function getClientEntries(store, { range, sellerId }) {
-  const sellers = new Map((store.sellers || []).map((s) => [s.id, s.name]));
-  const stages = new Map((store.stages || []).map((s) => [s.id, s.name]));
-  const deals = new Map((store.deals || []).map((d) => [d.id, d]));
-
-  // Esta seção da Visão Geral deve mostrar SOMENTE clientes com venda
-  // efetivamente registrada no período selecionado. A fonte da verdade é
-  // a tabela `sales`, exatamente como o card "Vendas realizadas".
-  return (store.sales || [])
-    .filter((sale) => sale.closed_at && inRange(sale.closed_at, range) && (!sellerId || sale.seller_id === sellerId))
-    .sort((a, b) => b.closed_at - a.closed_at)
-    .map((sale) => {
-      const d = deals.get(sale.deal_id) || {};
-      return {
-        id: sale.id,
-        clientName: d.client_name || "Sem nome",
-        companyName: d.company_name || "—",
-        enteredAt: sale.closed_at,
-        value: Number(sale.value || 0),
-        status: "WON",
-        stage: stages.get(d.stage_id) || "Vendido",
-        sellerName: sellers.get(sale.seller_id || d.seller_id) || "—",
-        campaign: d.origin || "Não informado",
-      };
-    });
-}
-
-
 function getLeads(store, { range, sellerId }) {
   const meu = (d) => !sellerId || d.seller_id === sellerId;
   const chegaram = store.deals.filter((d) => d.created_at && inRange(d.created_at, range) && meu(d));

@@ -29,8 +29,17 @@ const COLS = {
   activities:
     "id,type,subtype,source,external_id,deal_id,seller_id,title,scheduled_at,status,meeting_confirmed,meeting_confirmed_at,deleted_at",
   deals: "id,client_name,company_name,seller_id,stage_id,value,status,probability,origin,created_at,closed_at,is_recurring,updated_at,deleted_at,last_interaction_at,campaign,loss_reason",
+  sales: "id,deal_id,seller_id,value,margin,is_recurring,closed_at,value_unique,value_recurring",
+  deal_products: "id,deal_id,name,recurrence,is_recurring,quantity,price,total,position",
+};
+// Colunas que só existem depois do 29_vendas_unicas_recorrentes.sql. Se o
+// banco ainda não tiver rodado o script, a busca cai para a lista antiga em
+// vez de derrubar a tela inteira (o Postgrest recusa coluna inexistente).
+const COLS_SEM_SQL29 = {
   sales: "id,deal_id,seller_id,value,margin,is_recurring,closed_at",
 };
+const colunaInexistente = (err) =>
+  !!err && (err.code === "42703" || err.code === "PGRST204" || /column .* does not exist|could not find/i.test(err.message || ""));
 // sellers (4 linhas, 589 bytes), stages (25 linhas, 2,6 kB) e goals continuam
 // com select("*"): a economia seria irrelevante e `order` é palavra reservada
 // no Postgres — não vale arriscar um erro de sintaxe para poupar 3 kB.
@@ -48,8 +57,12 @@ const COLS = {
  * restantes são pedidas TODAS DE UMA VEZ, em paralelo. Três esperas viram uma.
  */
 async function fetchAllRows(table) {
-  const cols = COLS[table] || "*";
-  const primeira = await sb.from(table).select(cols, { count: "exact" }).range(0, PAGE_SIZE - 1);
+  let cols = COLS[table] || "*";
+  let primeira = await sb.from(table).select(cols, { count: "exact" }).range(0, PAGE_SIZE - 1);
+  if (primeira.error && COLS_SEM_SQL29[table] && colunaInexistente(primeira.error)) {
+    cols = COLS_SEM_SQL29[table];
+    primeira = await sb.from(table).select(cols, { count: "exact" }).range(0, PAGE_SIZE - 1);
+  }
   if (primeira.error) throw primeira.error;
 
   const linhas = primeira.data || [];
@@ -107,6 +120,18 @@ async function fetchActivities() {
 
 async function fetchSales() {
   return fetchAllRows("sales");
+}
+
+/** Produtos de cada negociação (uma linha por produto do card no RD).
+ *  Tabela criada no SQL 29 — sem ela, as telas mostram uma linha por venda,
+ *  como antes. */
+async function fetchDealProducts() {
+  try {
+    return await fetchAllRows("deal_products");
+  } catch (err) {
+    console.warn("[dados] produtos das negociações indisponíveis (rode o 29_vendas_unicas_recorrentes.sql):", err?.message || err);
+    return [];
+  }
 }
 
 async function fetchGoals() {
@@ -177,7 +202,7 @@ async function setMeetingConfirmation(activityId, confirmed) {
 // sessionStorage e não localStorage de propósito: o cache morre quando a aba
 // é fechada, então nunca fica um dado velho de ontem escondido.
 // ---------------------------------------------------------------------------
-const STORE_CACHE_KEY = "sgcmp:store:v7"; // v7: deals.loss_reason (motivos de perda na tela Leads) // v3: guarda menos colunas (ver COLS)
+const STORE_CACHE_KEY = "sgcmp:store:v8"; // v8: vendas únicas x recorrentes + deal_products // v7: deals.loss_reason (motivos de perda na tela Leads) // v3: guarda menos colunas (ver COLS)
 const STORE_CACHE_TTL_MS = 60_000; // dentro disso, nem consulta o banco
 // Acima do TTL, o cache ainda serve para DESENHAR A TELA NA HORA, enquanto os
 // dados novos vêm por trás. Meia hora é o limite do que vale mostrar antes de
@@ -197,7 +222,7 @@ const STORE_DATE_FIELDS = {
 };
 
 function hydrateStore(raw) {
-  const out = { sellers: raw.sellers || [], stages: raw.stages || [] };
+  const out = { sellers: raw.sellers || [], stages: raw.stages || [], deal_products: raw.deal_products || [] };
   for (const [table, fields] of Object.entries(STORE_DATE_FIELDS)) {
     out[table] = (raw[table] || []).map((row) => {
       const copy = { ...row };
@@ -251,13 +276,14 @@ async function loadAll(opts = {}) {
     if (cached) return cached;
   }
 
-  const [sellers, stages, dealsBrutos, activitiesBrutas, salesRaw, goalsRaw] = await Promise.all([
+  const [sellers, stages, dealsBrutos, activitiesBrutas, salesRaw, goalsRaw, dealProducts] = await Promise.all([
     fetchSellers(),
     fetchStages(),
     fetchDeals(),
     fetchActivities(),
     fetchSales(),
     fetchGoals(),
+    fetchDealProducts(),
   ]);
 
   // Registros apagados na origem (reunião removida da Agenda, card removido do
@@ -270,12 +296,12 @@ async function loadAll(opts = {}) {
   const dealsRaw = semExcluidos(dealsBrutos);
   const activitiesRaw = semExcluidos(activitiesBrutas);
 
-  writeStoreCache({ sellers, stages, deals: dealsRaw, activities: activitiesRaw, sales: salesRaw, goals: goalsRaw });
+  writeStoreCache({ sellers, stages, deals: dealsRaw, activities: activitiesRaw, sales: salesRaw, goals: goalsRaw, deal_products: dealProducts });
 
   // Uma única rotina de conversão de datas, a mesma usada ao ler do cache —
   // antes havia duas listas de campos que precisavam ser mantidas iguais na
   // mão, e é assim que um campo some sem ninguém perceber.
-  return hydrateStore({ sellers, stages, deals: dealsRaw, activities: activitiesRaw, sales: salesRaw, goals: goalsRaw });
+  return hydrateStore({ sellers, stages, deals: dealsRaw, activities: activitiesRaw, sales: salesRaw, goals: goalsRaw, deal_products: dealProducts });
 }
 
 /**
