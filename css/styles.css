@@ -1367,3 +1367,35 @@ dialog.confirmacao::backdrop { background: rgba(15, 23, 42, 0.45); backdrop-filt
 .dashboard-chart-legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
 @media(max-width:900px){.dashboard-tabs-card{grid-template-columns:160px minmax(0,1fr)}.dashboard-tabs-sidebar{padding:.65rem}.dashboard-tab-panel{padding:.9rem}}
 @media(max-width:700px){.dashboard-tabs-card{grid-template-columns:1fr}.dashboard-tabs-sidebar{border-right:0;border-bottom:1px solid var(--slate-200);background:linear-gradient(180deg,#f7f8fd,#f4f6fb)}.dashboard-tabs-nav{flex-direction:row;overflow-x:auto}.dashboard-tab{min-width:145px;justify-content:center;text-align:center}.dashboard-tabs-sidebar-title{display:none}.dashboard-chart-head{flex-direction:column}.dashboard-chart-legend{justify-content:flex-start}.dashboard-chart-wrap{height:250px}}
+
+/* ------------------------------------------------------------------------
+   Vendas únicas x recorrentes (09/10/2026)
+   Selo do tipo de cobrança em cada linha de produto e o card de resumo
+   financeiro da Visão geral.
+   ------------------------------------------------------------------------ */
+.tipo-venda{display:inline-flex;align-items:center;gap:.3rem;border-radius:999px;padding:.2rem .55rem;font-size:.72rem;font-weight:700;white-space:nowrap}
+.tipo-venda::before{content:"";width:.45rem;height:.45rem;border-radius:50%;background:currentColor;opacity:.8}
+.tipo-venda-recorrente{background:var(--violet-100);color:var(--violet-700)}
+.tipo-venda-unico{background:var(--amber-100);color:var(--amber-700)}
+.produto-venda{display:flex;flex-direction:column;gap:.25rem;align-items:flex-start}
+.produto-venda-nome{font-weight:600;color:var(--text)}
+.produto-venda-nome.sem-produto{font-weight:500;color:var(--text-faint)}
+.produto-venda-seq{font-size:.72rem;color:var(--text-faint)}
+
+.resumo-financeiro-card h2{margin-bottom:.2rem}
+.resumo-financeiro-sub{margin:0 0 .9rem;font-size:.78rem;color:var(--text-faint)}
+.resumo-financeiro-lista{display:flex;flex-direction:column;gap:.55rem;margin:0;padding:0;list-style:none}
+.resumo-financeiro-item{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.6rem;padding:.7rem .8rem;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)}
+.resumo-financeiro-item i{width:.6rem;height:.6rem;border-radius:50%}
+.resumo-financeiro-item.unico i{background:var(--amber-500)}
+.resumo-financeiro-item.recorrente i{background:var(--violet-500)}
+.resumo-financeiro-item.total{background:var(--surface);border-width:2px}
+.resumo-financeiro-item.total i{background:var(--emerald-700)}
+.resumo-financeiro-rotulo{display:flex;flex-direction:column;font-size:.8rem;font-weight:700;color:var(--text)}
+.resumo-financeiro-rotulo small{font-weight:500;color:var(--text-faint);font-size:.72rem}
+.resumo-financeiro-valor{font-size:1.05rem;font-weight:800;letter-spacing:-.01em;color:var(--text);white-space:nowrap}
+.resumo-financeiro-item.total .resumo-financeiro-valor{font-size:1.25rem}
+.resumo-financeiro-barra{display:flex;height:.45rem;border-radius:999px;overflow:hidden;background:var(--surface-2);margin:.9rem 0 0}
+.resumo-financeiro-barra span:first-child{background:var(--amber-500)}
+.resumo-financeiro-barra span:last-child{background:var(--violet-500)}
+.vendas-linhas td small{display:block;color:var(--text-faint);font-size:.7rem;margin-top:.1rem}
