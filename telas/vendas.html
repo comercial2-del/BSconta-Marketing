@@ -216,7 +216,7 @@
                   .map(
                     (s) => `<tr>
                       <td>${s.closed_at.toLocaleDateString("pt-BR")}</td>
-                      <td>${esc(s.clientName) || "—"}${s.totalLinhas > 1 ? `<small>Produto ${s.indice} de ${s.totalLinhas}</small>` : ""}</td>
+                      <td>${esc(s.clientName) || "—"}</td>
                       <td>${esc(s.companyName) || "—"}</td>
                       <td><div class="person-cell"><span class="avatar avatar-sm">${initials(s.sellerName)}</span>${esc(s.sellerName) || "—"}</div></td>
                       <td>${s.produto ? esc(s.produto) : `<span class="text-empty">Sem produto no RD</span>`}</td>

@@ -176,14 +176,11 @@
       const nome = r.produto
         ? `<span class="produto-venda-nome">${esc(r.produto)}${r.quantidade > 1 ? ` × ${r.quantidade}` : ""}</span>`
         : `<span class="produto-venda-nome sem-produto">Sem produto no RD</span>`;
-      const seq = r.totalLinhas > 1 ? `<span class="produto-venda-seq">Produto ${r.indice} de ${r.totalLinhas} · venda de ${brl(r.saleValue)}</span>` : "";
-      return `<div class="produto-venda">${nome}${tipoVendaHtml(r)}${seq}</div>`;
+      return `<div class="produto-venda">${nome}</div>`;
     }
 
     /** Card "Resumo financeiro": vendas únicas, recorrentes e total (mesma base do valor total). */
     function resumoFinanceiroHtml(split) {
-      const pctU = split.total > 0 ? (split.unique / split.total) * 100 : 0;
-      const pctR = split.total > 0 ? 100 - pctU : 0;
       const qtd = (n) => `${n} venda${n === 1 ? "" : "s"}`;
       return `
         <h2>Resumo financeiro das vendas</h2>
@@ -191,9 +188,7 @@
         <ul class="resumo-financeiro-lista">
           <li class="resumo-financeiro-item unico"><i aria-hidden="true"></i><span class="resumo-financeiro-rotulo">Vendas únicas<small>Pagamento único · ${qtd(split.countUnique)}</small></span><span class="resumo-financeiro-valor" data-resumo="unico">${brl(split.unique)}</span></li>
           <li class="resumo-financeiro-item recorrente"><i aria-hidden="true"></i><span class="resumo-financeiro-rotulo">Vendas recorrentes<small>Mensalidades · ${qtd(split.countRecurring)}</small></span><span class="resumo-financeiro-valor" data-resumo="recorrente">${brl(split.recurring)}</span></li>
-          <li class="resumo-financeiro-item total"><i aria-hidden="true"></i><span class="resumo-financeiro-rotulo">Total de vendas<small>Únicas + recorrentes · ${qtd(split.count)}</small></span><span class="resumo-financeiro-valor" data-resumo="total">${brl(split.total)}</span></li>
         </ul>
-        ${split.total > 0 ? `<div class="resumo-financeiro-barra" role="img" aria-label="${pctU.toFixed(0)}% único, ${pctR.toFixed(0)}% recorrente"><span style="width:${pctU}%"></span><span style="width:${pctR}%"></span></div>` : ""}
       `;
     }
 
@@ -215,7 +210,7 @@
         <div class="table-scroll client-table-wrap">
           <table class="client-entries-table">
             <thead><tr>
-              <th>Cliente</th><th>Produto / tipo</th><th>Data da venda</th><th>Valor</th><th>Status</th><th>Etapa</th><th>Vendedor</th><th>Campanha / origem</th>
+              <th>Cliente</th><th>Produto</th><th>Data da venda</th><th>Valor</th><th>Status</th><th>Tipo</th><th>Vendedor</th><th>Campanha / origem</th>
             </tr></thead>
             <tbody>
               ${rows.length ? rows.slice(0, 100).map((r) => `
@@ -225,7 +220,7 @@
                   <td>${formatDateTimePt(r.enteredAt)}</td>
                   <td class="client-value">${brl(r.value)}</td>
                   <td>${clientStatusBadge(r.status)}</td>
-                  <td>${esc(r.stage)}</td>
+                  <td>${tipoVendaHtml(r)}</td>
                   <td>${esc(r.sellerName)}</td>
                   <td>${esc(r.campaign)}</td>
                 </tr>`).join("") : `<tr><td colspan="8" class="text-empty">Nenhuma venda registrada no período selecionado.</td></tr>`}
