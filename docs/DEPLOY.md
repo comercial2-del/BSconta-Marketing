@@ -169,3 +169,45 @@ reaparece — inclusive os números históricos.
 
 Sentido único, por definição: o sistema **lê** do RD e da Agenda, nunca
 escreve. Apagar algo dentro do sistema não apaga no RD nem na Agenda.
+
+---
+
+## Vendas únicas x recorrentes (09/10/2026)
+
+**O que muda:** cada produto do card no RD passa a ser lido com o seu tipo de
+cobrança (`monthly` = recorrente, `spare` = único). Um cliente com produto
+mensal + produto único (ex.: Ingrid Figueira Baeta Neves, R$ 290 + R$ 800)
+aparece em **duas linhas** — uma por produto — na Visão geral e na tela de
+Vendas, e a Visão geral ganha o card **Resumo financeiro das vendas**
+(Vendas únicas · Vendas recorrentes · Total de vendas).
+
+A venda continua sendo **uma por negociação**: metas, ranking, "Vendas
+realizadas" e "Clientes que entraram" não mudam de contagem, e o Total do
+resumo é sempre igual ao "Valor total de vendas realizadas".
+
+**Para ativar (nesta ordem):**
+
+1. SQL Editor → rode `banco/29_vendas_unicas_recorrentes.sql` (não apaga nada).
+2. Publique de novo a função `sync-rd-station` (Passo 1 acima — só o `index.ts`).
+3. Publique o site (telas, `js/` e `css/` mudaram).
+
+**Vendas antigas:** cada sincronização completa sozinha até 15 vendas antigas
+(lê os produtos e a divisão no RD). Para fazer tudo de uma vez, rode uma
+sincronização completa (POST na função com o corpo `{"full": true}`) — o que
+não couber no tempo fica para as execuções seguintes.
+
+**Conferência:**
+
+```sql
+select d.client_name, p.name, p.recurrence, p.total, s.value_unique, s.value_recurring
+  from deals d
+  join sales s on s.deal_id = d.id
+  left join deal_products p on p.deal_id = d.id
+ where d.client_name ilike 'Ingrid Figueira%';
+-- Serviços Contábeis | monthly | 290 | 800 | 290
+-- Serviços Contábeis | spare   | 800 | 800 | 290
+```
+
+Sem o SQL 29 tudo continua funcionando como antes (a sincronização avisa
+"falta rodar 29_vendas_unicas_recorrentes.sql" e as telas mostram uma linha
+por venda).
