@@ -201,7 +201,7 @@ for (const tela of TELAS) {
   const pagina = await contexto.newPage();
   await pagina.goto(`${BASE}/telas/dashboard.html`, { waitUntil: "load" });
   await pagina.waitForFunction(() => document.getElementById("content")?.textContent.trim().length > 40, { timeout: 15000 });
-  const temCache = await pagina.evaluate(() => !!sessionStorage.getItem("sgcmp:store:v3"));
+  const temCache = await pagina.evaluate(() => !!Object.keys(sessionStorage).some((k) => k.startsWith("sgcmp:store:")));
   ok(temCache, "a primeira abertura deixa a cópia na memória da sessão");
 
   // Segunda tela, mesma sessão: deve pintar sem esperar o banco.
