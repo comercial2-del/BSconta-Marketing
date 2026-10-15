@@ -500,6 +500,19 @@
 .onb-dlg.aviso .onb-dlg-btn.pri{background:var(--indigo-600,#4f46e5);color:#fff}
 @media (max-width:480px){.onb-dlg{align-items:flex-end;padding:0}.onb-dlg-card{width:100%;border-radius:20px 20px 0 0;padding:1.3rem 1rem 1rem}.onb-dlg-acoes{flex-direction:column-reverse}.onb-dlg-btn{width:100%;padding:.8rem}}
 @media (prefers-reduced-motion:reduce){.onb-dlg,.onb-dlg-card{transition:none}}
+/* Pedido do Gabriel (13/10/2026): filtro de período igual às outras telas,
+   "Em andamento" dividido por fase e cards de resumo clicáveis. */
+.onb .onb-period-filter{margin:-.25rem 0 1rem}
+.onb .sales-kpis{grid-template-columns:repeat(5,minmax(0,1fr))}
+.onb .sales-kpi[data-kpi]{cursor:pointer;transition:border-color .15s,box-shadow .15s,transform .15s;text-align:left}
+.onb .sales-kpi[data-kpi]:hover{border-color:var(--indigo-200,#c7d2fe);transform:translateY(-1px)}
+.onb .sales-kpi[data-kpi]:focus-visible{outline:2px solid var(--indigo-500);outline-offset:2px}
+.onb .sales-kpi.ativo{border-color:var(--indigo-500);box-shadow:0 0 0 3px rgba(99,102,241,.14)}
+.onb .kpi-filtro-pill{display:inline-flex;align-items:center;gap:.35rem;border:1px solid var(--indigo-200,#c7d2fe);background:rgba(99,102,241,.08);color:var(--indigo-600);border-radius:999px;padding:.3rem .7rem;font-size:.72rem;font-weight:750;cursor:pointer}
+.onb .sales-board-head .kpi-filtro-wrap{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+@media(max-width:1280px){.onb .sales-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:980px){.onb .sales-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.onb .sales-kpis{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -521,10 +534,12 @@
           </div>
         </section>
 
+        <div id="period-filter" class="onb-period-filter"></div>
+
         <div id="onbBanner"></div>
 
         <section class="sales-kpis" aria-label="Resumo das vendas">
-          <article class="sales-kpi">
+          <article class="sales-kpi" data-kpi="todas" role="button" tabindex="0" title="Mostrar todas as vendas">
             <div class="sales-kpi-icon indigo"><span data-icon="trend"></span></div>
             <div><div class="sales-kpi-label">Vendas registradas</div><div class="sales-kpi-value" id="kpiSales">6</div><div class="sales-kpi-foot">Cards criados automaticamente</div></div>
           </article>
@@ -532,11 +547,19 @@
             <div class="sales-kpi-icon green"><span data-icon="chart"></span></div>
             <div><div class="sales-kpi-label">Valor vendido</div><div class="sales-kpi-value" id="kpiRevenue">R$ 3.850,00</div><div class="sales-kpi-foot">Valor de entrada das vendas</div></div>
           </article>
-          <article class="sales-kpi">
+          <article class="sales-kpi" data-kpi="fase-02-04" role="button" tabindex="0" title="Mostrar só as vendas da fase 02 a 04">
             <div class="sales-kpi-icon amber"><span data-icon="calendar"></span></div>
-            <div><div class="sales-kpi-label">Em andamento</div><div class="sales-kpi-value" id="kpiActive">3</div><div class="sales-kpi-foot" id="kpiActiveFoot">Vendas ainda em operação</div></div>
+            <div><div class="sales-kpi-label">Em andamento · fase 02 a 04</div><div class="sales-kpi-value" id="kpiFase0204">0</div><div class="sales-kpi-foot" id="kpiFase0204Foot">Início, 1ª reunião e implantação</div></div>
           </article>
-          <article class="sales-kpi">
+          <article class="sales-kpi" data-kpi="fase-05-07" role="button" tabindex="0" title="Mostrar só as vendas da fase 05 a 07">
+            <div class="sales-kpi-icon amber"><span data-icon="calendar"></span></div>
+            <div><div class="sales-kpi-label">Em andamento · fase 05 a 07</div><div class="sales-kpi-value" id="kpiFase0507">0</div><div class="sales-kpi-foot" id="kpiFase0507Foot">2ª reunião, acompanhamento e conclusão</div></div>
+          </article>
+          <article class="sales-kpi" data-kpi="fase-08-09" role="button" tabindex="0" title="Mostrar só as vendas da fase 08 a 09">
+            <div class="sales-kpi-icon amber"><span data-icon="calendar"></span></div>
+            <div><div class="sales-kpi-label">Em andamento · fase 08 a 09</div><div class="sales-kpi-value" id="kpiFase0809">0</div><div class="sales-kpi-foot" id="kpiFase0809Foot">Pesquisa de satisfação e avaliação no Google</div></div>
+          </article>
+          <article class="sales-kpi" data-kpi="concluidas" role="button" tabindex="0" title="Mostrar só as vendas concluídas">
             <div class="sales-kpi-icon violet"><span data-icon="target"></span></div>
             <div><div class="sales-kpi-label">Concluídas</div><div class="sales-kpi-value" id="kpiDone">1</div><div class="sales-kpi-foot">Processos finalizados</div></div>
           </article>
@@ -549,7 +572,7 @@
               <h2>Vendas realizadas</h2>
               <p>Cada venda registrada gera um Card e mantém todo o histórico acessível.</p>
             </div>
-            <span class="preview-pill" id="resultCount">6 vendas</span>
+            <div class="kpi-filtro-wrap"><button type="button" class="kpi-filtro-pill" id="kpiFiltroPill" hidden title="Tirar este filtro"></button><span class="preview-pill" id="resultCount">6 vendas</span></div>
           </div>
 
           <div class="sales-filters">
@@ -1309,15 +1332,45 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       const aviso = sit==='concluido' ? '<span class="card-acao-aviso">Onboarding concluído</span>' : sit==='arquivado' ? '<span class="card-acao-aviso">Arquivado</span>' : '<span class="card-acao-aviso">Excluído</span>';
       return `<div class="card-acoes onboarding-interactive">${botoes}${aviso}</div>`;
     }
+    // Cards de resumo clicáveis + "Em andamento" por fase (pedido do Gabriel, 13/10/2026).
+    // A fase de uma venda é a primeira etapa ainda não concluída (01 a 10).
+    // A fase 01 (Handoff, aguardando validação do vendedor) e a fase 10 (Indicação)
+    // não entram nas três faixas pedidas.
+    const FAIXAS_FASE={
+      'fase-02-04':{de:2,ate:4,rotulo:'Em andamento · fase 02 a 04',id:'kpiFase0204',foot:'Início, 1ª reunião e implantação'},
+      'fase-05-07':{de:5,ate:7,rotulo:'Em andamento · fase 05 a 07',id:'kpiFase0507',foot:'2ª reunião, acompanhamento e conclusão'},
+      'fase-08-09':{de:8,ate:9,rotulo:'Em andamento · fase 08 a 09',id:'kpiFase0809',foot:'Pesquisa de satisfação e avaliação no Google'}
+    };
+    const ROTULO_KPI={todas:'Todas as vendas',concluidas:'Concluídas',...Object.fromEntries(Object.entries(FAIXAS_FASE).map(([k,f])=>[k,f.rotulo]))};
+    function faseAtual(s){ return onboardingProgress(s).currentIndex+1; }
+    function naFaixa(s,chave){
+      const f=FAIXAS_FASE[chave]; if(!f || vendaConcluida(s)) return false;
+      const fase=faseAtual(s); return fase>=f.de && fase<=f.ate;
+    }
+    function filtroKpi(){ return window.__onbKpi || ''; }
+    function escolherKpi(chave){
+      // Clicar de novo no mesmo card (ou em "Vendas registradas") tira o filtro.
+      window.__onbKpi = (chave==='todas' || chave===filtroKpi()) ? '' : chave;
+      root.__limite = 24;
+      renderSales();
+    }
     function updateKpis(list=sales){
       document.getElementById('kpiSales').textContent = list.length;
       const total = list.reduce((sum,s)=>sum + moneyToNumber(s.amount),0);
       document.getElementById('kpiRevenue').textContent = formatBRL(total);
       // Filtro "Responsável" (01/10/2026): Em andamento mostra quantos processos estão com a pessoa.
       const rfKpi = document.getElementById('respFilter')?.value || '';
-      const emAndamento = list.filter(s=>!vendaConcluida(s) && (!rfKpi || responsavelAtual(s)===rfKpi)).length;
-      document.getElementById('kpiActive').textContent = emAndamento;
-      document.getElementById('kpiActiveFoot').textContent = rfKpi ? `${rfKpi} tem ${emAndamento} processo${emAndamento===1?'':'s'}` : 'Vendas ainda em operação';
+      Object.entries(FAIXAS_FASE).forEach(([chave,f])=>{
+        const n = list.filter(s=>naFaixa(s,chave) && (!rfKpi || responsavelAtual(s)===rfKpi)).length;
+        document.getElementById(f.id).textContent = n;
+        document.getElementById(f.id+'Foot').textContent = rfKpi ? `${rfKpi} tem ${n} processo${n===1?'':'s'}` : f.foot;
+      });
+      const kSel = filtroKpi();
+      document.querySelectorAll('.sales-kpi[data-kpi]').forEach(card=>{
+        const ativo = card.dataset.kpi===kSel;
+        card.classList.toggle('ativo', ativo);
+        card.setAttribute('aria-pressed', ativo?'true':'false');
+      });
       document.getElementById('kpiDone').textContent = list.filter(vendaConcluida).length;
       // Faixa de performance: progresso médio do onboarding das vendas.
       const medio = list.length ? Math.round(list.reduce((soma,s)=>soma+onboardingProgress(s).percent,0)/list.length) : 0;
@@ -1349,8 +1402,14 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       (!perOnb || ((dd) => dd && dd >= perOnb.start && dd < perOnb.end)(dataBrParaDate(s.sale)))
       );
       // Filtro de situação (01/10/2026): Ativos (padrão), Concluídos, Arquivados, Excluídos.
-      const ativos = base.filter(s => situacaoCard(s) === (vista || 'ativo'));
+      // Card de resumo clicado: mostra só o grupo daquele card (ignora o filtro Ativos/Concluídos).
+      const kSel = filtroKpi();
+      const ativos = FAIXAS_FASE[kSel] ? base.filter(s => situacaoCard(s)==='ativo' && naFaixa(s,kSel))
+        : kSel==='concluidas' ? base.filter(s => vendaConcluida(s) && situacaoCard(s)!=='excluido')
+        : base.filter(s => situacaoCard(s) === (vista || 'ativo'));
       document.getElementById('resultCount').textContent = `${ativos.length} venda${ativos.length===1?'':'s'}`;
+      const pillKpi = document.getElementById('kpiFiltroPill');
+      if (pillKpi) { pillKpi.hidden = !kSel; pillKpi.innerHTML = kSel ? `${esc(ROTULO_KPI[kSel]||'')} <b aria-hidden="true">×</b>` : ''; pillKpi.onclick = () => escolherKpi(kSel); }
       // Muitas vendas no histórico: mostra as mais recentes e carrega o resto sob demanda.
       const limiteOnb = root.__limite || 24;
       const cardHtml = s => `
@@ -1962,6 +2021,12 @@ function openSale(id){
 
     root.querySelectorAll('[data-icon]').forEach(el => { if (!el.innerHTML.trim()) el.innerHTML = ONB_ICONS[el.dataset.icon] || ''; });
     ['search','statusFilter','typeFilter','saleDateFilter','situacaoFilter','respFilter'].forEach(id => document.getElementById(id).addEventListener('input',renderSales));
+    // Escolher Ativos/Concluídos/Arquivados/Excluídos tira o filtro do card de resumo.
+    document.getElementById('situacaoFilter').addEventListener('input',()=>{ if(filtroKpi()){ window.__onbKpi=''; renderSales(); } });
+    document.querySelectorAll('.sales-kpi[data-kpi]').forEach(card=>{
+      card.addEventListener('click',()=>escolherKpi(card.dataset.kpi));
+      card.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); escolherKpi(card.dataset.kpi); } });
+    });
     // Botões Arquivar / Excluir card / Restaurar (no card e na janela da etapa 10).
     function tratarAcaoCard(e){
       const btn=e.target.closest('[data-card-acao]'); if(!btn) return false;
@@ -2047,13 +2112,18 @@ document.getElementById('detailScreen').addEventListener('click',e=>{ if(!e.targ
 
     
 // Filtro por período no calendário do topo (28/09/2026): usa a data da venda.
+// 13/10/2026: botões de período iguais às outras telas (Hoje … Mês passado,
+// Personalizado). "Todo o período" (padrão) não filtra pela data da venda.
+const PERIODOS_ONB=[{value:'all',label:'Todo o período'},...PERIODS];
 function periodoOnboarding(){
-  const per=new URLSearchParams(location.search).get('period'); if(!per) return null;
+  const per=new URLSearchParams(location.search).get('period'); if(!per || per==='all') return null;
   try{ const r=resolvePeriod(per); return r&&r.start&&r.end?r:null; }catch(e){ return null; }
 }
 function dataBrParaDate(br){ const [d,m,y]=String(br||'').split('/').map(Number); return d&&m&&y?new Date(y,m-1,d):null; }
 function ligarCalendarioOnboarding(root){
   const cal=root.querySelector('.onb-cal'); if(cal && typeof ICONS!=='undefined') cal.innerHTML=ICONS.meeting;
+  const pf=root.querySelector('#period-filter');
+  if(pf) renderPeriodFilter(pf, [], ()=>montar(), { periods: PERIODOS_ONB, defaultPeriod: 'all', showSellerFilter: false });
   setupCalendarPicker(()=>montar());
   const chip=root.querySelector('#onbPeriodo'); const per=periodoOnboarding(); if(!chip) return;
   if(per){ const fim=new Date(per.end.getTime()-1); chip.hidden=false; chip.innerHTML='Vendas de '+dataBrOnb(per.start)+' a '+dataBrOnb(fim)+' <b aria-hidden="true">×</b>'; chip.onclick=()=>{ history.replaceState(null,'',location.pathname); montar(); }; }
