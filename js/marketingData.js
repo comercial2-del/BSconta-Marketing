@@ -19,7 +19,11 @@ const MARKETING_SDR_DATA = [
   { period: "2026-07", label: "Jul/26", investimento: 2616.09, impressoes: 64697, cliques: 757, leads: 93, qualificados: 93, reunioes: 12, contratos: 5 },
   // Na planilha, agosto/2026 ainda não tinha os números de reuniões/contratos
   // preenchidos; preservar como 0 evita inventar dados.
-  { period: "2026-08", label: "Ago/26", investimento: 2391.55, impressoes: 52451, cliques: 757, leads: 73, qualificados: 73, reunioes: 0, contratos: 0 },
+  // 13/10/2026 (planilha enviada pelo Gabriel): cliques de agosto corrigidos
+  // (647, antes repetia os 757 de julho) e setembro incluído. Reuniões e
+  // contratos de setembro ainda não vieram na planilha: ficam 0, como agosto.
+  { period: "2026-08", label: "Ago/26", investimento: 2391.55, impressoes: 52451, cliques: 647, leads: 73, qualificados: 73, reunioes: 0, contratos: 0 },
+  { period: "2026-09", label: "Set/26", investimento: 3391.00, impressoes: 60461, cliques: 697, leads: 63, qualificados: 63, reunioes: 0, contratos: 0 },
 ];
 // Recortes de campanhas estruturados a partir do bloco de campanhas da planilha.
 // A ordenação da "melhor campanha" prioriza conversão de reuniões em contratos,
@@ -30,10 +34,15 @@ const MARKETING_CAMPAIGN_DATA = [
   { period: "2026-07", campaign: "Indicação", investimento: 0, impressoes: 0, cliques: 0, leads: 0, qualificados: 0, reunioes: 4, contratos: 3 },
   { period: "2026-07", campaign: "Parceiros", investimento: 0, impressoes: 0, cliques: 0, leads: 0, qualificados: 0, reunioes: 0, contratos: 0 },
   { period: "2026-07", campaign: "Site", investimento: 0, impressoes: 0, cliques: 0, leads: 0, qualificados: 0, reunioes: 4, contratos: 1 },
-  { period: "2026-08", campaign: "Inbound-Moonflag", investimento: 2391.55, impressoes: 52451, cliques: 757, leads: 73, qualificados: 73, reunioes: 0, contratos: 0 },
+  { period: "2026-08", campaign: "Inbound-Moonflag", investimento: 2391.55, impressoes: 52451, cliques: 647, leads: 73, qualificados: 73, reunioes: 0, contratos: 0 },
   { period: "2026-08", campaign: "Outbound-Speddio", investimento: 0, impressoes: 0, cliques: 0, leads: 0, qualificados: 0, reunioes: 0, contratos: 0 },
   { period: "2026-08", campaign: "Indicação", investimento: 0, impressoes: 0, cliques: 0, leads: 0, qualificados: 0, reunioes: 4, contratos: 3 },
   { period: "2026-08", campaign: "Parceiros", investimento: 0, impressoes: 0, cliques: 0, leads: 0, qualificados: 0, reunioes: 0, contratos: 0 },
   { period: "2026-08", campaign: "Site", investimento: 0, impressoes: 0, cliques: 0, leads: 0, qualificados: 0, reunioes: 4, contratos: 1 },
+  { period: "2026-09", campaign: "Inbound-Moonflag", investimento: 3391.00, impressoes: 60461, cliques: 697, leads: 63, qualificados: 63, reunioes: 0, contratos: 0 },
+  { period: "2026-09", campaign: "Outbound-Speddio", investimento: 0, impressoes: 0, cliques: 0, leads: 0, qualificados: 0, reunioes: 0, contratos: 0 },
+  { period: "2026-09", campaign: "Indicação", investimento: 0, impressoes: 0, cliques: 0, leads: 0, qualificados: 0, reunioes: 0, contratos: 0 },
+  { period: "2026-09", campaign: "Parceiros", investimento: 0, impressoes: 0, cliques: 0, leads: 0, qualificados: 0, reunioes: 0, contratos: 0 },
+  { period: "2026-09", campaign: "Site", investimento: 0, impressoes: 0, cliques: 0, leads: 0, qualificados: 0, reunioes: 0, contratos: 0 },
 ];
 
