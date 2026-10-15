@@ -220,17 +220,39 @@ ok(r[V] === "Gustavo", "etapa 01 concluída: card passa a mostrar Gustavo");
 ok(r["0003"] === "Uriel" && r["0004"] === "Uriel", "os outros cards continuam com o Uriel");
 ok((await opcoes(a)).join("|") === "Todos os responsáveis|Gustavo|Uriel", "filtro lista Gustavo e Uriel");
 
-const emAndamento = (p) => p.pagina.evaluate(() => [document.getElementById("kpiActive").textContent.trim(), document.getElementById("kpiActiveFoot").textContent.trim()].join(" | "));
-ok((await emAndamento(a)) === "3 | Vendas ainda em operação", "Em andamento sem filtro: total de vendas");
+// "Em andamento" foi dividido por fase (13/10/2026): a venda do Gustavo está na
+// fase 02 (card "fase 02 a 04"); as do Uriel estão na fase 01 (Handoff), fora das faixas.
+const emAndamento = (p) => p.pagina.evaluate(() => [document.getElementById("kpiFase0204").textContent.trim(), document.getElementById("kpiFase0204Foot").textContent.trim()].join(" | "));
+ok((await emAndamento(a)) === "1 | Início, 1ª reunião e implantação", "Em andamento fase 02 a 04 sem filtro");
 await filtrar(a, "Gustavo");
 ok((await numeros(a)).join() === V, "filtro Gustavo mostra só o card dele");
 ok((await emAndamento(a)) === "1 | Gustavo tem 1 processo", "Em andamento mostra quantos processos estão com o Gustavo");
 await filtrar(a, "Uriel");
 ok((await numeros(a)).sort().join() === "0003,0004", "filtro Uriel mostra só os cards do Uriel");
-ok((await emAndamento(a)) === "2 | Uriel tem 2 processos", "Em andamento mostra quantos processos estão com o Uriel");
+ok((await emAndamento(a)) === "0 | Uriel tem 0 processos", "Uriel não tem processos na fase 02 a 04");
 await filtrar(a, "");
 ok((await numeros(a)).length === 3, "Todos os responsáveis mostra tudo");
-ok((await emAndamento(a)) === "3 | Vendas ainda em operação", "sem filtro volta ao texto normal");
+ok((await emAndamento(a)) === "1 | Início, 1ª reunião e implantação", "sem filtro volta ao texto normal");
+
+// Clicar no card de resumo mostra só as vendas daquele grupo (13/10/2026)
+await a.pagina.click('.sales-kpi[data-kpi="fase-02-04"]');
+ok((await numeros(a)).join() === V, "clicar em fase 02 a 04 mostra só a venda da fase 02");
+ok(await a.pagina.evaluate(() => document.querySelector('.sales-kpi[data-kpi="fase-02-04"]').classList.contains("ativo")), "card clicado fica destacado");
+await a.pagina.click('.sales-kpi[data-kpi="fase-05-07"]');
+ok((await numeros(a)).length === 0, "clicar em fase 05 a 07 (vazia) não mostra cards");
+await a.pagina.click('.sales-kpi[data-kpi="fase-05-07"]');
+ok((await numeros(a)).length === 3, "clicar de novo no mesmo card tira o filtro");
+await a.pagina.click('.sales-kpi[data-kpi="concluidas"]');
+ok((await numeros(a)).length === 0, "Concluídas sem vendas concluídas não mostra cards");
+await a.pagina.click('.sales-kpi[data-kpi="todas"]');
+ok((await numeros(a)).length === 3, "Vendas registradas volta a mostrar tudo");
+
+// Botões de período iguais às outras telas, com "Mês passado"
+const botoes = await a.pagina.evaluate(() => [...document.querySelectorAll("#period-filter button[data-period]")].map((b) => b.textContent.trim()));
+ok(botoes.join("|") === "Todo o período|Hoje|Ontem|Esta semana|Semana passada|Este mês|Mês passado", "filtro de período tem Mês passado como as outras telas");
+await a.pagina.click('#period-filter button[data-period="last_month"]');
+ok(a.pagina.url().includes("period=last_month"), "Mês passado grava o período na URL");
+await a.pagina.click('#period-filter button[data-period="all"]');
 
 // Responsável preenchido na etapa atual (02) tem prioridade
 await a.pagina.evaluate((V) => {
