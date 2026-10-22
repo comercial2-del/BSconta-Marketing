@@ -138,6 +138,9 @@ async function identificacaoCliente(sb: SB, t: Transf): Promise<string> {
 
 function montarEmail(t: Transf, identificacao = t.cliente) {
   const quando = dataHora(t.transferido_em);
+  // Saudação com o nome do novo responsável (22/10/2026): "Olá, Isadora!".
+  const nome = String(t.novo_responsavel || "").trim().split(/\s+/)[0] || "";
+  const ola = nome ? `Olá, ${nome}! Tudo bem? Espero que sim!` : "Olá! Tudo bem? Espero que sim!";
   const itens: [string, string][] = [
     ["Responsável anterior", t.responsavel_anterior],
     ["Novo responsável", t.novo_responsavel],
@@ -147,8 +150,8 @@ function montarEmail(t: Transf, identificacao = t.cliente) {
     ["Cliente/Processo", t.cliente],
   ];
   const texto = [
-    `Olá! Tudo bem? Espero que sim!`, "",
-    "Você tem uma nova notificação no sistema SGCMP — BSconta.",
+    ola, "",
+    "Você tem um novo procedimento no sistema SGCMP — BSconta.",
     "Sistema de Gestão Comercial, Marketing e Performance", "",
     `O processo de ${identificacao} avançou da 1ª etapa e foi encaminhado para você.`, "",
     "Informações da transferência:",
@@ -181,8 +184,8 @@ function montarEmail(t: Transf, identificacao = t.cliente) {
           <div style="font-size:12px;color:#64748b;margin-top:2px">Sistema de Gestão Comercial, Marketing e Performance</div>
         </td></tr>
         <tr><td style="padding:0 28px">
-          <h1 style="margin:0 0 10px;font-size:20px;line-height:1.3;color:#0f172a">Olá! Tudo bem? Espero que sim!</h1>
-          <p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#334155">Você tem uma nova notificação no sistema <strong>SGCMP — BSconta</strong>.</p>
+          <h1 style="margin:0 0 10px;font-size:20px;line-height:1.3;color:#0f172a">${esc(ola)}</h1>
+          <p style="margin:0 0 14px;font-size:14px;line-height:1.6;color:#334155">Você tem um novo procedimento no sistema <strong>SGCMP — BSconta</strong>.</p>
           <div style="background:#eff6ff;border-left:4px solid #2563eb;border-radius:8px;padding:12px 14px;font-size:14px;line-height:1.55;color:#1e3a8a">
             O processo de <strong>${esc(identificacao)}</strong> avançou da 1ª etapa e foi encaminhado para você.
           </div>
@@ -267,18 +270,26 @@ const EMAIL_RESERVA: Record<string, string> = {
   isadora: "izadora@bsconta.com.br",
   izadora: "izadora@bsconta.com.br",
 };
+// 22/10/2026: o e-mail vai para o novo responsável (Isadora) E também para o Gustavo.
 async function destinatarios(sb: SB, responsavel: string) {
   const lista: string[] = [];
   const primeiro = (responsavel || "Isadora").trim().split(/\s+/)[0].toLowerCase();
   const nomes = primeiro === "isadora" || primeiro === "izadora" ? ["isadora", "izadora"] : [primeiro];
+  if (!nomes.includes("gustavo")) nomes.push("gustavo");
+  const achados = new Set<string>();
   for (const n of nomes) {
     const { data: perfis } = await sb.from("profiles").select("id, name").ilike("name", `${n}%`);
     for (const p of perfis || []) {
       const { data } = await sb.auth.admin.getUserById(p.id);
-      if (data?.user?.email) lista.push(data.user.email);
+      if (data?.user?.email) { lista.push(data.user.email); achados.add(n); }
     }
   }
-  if (!lista.length && EMAIL_RESERVA[primeiro]) lista.push(EMAIL_RESERVA[primeiro]); // segurança: cadastro não encontrado
+  // Segurança: cadastro não encontrado -> e-mail fixo de reserva.
+  const isa = (n: string) => n === "isadora" || n === "izadora";
+  for (const n of nomes) {
+    const achou = isa(n) ? achados.has("isadora") || achados.has("izadora") : achados.has(n);
+    if (!achou && EMAIL_RESERVA[n]) lista.push(EMAIL_RESERVA[n]);
+  }
   for (const e of env("EMAIL_COPIA", "izadora@bsconta.com.br").split(",")) if (e.trim()) lista.push(e.trim());
   return [...new Set(lista.map((e) => e.toLowerCase()))];
 }
