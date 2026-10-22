@@ -2,7 +2,7 @@
 // SGCMP — BSconta — Edge Function: notificar-transferencia (01/10/2026)
 //
 // Envia o e-mail "Nova notificação no SGCMP — BSconta" quando um processo sai
-// da 1ª etapa (Uriel) e vai para o Gustavo. Quem cria a transferência é o
+// da 1ª etapa (Uriel) e vai para o responsável da etapa 02 (hoje: Isadora). Quem cria a transferência é o
 // gatilho public.onb_detectar_transferencia (SQL 25); esta função só lê a fila
 // public.onboarding_transferencias e envia o que estiver pendente.
 //
@@ -260,15 +260,25 @@ async function accessTokenGmail(sb: SB, remetente: string) {
   return j.access_token as string;
 }
 
-// Destinatários: e-mail cadastrado do Gustavo (Supabase Auth) + cópias.
-async function destinatarios(sb: SB) {
+// Destinatários: e-mail cadastrado do NOVO RESPONSÁVEL da transferência (Supabase Auth) + cópias.
+// 22/10/2026: a etapa 02 passou a ser da Isadora; antes era sempre o Gustavo.
+const EMAIL_RESERVA: Record<string, string> = {
+  gustavo: "gustavo@bsconta.com.br",
+  isadora: "izadora@bsconta.com.br",
+  izadora: "izadora@bsconta.com.br",
+};
+async function destinatarios(sb: SB, responsavel: string) {
   const lista: string[] = [];
-  const { data: perfis } = await sb.from("profiles").select("id, name").ilike("name", "gustavo%");
-  for (const p of perfis || []) {
-    const { data } = await sb.auth.admin.getUserById(p.id);
-    if (data?.user?.email) lista.push(data.user.email);
+  const primeiro = (responsavel || "Isadora").trim().split(/\s+/)[0].toLowerCase();
+  const nomes = primeiro === "isadora" || primeiro === "izadora" ? ["isadora", "izadora"] : [primeiro];
+  for (const n of nomes) {
+    const { data: perfis } = await sb.from("profiles").select("id, name").ilike("name", `${n}%`);
+    for (const p of perfis || []) {
+      const { data } = await sb.auth.admin.getUserById(p.id);
+      if (data?.user?.email) lista.push(data.user.email);
+    }
   }
-  if (!lista.length) lista.push("gustavo@bsconta.com.br"); // segurança: cadastro não encontrado
+  if (!lista.length && EMAIL_RESERVA[primeiro]) lista.push(EMAIL_RESERVA[primeiro]); // segurança: cadastro não encontrado
   for (const e of env("EMAIL_COPIA", "izadora@bsconta.com.br").split(",")) if (e.trim()) lista.push(e.trim());
   return [...new Set(lista.map((e) => e.toLowerCase()))];
 }
@@ -288,7 +298,7 @@ async function processar(sb: SB, t: Transf, manual: boolean) {
   let para: string[] = [];
   try {
     const remetente = env("EMAIL_REMETENTE", "comercial@bsconta.com.br");
-    para = await destinatarios(sb);
+    para = await destinatarios(sb, t.novo_responsavel);
     const { texto, html } = montarEmail(t, await identificacaoCliente(sb, t));
     const mime = montarMime(remetente, para, "Nova notificação no SGCMP — BSconta", texto, html, t.id);
     const token = await accessTokenGmail(sb, remetente);
