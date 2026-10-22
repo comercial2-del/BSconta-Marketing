@@ -1012,13 +1012,17 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
     // Vem de public.onboarding_config (chave 'responsavel_proxima_etapa', SQL 26); sem a
     // tabela, usa 'Gustavo'. Para trocar o responsável no futuro basta mudar essa configuração.
     const RESPONSAVEL_ONBOARDING=(window.__onbConfig&&window.__onbConfig.responsavel_proxima_etapa)||'Gustavo';
+    // Etapa 02 com responsável próprio (22/10/2026): 01 = vendedor (Uriel), 02 = Isadora,
+    // 03 a 10 = Gustavo. Vem de public.onboarding_config (chave 'responsavel_etapa_02', SQL 29).
+    const RESPONSAVEL_ETAPA02=(window.__onbConfig&&window.__onbConfig.responsavel_etapa_02)||'Isadora';
+    const responsavelPadrao=idx=>idx===1?RESPONSAVEL_ETAPA02:RESPONSAVEL_ONBOARDING;
     // Fluxo do Handoff (05/10/2026, fase de teste):
     // VENDIDA → 01 vermelha/bloqueada → marcada verde → libera + e-mail → 02 direcionada ao
     // responsável (cinza, aguardando) → responsável inicia (azul, em andamento).
     function fluxoHandoff(s){
       const st=normalizeOnboarding(s).stages;
       if(st[0]?.status!=='done') return {chave:'bloqueado',rotulo:'Bloqueado · aguardando validação',badge:'b-red'};
-      const resp=(st[1]?.responsible||'').trim()||RESPONSAVEL_ONBOARDING;
+      const resp=(st[1]?.responsible||'').trim()||RESPONSAVEL_ETAPA02;
       if(st[1]?.status==='pending') return {chave:'aguardando',rotulo:`Aguardando ${resp}`,badge:'b-gray'};
       if(st[1]?.status==='progress') return {chave:'andamento',rotulo:`Em andamento · ${resp}`,badge:'b-blue'};
       return null; // já passou da etapa 02: segue o fluxo normal
@@ -1027,7 +1031,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
     function responsavelAtual(s){
       const p=onboardingProgress(s);
       if(p.stages[0]?.status!=='done') return s.closer && s.closer!=='—' ? s.closer : 'Sem vendedor';
-      return (p.stages[p.currentIndex]?.responsible||'').trim() || RESPONSAVEL_ONBOARDING;
+      return (p.stages[p.currentIndex]?.responsible||'').trim() || responsavelPadrao(p.currentIndex);
     }
     function stageResponsible(st){ return st.responsible ? `Resp.: ${st.responsible}` : 'Responsável não definido'; }
     function stageDue(st){ return st.dueDate ? `Prazo: ${dateLabel(st.dueDate+'T12:00:00')}` : 'Prazo não definido'; }
@@ -1217,7 +1221,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       });
     }
     function confirmarHandoff(s){
-      const resp=RESPONSAVEL_ONBOARDING;
+      const resp=RESPONSAVEL_ETAPA02;
       return dialogoOnb({
         tipo:'verde', kicker:'01 · Handoff', titulo:'Marcar como verde e liberar a venda?', cliente:s.name||'',
         passos:[
@@ -1237,7 +1241,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
         if(nextStatus!=='done' && nextStatus!=='blocked') nextStatus='blocked'; if(prev===nextStatus) return;
         if(prev==='done' && nextStatus==='blocked'){
           const seg=getStage(s,1);
-          if(seg && seg.status!=='pending'){ showToast(`Não dá para bloquear de novo: ${seg.responsible||RESPONSAVEL_ONBOARDING} já iniciou a etapa 02.`); return; }
+          if(seg && seg.status!=='pending'){ showToast(`Não dá para bloquear de novo: ${seg.responsible||RESPONSAVEL_ETAPA02} já iniciou a etapa 02.`); return; }
         }
         if(nextStatus==='done' && !confirmado){
           confirmarHandoff(s).then(sim=>{
@@ -1261,17 +1265,23 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
         // Verde: libera, e a etapa 02 vai para o responsável configurado (cinza, aguardando início).
         const seg=getStage(s,1);
         if(seg && seg.status!=='done'){
-          seg.status='pending'; seg.responsible=(seg.responsible||'').trim()||RESPONSAVEL_ONBOARDING; seg.createdAt=seg.createdAt||t; seg.updatedAt=t;
+          seg.status='pending'; seg.responsible=(seg.responsible||'').trim()||RESPONSAVEL_ETAPA02; seg.createdAt=seg.createdAt||t; seg.updatedAt=t;
           addOnboardingAudit(s, 'Venda liberada', `Handoff validado (verde). E-mail de Handoff disparado e etapa 02 direcionada para ${seg.responsible}.`);
         }
         liberou=true;
       }
       if(index===0 && nextStatus==='blocked') addOnboardingAudit(s, 'Venda bloqueada', 'Handoff voltou para vermelho/bloqueado.');
-      if(index===1 && nextStatus==='progress' && prev==='pending') addOnboardingAudit(s, 'Etapa 02 iniciada', `${st.responsible||RESPONSAVEL_ONBOARDING} assumiu a venda (azul/em andamento).`);
+      if(index===1 && nextStatus==='done'){
+        // 02 concluída (Isadora): a etapa 03 em diante segue com o Gustavo.
+        const ter=getStage(s,2);
+        if(ter && ter.status!=='done' && !(ter.responsible||'').trim()){ ter.responsible=RESPONSAVEL_ONBOARDING; ter.updatedAt=t; }
+        addOnboardingAudit(s, 'Etapa 02 concluída', `Etapa 03 direcionada para ${ter?.responsible||RESPONSAVEL_ONBOARDING}.`);
+      }
+      if(index===1 && nextStatus==='progress' && prev==='pending') addOnboardingAudit(s, 'Etapa 02 iniciada', `${st.responsible||RESPONSAVEL_ETAPA02} assumiu a venda (azul/em andamento).`);
       const p=onboardingProgress(s); const next=p.stages[p.currentIndex];
       s.onboarding.nextStep=next?.title || 'Onboarding finalizado';
       persistAll(s); renderSales();
-      if(liberou) showToast(`${s.name}: liberada (verde). E-mail de Handoff disparado — agora está com ${getStage(s,1)?.responsible||RESPONSAVEL_ONBOARDING} (cinza, aguardando início).`);
+      if(liberou) showToast(`${s.name}: liberada (verde). E-mail de Handoff disparado — agora está com ${getStage(s,1)?.responsible||RESPONSAVEL_ETAPA02} (cinza, aguardando início).`);
       if(ultima && nextStatus==='done') showToast(`${s.name}: onboarding concluído. O card foi para "Concluídos" — lá você pode arquivar ou excluir.`);
     }
     function updateStageField(s,index,field,value){
@@ -1459,25 +1469,26 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
     }
 
     
-// ---- E-mail ao Gustavo quando a 1ª etapa é concluída (01/10/2026) ----
+// ---- E-mail ao responsável da etapa 02 quando a 1ª etapa é concluída (01/10/2026; 22/10/2026: Isadora) ----
 // O banco (gatilho do SQL 25) registra a transferência e a Edge Function
 // notificar-transferencia envia o e-mail. Aqui só mostramos o status e o
 // botão "Tentar de novo" quando o envio falha.
 const EMAIL_STATUS_TXT={pendente:'Na fila de envio',enviando:'Enviando…',enviado:'Enviado',erro:'Falhou'};
 async function renderEmailAviso(dealId, tentativa=0){
+  const RESPONSAVEL_ETAPA02=(window.__onbConfig&&window.__onbConfig.responsavel_etapa_02)||'Isadora';
   const el=document.getElementById('onbEmailAviso'); if(!el || el.dataset.deal!==String(dealId)) return;
-  const {data,error}=await sb.from('onboarding_transferencias').select('id,email_status,email_enviado_em,email_erro,email_destinatarios,email_tentativas,transferido_em').eq('deal_id',dealId).order('transferido_em',{ascending:false}).limit(1).maybeSingle();
+  const {data,error}=await sb.from('onboarding_transferencias').select('id,email_status,email_enviado_em,email_erro,email_destinatarios,email_tentativas,transferido_em,novo_responsavel').eq('deal_id',dealId).order('transferido_em',{ascending:false}).limit(1).maybeSingle();
   const box=document.getElementById('onbEmailAviso'); if(!box || box.dataset.deal!==String(dealId)) return;
   if(error){ box.innerHTML=''; return; } // tabela ainda não criada: não mostra nada
   if(!data){
-    if(tentativa<3){ box.innerHTML='<span class="onb-email-txt">Aviso por e-mail ao Gustavo: registrando…</span>'; setTimeout(()=>renderEmailAviso(dealId,tentativa+1),2500); }
-    else box.innerHTML='<span class="onb-email-txt">Aviso por e-mail ao Gustavo: não registrado (etapa concluída antes da automação).</span>';
+    if(tentativa<3){ box.innerHTML='<span class="onb-email-txt">Aviso por e-mail a '+esc(RESPONSAVEL_ETAPA02)+': registrando…</span>'; setTimeout(()=>renderEmailAviso(dealId,tentativa+1),2500); }
+    else box.innerHTML='<span class="onb-email-txt">Aviso por e-mail a '+esc(RESPONSAVEL_ETAPA02)+': não registrado (etapa concluída antes da automação).</span>';
     return;
   }
   const st=data.email_status; const quando=data.email_enviado_em?formatDateTime(data.email_enviado_em):'';
   const para=(data.email_destinatarios||[]).join(', ');
   const cls=st==='enviado'?'b-green':st==='erro'?'b-red':'b-indigo';
-  box.innerHTML='<span class="onb-email-txt">Aviso por e-mail ao Gustavo:</span> <span class="badge '+cls+'">'+esc(EMAIL_STATUS_TXT[st]||st)+'</span>'
+  box.innerHTML='<span class="onb-email-txt">Aviso por e-mail a '+esc(data.novo_responsavel||RESPONSAVEL_ETAPA02)+':</span> <span class="badge '+cls+'">'+esc(EMAIL_STATUS_TXT[st]||st)+'</span>'
     +(st==='enviado'?' <span class="onb-email-txt">'+esc(quando)+(para?' · '+esc(para):'')+'</span>':'')
     +(st==='erro'?'<div class="onb-email-txt onb-email-erro">'+esc(data.email_erro||'Erro desconhecido')+'</div><button type="button" class="card-acao" data-reenviar-email="'+esc(data.id)+'">Tentar de novo</button>':'');
   if((st==='pendente'||st==='enviando') && tentativa<6) setTimeout(()=>renderEmailAviso(dealId,tentativa+1),3000);
@@ -1492,7 +1503,7 @@ window.__onbReenviarEmail=async e=>{
     const j=await r.json().catch(()=>({}));
     const res=(j.resultados||[])[0];
     if(!r.ok || !res || res.status==='erro') showToast('Não foi possível enviar o e-mail: '+((res&&res.erro)||j.error||('erro '+r.status)));
-    else showToast('E-mail enviado ao Gustavo.');
+    else showToast('E-mail de Handoff reenviado.');
   }catch(err){ showToast('Não foi possível enviar o e-mail: '+(err&&err.message||err)); }
   const box=document.getElementById('onbEmailAviso'); if(box) renderEmailAviso(box.dataset.deal, 6);
 };
@@ -1964,8 +1975,8 @@ function openSale(id){
         play:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'
       };
       const fbox=(cor,ic,tit,sub,chip)=>`<div class="fluxo-aviso fluxo-box ${cor}" role="status"><span class="fb-ic">${FB_IC[ic]}</span><span class="fb-txt"><span class="fb-tit">${tit}</span><span class="fb-sub">${sub}</span></span>${chip?`<span class="fb-chip">${chip}</span>`:''}</div>`;
-      const respProx=esc(getStage(s,1)?.responsible||RESPONSAVEL_ONBOARDING);
-      const respAqui=esc(st.responsible||RESPONSAVEL_ONBOARDING);
+      const respProx=esc(getStage(s,1)?.responsible||RESPONSAVEL_ETAPA02);
+      const respAqui=esc(st.responsible||responsavelPadrao(idx));
       const aviso = idx===0 && st.status!=='done' ? fbox('vermelho','cadeado','Venda bloqueada · aguardando validação','Nada avança e o e-mail de Handoff só é enviado quando a 01 for marcada como <strong>verde</strong>.','Bloqueada')
         : idx===0 ? fbox('verde','ok','Handoff validado e liberado',`O e-mail de Handoff foi disparado e a etapa 02 foi direcionada para <strong>${respProx}</strong>.`,'Liberada')
         : travada ? fbox('vermelho','cadeado','Etapa travada','Marque a <strong>01 · Handoff</strong> como verde para liberar esta venda.','Bloqueada')
@@ -1996,7 +2007,7 @@ function openSale(id){
       const body=document.getElementById('onboardingAlertBody'); body.innerHTML=onboardingStageEditorHtml(s,idx);
   // 01 · Handoff sem Responsável, Data de início e Prazo (pedido do usuário, 28/09/2026).
   if(idx===0) body.querySelectorAll('[data-action="stage-responsible"],[data-action="stage-start"],[data-action="stage-due"]').forEach(i=>i.closest('label')?.remove());
-  // 01 concluída: status do e-mail de aviso ao Gustavo (01/10/2026).
+  // 01 concluída: status do e-mail de aviso ao responsável da etapa 02 (01/10/2026).
   if(idx===0 && st.status==='done' && s.dealId){ body.insertAdjacentHTML('beforeend','<div class="onb-email-aviso onboarding-interactive" id="onbEmailAviso" data-deal="'+esc(s.dealId)+'"></div>'); renderEmailAviso(s.dealId); }
   // Etapa 10 concluída: arquivar ou excluir o card direto daqui (01/10/2026).
   if(idx===ONBOARDING_STAGES.length-1 && st.status==='done') body.insertAdjacentHTML('beforeend', acoesCardHtml(s));
