@@ -1012,9 +1012,9 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
     // Vem de public.onboarding_config (chave 'responsavel_proxima_etapa', SQL 26); sem a
     // tabela, usa 'Gustavo'. Para trocar o responsável no futuro basta mudar essa configuração.
     const RESPONSAVEL_ONBOARDING=(window.__onbConfig&&window.__onbConfig.responsavel_proxima_etapa)||'Gustavo';
-    // Etapa 02 com responsável próprio (22/10/2026): 01 = vendedor (Uriel), 02 = Isadora,
+    // Etapa 02 com responsável próprio (22/10/2026): 01 = vendedor (Uriel), 02 = Izadora,
     // 03 a 10 = Gustavo. Vem de public.onboarding_config (chave 'responsavel_etapa_02', SQL 29).
-    const RESPONSAVEL_ETAPA02=(window.__onbConfig&&window.__onbConfig.responsavel_etapa_02)||'Isadora';
+    const RESPONSAVEL_ETAPA02=(window.__onbConfig&&window.__onbConfig.responsavel_etapa_02)||'Izadora';
     const responsavelPadrao=idx=>idx===1?RESPONSAVEL_ETAPA02:RESPONSAVEL_ONBOARDING;
     // Fluxo do Handoff (05/10/2026, fase de teste):
     // VENDIDA → 01 vermelha/bloqueada → marcada verde → libera + e-mail → 02 direcionada ao
@@ -1272,7 +1272,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       }
       if(index===0 && nextStatus==='blocked') addOnboardingAudit(s, 'Venda bloqueada', 'Handoff voltou para vermelho/bloqueado.');
       if(index===1 && nextStatus==='done'){
-        // 02 concluída (Isadora): a etapa 03 em diante segue com o Gustavo.
+        // 02 concluída (Izadora): a etapa 03 em diante segue com o Gustavo.
         const ter=getStage(s,2);
         if(ter && ter.status!=='done' && !(ter.responsible||'').trim()){ ter.responsible=RESPONSAVEL_ONBOARDING; ter.updatedAt=t; }
         addOnboardingAudit(s, 'Etapa 02 concluída', `Etapa 03 direcionada para ${ter?.responsible||RESPONSAVEL_ONBOARDING}.`);
@@ -1400,7 +1400,7 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       if(respSel){ // opções = responsáveis atuais das vendas (mantém a escolha)
         const nomes=[...new Set(sales.filter(s=>situacaoCard(s)!=='excluido').map(responsavelAtual))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
         if(rf && !nomes.includes(rf)) nomes.push(rf);
-        // Isadora (etapa 02) e Gustavo (03 a 10) sempre aparecem no filtro, mesmo sem card com eles (22/10/2026).
+        // Izadora (etapa 02) e Gustavo (03 a 10) sempre aparecem no filtro, mesmo sem card com eles (22/10/2026).
         for(const fixo of [RESPONSAVEL_ETAPA02, RESPONSAVEL_ONBOARDING]) if(fixo && !nomes.includes(fixo)) nomes.push(fixo);
         nomes.sort((a,b)=>a.localeCompare(b,'pt-BR'));
         respSel.innerHTML='<option value="">Todos os responsáveis</option>'+nomes.map(n=>`<option value="${esc(n)}"${n===rf?' selected':''}>${esc(n)}</option>`).join('');
@@ -1472,13 +1472,13 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
     }
 
     
-// ---- E-mail ao responsável da etapa 02 quando a 1ª etapa é concluída (01/10/2026; 22/10/2026: Isadora) ----
+// ---- E-mail ao responsável da etapa 02 quando a 1ª etapa é concluída (01/10/2026; 22/10/2026: Izadora) ----
 // O banco (gatilho do SQL 25) registra a transferência e a Edge Function
 // notificar-transferencia envia o e-mail. Aqui só mostramos o status e o
 // botão "Tentar de novo" quando o envio falha.
 const EMAIL_STATUS_TXT={pendente:'Na fila de envio',enviando:'Enviando…',enviado:'Enviado',erro:'Falhou'};
 async function renderEmailAviso(dealId, tentativa=0){
-  const RESPONSAVEL_ETAPA02=(window.__onbConfig&&window.__onbConfig.responsavel_etapa_02)||'Isadora';
+  const RESPONSAVEL_ETAPA02=(window.__onbConfig&&window.__onbConfig.responsavel_etapa_02)||'Izadora';
   const el=document.getElementById('onbEmailAviso'); if(!el || el.dataset.deal!==String(dealId)) return;
   const {data,error}=await sb.from('onboarding_transferencias').select('id,email_status,email_enviado_em,email_erro,email_destinatarios,email_tentativas,transferido_em,novo_responsavel').eq('deal_id',dealId).order('transferido_em',{ascending:false}).limit(1).maybeSingle();
   const box=document.getElementById('onbEmailAviso'); if(!box || box.dataset.deal!==String(dealId)) return;
