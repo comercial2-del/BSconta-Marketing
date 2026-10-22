@@ -1400,6 +1400,9 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
       if(respSel){ // opções = responsáveis atuais das vendas (mantém a escolha)
         const nomes=[...new Set(sales.filter(s=>situacaoCard(s)!=='excluido').map(responsavelAtual))].sort((a,b)=>a.localeCompare(b,'pt-BR'));
         if(rf && !nomes.includes(rf)) nomes.push(rf);
+        // Isadora (etapa 02) e Gustavo (03 a 10) sempre aparecem no filtro, mesmo sem card com eles (22/10/2026).
+        for(const fixo of [RESPONSAVEL_ETAPA02, RESPONSAVEL_ONBOARDING]) if(fixo && !nomes.includes(fixo)) nomes.push(fixo);
+        nomes.sort((a,b)=>a.localeCompare(b,'pt-BR'));
         respSel.innerHTML='<option value="">Todos os responsáveis</option>'+nomes.map(n=>`<option value="${esc(n)}"${n===rf?' selected':''}>${esc(n)}</option>`).join('');
       }
       const perOnb = periodoOnboarding(); // filtro do calendário (data da venda)
