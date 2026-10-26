@@ -3,13 +3,13 @@
 --
 -- Novo fluxo de responsáveis do onboarding:
 --   01 · Handoff  -> vendedor (Uriel), bloqueado até ficar VERDE
---   02            -> Isadora  (nova chave 'responsavel_etapa_02')
+--   02            -> Izadora  (nova chave 'responsavel_etapa_02')
 --   03 a 10       -> Gustavo  (chave existente 'responsavel_proxima_etapa')
 --
 -- O que este SQL faz:
---   1) Cria a configuração 'responsavel_etapa_02' = "Isadora".
+--   1) Cria a configuração 'responsavel_etapa_02' = "Izadora".
 --   2) Atualiza o gatilho do SQL 28: quando a 01 passa a verde, a transferência
---      (e o e-mail de Handoff) vai para o responsável da etapa 02 (Isadora).
+--      (e o e-mail de Handoff) vai para o responsável da etapa 02 (Izadora).
 --   Todo o resto do SQL 28 (reenvio ao remarcar verde, log, cron) continua igual.
 --
 -- Para trocar no futuro:
@@ -17,7 +17,7 @@
 
 -- 1) Configuração
 insert into public.onboarding_config (chave, valor)
-values ('responsavel_etapa_02', '"Isadora"'::jsonb)
+values ('responsavel_etapa_02', '"Izadora"'::jsonb)
 on conflict (chave) do update set valor = excluded.valor, atualizado_em = now();
 
 -- 2) Gatilho (igual ao SQL 28, trocando a configuração usada para a etapa 02)
@@ -53,10 +53,10 @@ begin
     return new;
   end if;
 
-  -- Responsável configurado para a etapa 02 (hoje: Isadora).
+  -- Responsável configurado para a etapa 02 (hoje: Izadora).
   select nullif(trim(valor #>> '{}'), '') into v_cfg
     from public.onboarding_config where chave = 'responsavel_etapa_02';
-  v_cfg := coalesce(v_cfg, 'Isadora');
+  v_cfg := coalesce(v_cfg, 'Izadora');
 
   -- Próxima etapa não concluída e o responsável dela (vazio = responsável configurado).
   select e.value, e.n::int into prox, prox_n
