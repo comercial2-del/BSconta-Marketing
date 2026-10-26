@@ -2,7 +2,7 @@
 // SGCMP — BSconta — Edge Function: notificar-transferencia (01/10/2026)
 //
 // Envia o e-mail "Nova notificação no SGCMP — BSconta" quando um processo sai
-// da 1ª etapa (Uriel) e vai para o responsável da etapa 02 (hoje: Isadora). Quem cria a transferência é o
+// da 1ª etapa (Uriel) e vai para o responsável da etapa 02 (hoje: Izadora). Quem cria a transferência é o
 // gatilho public.onb_detectar_transferencia (SQL 25); esta função só lê a fila
 // public.onboarding_transferencias e envia o que estiver pendente.
 //
@@ -138,7 +138,7 @@ async function identificacaoCliente(sb: SB, t: Transf): Promise<string> {
 
 function montarEmail(t: Transf, identificacao = t.cliente) {
   const quando = dataHora(t.transferido_em);
-  // Saudação com o nome do novo responsável (22/10/2026): "Olá, Isadora!".
+  // Saudação com o nome do novo responsável (22/10/2026): "Olá, Izadora!".
   const nome = String(t.novo_responsavel || "").trim().split(/\s+/)[0] || "";
   const ola = nome ? `Olá, ${nome}! Tudo bem? Espero que sim!` : "Olá! Tudo bem? Espero que sim!";
   const itens: [string, string][] = [
@@ -264,16 +264,16 @@ async function accessTokenGmail(sb: SB, remetente: string) {
 }
 
 // Destinatários: e-mail cadastrado do NOVO RESPONSÁVEL da transferência (Supabase Auth) + cópias.
-// 22/10/2026: a etapa 02 passou a ser da Isadora; antes era sempre o Gustavo.
+// 22/10/2026: a etapa 02 passou a ser da Izadora; antes era sempre o Gustavo.
 const EMAIL_RESERVA: Record<string, string> = {
   gustavo: "gustavo@bsconta.com.br",
   isadora: "izadora@bsconta.com.br",
   izadora: "izadora@bsconta.com.br",
 };
-// 22/10/2026: o e-mail vai para o novo responsável (Isadora) E também para o Gustavo.
+// 22/10/2026: o e-mail vai para o novo responsável (Izadora) E também para o Gustavo.
 async function destinatarios(sb: SB, responsavel: string) {
   const lista: string[] = [];
-  const primeiro = (responsavel || "Isadora").trim().split(/\s+/)[0].toLowerCase();
+  const primeiro = (responsavel || "Izadora").trim().split(/\s+/)[0].toLowerCase();
   const nomes = primeiro === "isadora" || primeiro === "izadora" ? ["isadora", "izadora"] : [primeiro];
   if (!nomes.includes("gustavo")) nomes.push("gustavo");
   const achados = new Set<string>();
