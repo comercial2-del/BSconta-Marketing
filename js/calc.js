@@ -566,6 +566,7 @@ function getClientEntries(store, { range, sellerId }) {
       const d = deals.get(sale.deal_id) || {};
       const cliente = {
         id: sale.id,
+        dealId: sale.deal_id,
         clientName: d.client_name || "Sem nome",
         companyName: d.company_name || "—",
         enteredAt: sale.closed_at,
