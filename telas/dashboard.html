@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>BSconta + Marketing</title>
   <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
-  <link rel="stylesheet" href="../css/styles.css?v=20261009" />
+  <link rel="stylesheet" href="../css/styles.css?v=20261104" />
   <style>
     /* Organização da Visão geral (26/09/2026) */
     .kpi-span-2{grid-column:span 2;min-width:0;display:flex}
@@ -23,13 +23,54 @@
     @media (max-width:1100px){.vendas-duo{grid-template-columns:1fr}}
     @media (max-width:640px){.kpi-span-2{grid-column:1 / -1}}
     .client-entries-table th.col-tipo,.client-entries-table td.col-tipo{text-align:center}
-    .q-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;border-radius:999px;padding:.2rem .5rem;font-size:.66rem;font-weight:900;white-space:nowrap}
+    /* Visão geral mais limpa (04/11/2026): valor total + resumo financeiro lado a
+       lado no topo e a tabela de clientes na largura toda, com cabeçalho fixo. */
+    .vendas-duo{grid-template-columns:1fr}
+    .vendas-coluna{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);position:static}
+    .vendas-coluna > .card{height:100%}
+    @media (max-width:900px){.vendas-coluna{grid-template-columns:1fr}}
+    .client-entries-card{border-radius:16px}
+    .client-table-wrap{overflow-x:auto;padding:0;margin:0 1.15rem 1rem;border:1px solid var(--border);border-radius:12px;scrollbar-width:none}
+    .client-table-wrap::-webkit-scrollbar{display:none}
+    .client-entries-table{width:100%;border-collapse:separate;border-spacing:0;font-size:.8rem}
+    .client-entries-table thead th{background:var(--surface-2);white-space:normal;line-height:1.25;vertical-align:bottom;font-size:.6rem;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);font-weight:800;padding:.55rem .45rem;border-bottom:1px solid var(--border);text-align:left}
+    .client-entries-table thead tr.grupo th{padding:.45rem .8rem;font-size:.6rem;color:var(--text-soft);border-bottom:none}
+    .client-entries-table tbody td{padding:.55rem .45rem;border-bottom:1px solid var(--surface-2);vertical-align:middle;transition:background .15s}
+    .client-entries-table tbody tr:last-child td{border-bottom:none}
+    .client-entries-table tbody tr:hover td{background:#f7f8ff}
+    .client-entries-table td.client-value{text-align:right}
+    .client-entries-table th.col-valor{text-align:right}
+    .client-cell{display:flex;align-items:center;gap:.5rem;min-width:140px}
+    .client-avatar{width:30px;height:30px;border-radius:10px;background:linear-gradient(135deg,var(--indigo-50),#e0e7ff);color:var(--indigo-700);display:grid;place-items:center;font-size:.66rem;font-weight:850;flex:0 0 auto}
+    .client-cell .client-primary{line-height:1.25}
+    .client-entries-table td.client-value,.client-entries-table td.col-data,.client-entries-table td .client-status,.client-entries-table td .tipo-venda{white-space:nowrap}
+    .client-entries-table .client-time{display:block;font-size:.68rem;color:var(--text-faint)}
+    .client-entries-table .sem-produto{color:var(--text-faint);font-style:italic}
+    .client-entries-table .col-campanha{max-width:115px;color:var(--text-soft);font-size:.74rem}
+    .client-entries-table .produto-venda-nome{font-size:.76rem}
+    .client-status-mini{margin-top:.2rem}
+    .client-status-mini .client-status{font-size:.62rem;padding:.1rem .45rem}
+    .client-entries-table tbody td:first-child,.client-entries-table thead tr.colunas th:first-child,.client-entries-table thead tr.grupo th:first-child{padding-left:.85rem}
+    /* Colunas que vêm do RD (Conta Azul, Constituição/Troca, Qualidade): faixa leve para agrupar. */
+    .client-entries-table .q-col{background:#f8f9ff;text-align:center}
+    .client-entries-table thead th.q-col{background:#eef0fb;white-space:normal;min-width:72px}
+    .client-entries-table .q-col.q-first{border-left:1px solid var(--border)}
+    .client-entries-table tbody tr:hover td.q-col{background:#eff1ff}
+    .q-badge{display:inline-flex;align-items:center;justify-content:center;min-width:28px;border-radius:999px;padding:.22rem .6rem;font-size:.68rem;font-weight:800;white-space:nowrap;animation:qFade .25s ease}
+    .q-nivel{min-width:30px;height:30px;padding:0;border-radius:9px;font-size:.8rem;font-weight:900}
+    @keyframes qFade{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:none}}
     .q-a,.q-sim{background:var(--emerald-100);color:var(--emerald-700)}
     .q-b{background:var(--blue-50);color:#1d4ed8}
     .q-c{background:var(--red-100);color:var(--red-700)}
-    .q-vazio{background:var(--surface-2);color:var(--text-faint);font-weight:700}
+    .q-vazio{background:transparent;color:var(--text-faint);font-weight:600;animation:none}
     .q-nao,.q-troca{background:var(--amber-100);color:var(--amber-700)}
     .q-const{background:var(--indigo-100);color:var(--indigo-700)}
+    .client-mais{display:flex;align-items:center;justify-content:center;gap:.8rem;padding:0 1.15rem 1.1rem;font-size:.72rem;color:var(--text-faint)}
+    .client-mais-btn{border:1px solid var(--indigo-100);background:var(--indigo-50);color:var(--indigo-700);border-radius:999px;padding:.5rem 1.1rem;font-size:.78rem;font-weight:800;cursor:pointer;font-family:inherit;transition:background .15s,transform .15s}
+    .client-mais-btn:hover{background:#e0e7ff;transform:translateY(-1px)}
+    .q-legenda{display:flex;flex-wrap:wrap;gap:.9rem;padding:0 1.15rem 1rem;margin:-.25rem 0 0;font-size:.7rem;color:var(--text-faint)}
+    .q-legenda span{display:inline-flex;align-items:center;gap:.35rem}
+    .q-legenda .q-badge{min-width:22px;height:22px;font-size:.66rem;animation:none}
   </style>
 </head>
 <body>
@@ -205,32 +246,54 @@
     // Constituição ou Troca e Qualidade do Cliente (A/B/C). Vêm de
     // deals.rd_details.campos, buscados só para as vendas da tabela.
     const camposRd = new Map();
-    let camposRdBuscando = false;
+    let camposRdBusca = null;
     async function carregarCamposRd(ids) {
+      if (camposRdBusca) await camposRdBusca.catch(() => {}); // uma busca por vez
       const faltam = [...new Set(ids)].filter((id) => id && !camposRd.has(id));
-      if (!faltam.length || camposRdBuscando) return false;
-      camposRdBuscando = true;
-      try {
-        for (let i = 0; i < faltam.length; i += 100) {
-          const lote = faltam.slice(i, i + 100);
-          const { data, error } = await sb.from("deals").select("id, rd_details").in("id", lote);
-          if (error) { console.warn("Campos do RD indisponíveis:", error.message); return false; }
-          for (const id of lote) camposRd.set(id, []);
+      if (!faltam.length) return true;
+      camposRdBusca = (async () => {
+        const lotes = [];
+        for (let i = 0; i < faltam.length; i += 100) lotes.push(faltam.slice(i, i + 100));
+        // Lotes em paralelo: uma espera só, em vez de uma por lote.
+        const respostas = await Promise.all(lotes.map((lote) => sb.from("deals").select("id, rd_details").in("id", lote)));
+        respostas.forEach(({ data, error }, i) => {
+          if (error) { console.warn("Campos do RD indisponíveis:", error.message); return; }
+          for (const id of lotes[i]) camposRd.set(id, []);
           for (const r of data || []) camposRd.set(r.id, (r.rd_details && r.rd_details.campos) || []);
-        }
-        return true;
-      } finally { camposRdBuscando = false; }
+        });
+      })();
+      try { await camposRdBusca; } finally { camposRdBusca = null; }
+      return true;
     }
     function qualifBadge(v, cls) {
       return v ? `<span class="q-badge ${cls}">${esc(v)}</span>` : `<span class="q-badge q-vazio">—</span>`;
     }
+    function qualifCelulas(dealId) {
+      const q = qualifDoDeal(camposRd.get(dealId));
+      const nivel = q.qualidade ? `<span class="q-badge q-nivel ${QUALIF_NIVEIS[q.qualidade].classe}" title="${esc(QUALIF_NIVEIS[q.qualidade].desc)}">${q.qualidade}</span>` : qualifBadge("", "");
+      return `<td class="q-col q-first" data-q="ca">${qualifBadge(q.contaAzul, q.contaAzul === "Sim" ? "q-sim" : "q-nao")}</td><td class="q-col" data-q="en">${qualifBadge(q.entrada, q.entrada === "Constituição" ? "q-const" : "q-troca")}</td><td class="q-col" data-q="ql">${nivel}</td>`;
+    }
+    // Quando os campos do RD chegam, troca só as 3 células de cada linha — a
+    // tabela não pisca e a rolagem não volta para o topo.
+    function preencherQualif(wrap) {
+      wrap.querySelectorAll("tr[data-deal]").forEach((tr) => {
+        const id = tr.dataset.deal;
+        if (!camposRd.has(id)) return;
+        tr.querySelectorAll("td.q-col").forEach((td) => td.remove());
+        tr.insertAdjacentHTML("beforeend", qualifCelulas(id));
+      });
+    }
 
+    // Mostra 20 linhas e libera mais aos poucos: a página fica curta, sem barra
+    // de rolagem dentro da tabela, e desenha mais rápido.
+    let clientLimite = 20;
+    let clientChave = "";
     function renderClientEntries(store, range, sellerId) {
       const rows = getClientEntries(store, { range, sellerId });
-      const visiveis = rows.slice(0, 100);
-      if (visiveis.some((r) => r.dealId && !camposRd.has(r.dealId))) {
-        carregarCamposRd(visiveis.map((r) => r.dealId)).then((novo) => { if (novo) renderClientEntries(store, range, sellerId); });
-      }
+      const chave = `${range.start?.getTime?.()}|${range.end?.getTime?.()}|${sellerId || ""}`;
+      if (chave !== clientChave) { clientChave = chave; clientLimite = 20; }
+      const visiveis = rows.slice(0, clientLimite);
+      const faltamCampos = visiveis.some((r) => r.dealId && !camposRd.has(r.dealId));
       // Um cliente com produto mensal + único vira 2 linhas (uma por produto),
       // mas continua sendo UM cliente / UMA venda.
       const nClientes = new Set(rows.map((r) => r.saleId)).size;
@@ -246,27 +309,31 @@
         </div>
         <div class="table-scroll client-table-wrap">
           <table class="client-entries-table">
-            <thead><tr>
-              <th>Cliente</th><th>Produto</th><th>Data da venda</th><th>Valor</th><th>Status</th><th class="col-tipo">Tipo</th><th>Vendedor</th><th>Campanha / origem</th><th>Conta Azul</th><th>Constituição / Troca</th><th>Qualidade</th>
-            </tr></thead>
+            <thead>
+              <tr class="grupo"><th colspan="7">Venda</th><th colspan="3" class="q-col q-first">Qualificação no RD</th></tr>
+              <tr class="colunas"><th>Cliente</th><th>Produto</th><th>Data da venda</th><th class="col-valor">Valor / status</th><th class="col-tipo">Tipo</th><th>Vendedor</th><th>Campanha / origem</th><th class="q-col q-first">Conta Azul</th><th class="q-col">Constituição / Troca</th><th class="q-col">Qualidade</th></tr>
+            </thead>
             <tbody>
               ${rows.length ? visiveis.map((r) => `
-                <tr>
-                  <td><div class="client-primary">${esc(r.clientName)}</div><div class="client-secondary">${esc(r.companyName)}</div></td>
+                <tr data-deal="${esc(r.dealId || "")}">
+                  <td><div class="client-cell"><span class="client-avatar">${esc(initials(r.clientName))}</span><div><div class="client-primary" title="${esc(r.clientName)}">${esc(r.clientName)}</div><div class="client-secondary">${esc(r.companyName)}</div></div></div></td>
                   <td>${produtoVendaHtml(r)}</td>
-                  <td>${formatDateTimePt(r.enteredAt)}</td>
-                  <td class="client-value">${brl(r.value)}</td>
-                  <td>${clientStatusBadge(r.status)}</td>
+                  <td class="col-data">${formatDateTimePt(r.enteredAt)}</td>
+                  <td class="client-value"><div>${brl(r.value)}</div><div class="client-status-mini">${clientStatusBadge(r.status)}</div></td>
                   <td class="col-tipo">${tipoVendaHtml(r)}</td>
                   <td>${esc(r.sellerName)}</td>
-                  <td>${esc(r.campaign)}</td>
-                  ${(() => { const q = qualifDoDeal(camposRd.get(r.dealId)); return `<td>${qualifBadge(q.contaAzul, q.contaAzul === "Sim" ? "q-sim" : "q-nao")}</td><td>${qualifBadge(q.entrada, q.entrada === "Constituição" ? "q-const" : "q-troca")}</td><td>${q.qualidade ? `<span class="q-badge ${QUALIF_NIVEIS[q.qualidade].classe}" title="${esc(QUALIF_NIVEIS[q.qualidade].desc)}">${q.qualidade}</span>` : qualifBadge("", "")}</td>`; })()}
-                </tr>`).join("") : `<tr><td colspan="11" class="text-empty">Nenhuma venda registrada no período selecionado.</td></tr>`}
+                  <td class="col-campanha" title="${esc(r.campaign)}">${esc(r.campaign)}</td>
+                  ${qualifCelulas(r.dealId)}
+                </tr>`).join("") : `<tr><td colspan="10" class="text-empty">Nenhuma venda registrada no período selecionado.</td></tr>`}
             </tbody>
           </table>
         </div>
-        ${rows.length > 100 ? `<p class="client-table-note">Exibindo as 100 linhas mais recentes do período.</p>` : ""}
+        <div class="q-legenda"><span>Qualidade do cliente:</span><span><b class="q-badge q-a">A</b>${esc(QUALIF_NIVEIS.A.desc)}</span><span><b class="q-badge q-b">B</b>${esc(QUALIF_NIVEIS.B.desc)}</span><span><b class="q-badge q-c">C</b>${esc(QUALIF_NIVEIS.C.desc)}</span></div>
+        ${rows.length > visiveis.length ? `<div class="client-mais"><button type="button" class="client-mais-btn" id="client-mais">Mostrar mais ${Math.min(20, rows.length - visiveis.length)}</button><span>Exibindo ${visiveis.length} de ${rows.length}</span></div>` : ""}
       `;
+      const mais = document.getElementById("client-mais");
+      if (mais) mais.addEventListener("click", () => { clientLimite += 20; renderClientEntries(store, range, sellerId); });
+      if (faltamCampos) carregarCamposRd(visiveis.map((r) => r.dealId)).then(() => { const atual = document.getElementById("client-entries"); if (atual) preencherQualif(atual); }).catch((e) => console.warn("Campos do RD indisponíveis:", e.message));
     }
 
     function render() {
