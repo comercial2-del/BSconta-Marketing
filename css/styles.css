@@ -1399,3 +1399,8 @@ dialog.confirmacao::backdrop { background: rgba(15, 23, 42, 0.45); backdrop-filt
 .resumo-financeiro-barra span:first-child{background:var(--amber-500)}
 .resumo-financeiro-barra span:last-child{background:var(--violet-500)}
 .vendas-linhas td small{display:block;color:var(--text-faint);font-size:.7rem;margin-top:.1rem}
+
+/* Sem barras de rolagem aparentes nas tabelas (pedido do usuário, 04/11/2026).
+   A tabela continua rolando com o trackpad, Shift+roda do mouse ou o dedo. */
+.table-scroll,.leads-table-wrap{scrollbar-width:none;-ms-overflow-style:none}
+.table-scroll::-webkit-scrollbar,.leads-table-wrap::-webkit-scrollbar{display:none}
