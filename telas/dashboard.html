@@ -94,7 +94,7 @@
   <script src="../js/supabaseClient.js?v=20260916"></script>
   <script src="../js/auth.js?v=20260916"></script>
   <script src="../js/data.js?v=20261009"></script>
-  <script src="../js/calc.js?v=20261104"></script>
+  <script src="../js/calc.js?v=20261104b"></script>
   <script src="../js/ui.js?v=20260925b"></script>
   <script src="../js/lancamentos.js?v=20260916"></script>
   <script src="../js/sync.js?v=20260916"></script>
@@ -352,15 +352,10 @@
 
       // Cartão "Ligações de agendamento" removido da Visão geral (pedido do
       // usuário, 04/11/2026) — os números continuam na tela de Ligações.
-      // LEADS ZERADOS a pedido do usuário (14/09/2026): o cartão fica na tela
-      // com as duas barras e 0 em cada, sem puxar número do banco ainda.
-      //
-      // Para LIGAR os números de verdade, troque a linha de baixo por:
-      //     const leads = getLeads(store, { range, sellerId });
-      // O cálculo continua pronto em getLeads() (js/calc.js) — "chegaram" sai
-      // de created_at e "perdidos" de closed_at, o mesmo critério do cartão de
-      // Perdas. Nada além desta linha precisa mudar.
-      const leads = { chegaram: 0, perdidos: 0 };
+      // LEADS QUE CHEGARAM (04/11/2026): negociações criadas no RD dentro do
+      // período e do vendedor filtrados (deals.created_at = data de criação no RD).
+      const leads = getLeads(store, { range, sellerId: allowedSellerId });
+      const leadsAntes = getLeads(store, { range: prevRange, sellerId: allowedSellerId });
       const perf = performanceLabel(kpis);
 
       const content = document.getElementById("content");
@@ -422,8 +417,8 @@
         { label: "No Show", value: kpis.meetingsNoShow, change: pctChange(kpis.meetingsNoShow, prevKpis.meetingsNoShow ?? 0), tone: "red", icon: ICONS.xCircle },
         // Reunião de proposta + Follow-up + Prováveis fechamentos num cartão só (pedido do usuário, 25/09/2026).
         { label: "Oportunidades em acompanhamento", value: kpis.reuniaoPropostaCount + kpis.followUpCount + kpis.probableClosures, sub: [brl(kpis.opportunitiesValue), `Proposta ${kpis.reuniaoPropostaCount} · Follow-up ${kpis.followUpCount} · Fechamento ${kpis.probableClosures}`], tone: "violet", icon: ICONS.handshake },
-        // "Clientes que entraram" = todas as vendas (negociações ganhas) do período — pedido do usuário, 25/09/2026.
-        { label: "Clientes que entraram", value: kpis.salesCount, sub: brl(kpis.revenue), tone: "indigo", icon: ICONS.users },
+        // "Leads que chegaram" no lugar de "Clientes que entraram" (04/11/2026): segue os filtros de período e vendedor.
+        { label: "Leads que chegaram", value: leads.chegaram, change: pctChange(leads.chegaram, leadsAntes.chegaram), tone: "indigo", icon: ICONS.users },
       ], true);
 
       renderClientEntries(store, range, allowedSellerId);
