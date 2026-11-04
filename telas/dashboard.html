@@ -26,7 +26,9 @@
     /* Visão geral mais limpa (04/11/2026): valor total + resumo financeiro lado a
        lado no topo e a tabela de clientes na largura toda, com cabeçalho fixo. */
     .vendas-duo{grid-template-columns:1fr}
-    .vendas-coluna{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);position:static}
+    .kpi-grid.cols-5 .kpi-card-top .kpi-label{hyphens:none;overflow-wrap:normal;word-break:normal;font-size:.66rem;letter-spacing:.03em}
+    .vendas-coluna{display:block;position:static}
+    .vendas-coluna .resumo-financeiro-lista{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.6rem}
     .vendas-coluna > .card{height:100%}
     @media (max-width:900px){.vendas-coluna{grid-template-columns:1fr}}
     .client-entries-card{border-radius:16px}
@@ -310,21 +312,18 @@
         <div class="table-scroll client-table-wrap">
           <table class="client-entries-table">
             <thead>
-              <tr class="grupo"><th colspan="7">Venda</th><th colspan="3" class="q-col q-first">Qualificação no RD</th></tr>
-              <tr class="colunas"><th>Cliente</th><th>Produto</th><th>Data da venda</th><th class="col-valor">Valor / status</th><th class="col-tipo">Tipo</th><th>Vendedor</th><th>Campanha / origem</th><th class="q-col q-first">Conta Azul</th><th class="q-col">Constituição / Troca</th><th class="q-col">Qualidade</th></tr>
+              <tr class="colunas"><th>Cliente</th><th>Data da venda</th><th class="col-valor">Valor / status</th><th class="col-tipo">Tipo</th><th>Campanha / origem</th><th class="q-col q-first">Conta Azul</th><th class="q-col">Constituição / Troca</th><th class="q-col">Qualidade</th></tr>
             </thead>
             <tbody>
               ${rows.length ? visiveis.map((r) => `
                 <tr data-deal="${esc(r.dealId || "")}">
                   <td><div class="client-cell"><span class="client-avatar">${esc(initials(r.clientName))}</span><div><div class="client-primary" title="${esc(r.clientName)}">${esc(r.clientName)}</div><div class="client-secondary">${esc(r.companyName)}</div></div></div></td>
-                  <td>${produtoVendaHtml(r)}</td>
                   <td class="col-data">${formatDateTimePt(r.enteredAt)}</td>
                   <td class="client-value"><div>${brl(r.value)}</div><div class="client-status-mini">${clientStatusBadge(r.status)}</div></td>
                   <td class="col-tipo">${tipoVendaHtml(r)}</td>
-                  <td>${esc(r.sellerName)}</td>
                   <td class="col-campanha" title="${esc(r.campaign)}">${esc(r.campaign)}</td>
                   ${qualifCelulas(r.dealId)}
-                </tr>`).join("") : `<tr><td colspan="10" class="text-empty">Nenhuma venda registrada no período selecionado.</td></tr>`}
+                </tr>`).join("") : `<tr><td colspan="8" class="text-empty">Nenhuma venda registrada no período selecionado.</td></tr>`}
             </tbody>
           </table>
         </div>
@@ -351,12 +350,8 @@
       const kpis = getKpis(store, { range, sellerId: allowedSellerId });
       const prevKpis = getKpis(store, { range: prevRange, sellerId: allowedSellerId });
 
-      // LIGAÇÕES: vêm de js/lancamentos.js, a mesma fonte da tela de Ligações.
-      // O getKpis olha só as atividades do RD e não conhece o lançamento
-      // manual — usá-lo aqui faria a Visão geral mostrar um número e a tela de
-      // Ligações mostrar outro, para o mesmo período.
-      const ligacoes = numerosDeLigacoesGeral(store, lancamentos, range);
-      const ligacoesAntes = numerosDeLigacoesGeral(store, lancamentos, prevRange);
+      // Cartão "Ligações de agendamento" removido da Visão geral (pedido do
+      // usuário, 04/11/2026) — os números continuam na tela de Ligações.
       // LEADS ZERADOS a pedido do usuário (14/09/2026): o cartão fica na tela
       // com as duas barras e 0 em cada, sem puxar número do banco ainda.
       //
@@ -396,31 +391,14 @@
 
         <div id="kpi-grid"></div>
 
-        <div class="card card-p sales-highlight-card">
-          <div class="sales-highlight-main">
-            <div class="kpi-icon tone-green">${ICONS.sales}</div>
-            <div>
-              <p class="kpi-label">Valor total de vendas realizadas</p>
-              <p class="sales-highlight-value">${brl(kpis.revenue)}</p>
-              <p class="kpi-change neutral">Considera somente vendas com fechamento dentro do período selecionado.</p>
-            </div>
-          </div>
-          <div class="sales-highlight-meta">
-            <span>${kpis.salesCount} venda${kpis.salesCount === 1 ? "" : "s"} no período</span>
-            <strong>${pctChange(kpis.revenue, prevKpis.revenue) == null ? "—" : `${pctChange(kpis.revenue, prevKpis.revenue) >= 0 ? "↑" : "↓"} ${Math.abs(pctChange(kpis.revenue, prevKpis.revenue)).toFixed(0)}%`}</strong>
-            <small>vs. período anterior</small>
-          </div>
-        </div>
+        <div class="vendas-duo"></div>
       `;
 
       const clientEntriesHost = document.createElement("div");
       clientEntriesHost.id = "client-entries";
       clientEntriesHost.className = "card card-p client-entries-card";
-      // Valor total de vendas e a tabela de clientes lado a lado (pedido do usuário, 26/09/2026).
-      const vendasDuo = document.createElement("div");
-      vendasDuo.className = "vendas-duo";
-      const salesCard = content.querySelector(".sales-highlight-card");
-      salesCard.replaceWith(vendasDuo);
+      // O card grande "Valor total de vendas" virou o 1º cartão do topo (04/11/2026).
+      const vendasDuo = content.querySelector(".vendas-duo");
       // Resumo financeiro (09/10/2026): vendas únicas, recorrentes e total,
       // logo abaixo do valor total — mesma fonte (tabela sales) e mesmo filtro.
       const vendasColuna = document.createElement("div");
@@ -429,7 +407,6 @@
       resumoCard.id = "resumo-financeiro";
       resumoCard.className = "card card-p resumo-financeiro-card";
       resumoCard.innerHTML = resumoFinanceiroHtml(getSalesSplit(store, { range, sellerId: allowedSellerId }));
-      vendasColuna.appendChild(salesCard);
       vendasColuna.appendChild(resumoCard);
       vendasDuo.appendChild(vendasColuna);
       vendasDuo.appendChild(clientEntriesHost);
@@ -437,20 +414,17 @@
       renderPeriodFilter(document.getElementById("period-filter"), vendedores, render, { defaultPeriod: "this_week", defaultSellerId: allowedSellerId || "" });
       setupCalendarPicker(render);
 
+      // Cartões do topo (04/11/2026): vendas primeiro, no mesmo formato dos
+      // outros; saíram "Ligações de agendamento" e "Valor em oportunidades abertas".
       renderKpiGrid(document.getElementById("kpi-grid"), [
-        { label: "Ligações de agendamento", value: ligacoes.agendamento, change: pctChange(ligacoes.agendamento, ligacoesAntes.agendamento), tone: "blue", icon: ICONS.phone },
+        { label: "Vendas realizadas", value: kpis.revenue, format: "currency", sub: `${kpis.salesCount} venda${kpis.salesCount === 1 ? "" : "s"} no período`, change: pctChange(kpis.revenue, prevKpis.revenue), tone: "green", icon: ICONS.dollarSign },
         { label: "Reuniões agendadas × realizadas", value: kpis.meetingsScheduled, sub: [`Realizadas: ${kpis.meetingsDone}`, `Taxa de realização: ${(kpis.meetingRealizationRate ?? 0).toFixed(0)}%`], change: pctChange(kpis.meetingsScheduled, prevKpis.meetingsScheduled), tone: "indigo", icon: ICONS.meeting },
         { label: "No Show", value: kpis.meetingsNoShow, change: pctChange(kpis.meetingsNoShow, prevKpis.meetingsNoShow ?? 0), tone: "red", icon: ICONS.xCircle },
-        // Reunião de proposta + Follow-up + Prováveis fechamentos num cartão só (pedido do usuário, 25/09/2026):
-        // as oportunidades em acompanhamento para fechamento.
+        // Reunião de proposta + Follow-up + Prováveis fechamentos num cartão só (pedido do usuário, 25/09/2026).
         { label: "Oportunidades em acompanhamento", value: kpis.reuniaoPropostaCount + kpis.followUpCount + kpis.probableClosures, sub: [brl(kpis.opportunitiesValue), `Proposta ${kpis.reuniaoPropostaCount} · Follow-up ${kpis.followUpCount} · Fechamento ${kpis.probableClosures}`], tone: "violet", icon: ICONS.handshake },
-        { label: "Vendas realizadas", value: kpis.salesCount, change: pctChange(kpis.salesCount, prevKpis.salesCount), tone: "green", icon: ICONS.dollarSign },
         // "Clientes que entraram" = todas as vendas (negociações ganhas) do período — pedido do usuário, 25/09/2026.
         { label: "Clientes que entraram", value: kpis.salesCount, sub: brl(kpis.revenue), tone: "indigo", icon: ICONS.users },
-      ]);
-
-      // Valor em oportunidades abertas ao lado de "Clientes que entraram" (pedido do usuário, 26/09/2026).
-      document.getElementById("kpi-grid").insertAdjacentHTML("beforeend", `<div class="kpi-span-2">${kpiWideCardHtml({ label: "Valor em oportunidades abertas", value: kpis.opportunitiesValue, tone: "blue", icon: ICONS.dollarSign })}</div>`);
+      ], true);
 
       renderClientEntries(store, range, allowedSellerId);
 
@@ -483,13 +457,12 @@
         const resultado = await dados;
         if (resultado instanceof Error) throw resultado;
         store = resultado;
-        lancamentos = await carregarLancamentos(JANELA_LANCAMENTOS());
         render();
         // Sincroniza com RD/Agenda ao abrir a página (não trava a tela: os
         // dados atuais já apareceram acima e a tela se atualiza sozinha
         // quando a sincronização terminar).
         startPageLoadSync(async () => {
-          [store, lancamentos] = await Promise.all([loadAll({ fresh: true }), carregarLancamentos(JANELA_LANCAMENTOS())]);
+          store = await loadAll({ fresh: true });
           render();
         });
       } catch (err) {

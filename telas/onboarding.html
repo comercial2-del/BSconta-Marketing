@@ -840,7 +840,10 @@ function clientesDasVendas(store, detalhesRd = new Map()) {
         const det = detalhesRd.get(sale.deal_id) || null;
     const cnpjRd = campoRd(det, "CNPJ");
     const empresaRd = campoRd(det, "Nome da empresa");
-    const servicoRd = campoRd(det, "Serviço contratado");
+    // 04/11/2026: "Serviço contratado" virou seleção no RD (Constituição, Troca de
+    // Contabilidade, Transformação). O campo de texto antigo foi renomeado para
+    // "Serviço contratado (antigo)" e continua valendo para as vendas antigas.
+    const servicoRd = campoRd(det, "Serviço contratado") || campoRd(det, "Serviço contratado (antigo)");
     const inicioRd = campoRd(det, "Data de início");
     const contato = (det?.contatos || [])[0] || {};
     const produtoRd = produtosTexto(det);
