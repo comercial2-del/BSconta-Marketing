@@ -23,6 +23,13 @@
     @media (max-width:1100px){.vendas-duo{grid-template-columns:1fr}}
     @media (max-width:640px){.kpi-span-2{grid-column:1 / -1}}
     .client-entries-table th.col-tipo,.client-entries-table td.col-tipo{text-align:center}
+    .q-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;border-radius:999px;padding:.2rem .5rem;font-size:.66rem;font-weight:900;white-space:nowrap}
+    .q-a,.q-sim{background:var(--emerald-100);color:var(--emerald-700)}
+    .q-b{background:var(--blue-50);color:#1d4ed8}
+    .q-c{background:var(--red-100);color:var(--red-700)}
+    .q-vazio{background:var(--surface-2);color:var(--text-faint);font-weight:700}
+    .q-nao,.q-troca{background:var(--amber-100);color:var(--amber-700)}
+    .q-const{background:var(--indigo-100);color:var(--indigo-700)}
   </style>
 </head>
 <body>
@@ -44,12 +51,13 @@
   <script src="../js/supabaseClient.js?v=20260916"></script>
   <script src="../js/auth.js?v=20260916"></script>
   <script src="../js/data.js?v=20261009"></script>
-  <script src="../js/calc.js?v=20261009"></script>
+  <script src="../js/calc.js?v=20261104"></script>
   <script src="../js/ui.js?v=20260925b"></script>
   <script src="../js/lancamentos.js?v=20260916"></script>
   <script src="../js/sync.js?v=20260916"></script>
   <script src="../js/charts.js?v=20260916.2"></script>
 <script src="../js/leads.js?v=20260925b"></script>
+<script src="../js/qualificacao.js?v=20261104"></script>
   <script>
     let store = null;
     let lancamentos = []; // lançamento manual de ligações (js/lancamentos.js)
@@ -193,8 +201,36 @@
       `;
     }
 
+    // Campos do RD preenchidos pelo vendedor (04/11/2026): Conta Azul,
+    // Constituição ou Troca e Qualidade do Cliente (A/B/C). Vêm de
+    // deals.rd_details.campos, buscados só para as vendas da tabela.
+    const camposRd = new Map();
+    let camposRdBuscando = false;
+    async function carregarCamposRd(ids) {
+      const faltam = [...new Set(ids)].filter((id) => id && !camposRd.has(id));
+      if (!faltam.length || camposRdBuscando) return false;
+      camposRdBuscando = true;
+      try {
+        for (let i = 0; i < faltam.length; i += 100) {
+          const lote = faltam.slice(i, i + 100);
+          const { data, error } = await sb.from("deals").select("id, rd_details").in("id", lote);
+          if (error) { console.warn("Campos do RD indisponíveis:", error.message); return false; }
+          for (const id of lote) camposRd.set(id, []);
+          for (const r of data || []) camposRd.set(r.id, (r.rd_details && r.rd_details.campos) || []);
+        }
+        return true;
+      } finally { camposRdBuscando = false; }
+    }
+    function qualifBadge(v, cls) {
+      return v ? `<span class="q-badge ${cls}">${esc(v)}</span>` : `<span class="q-badge q-vazio">—</span>`;
+    }
+
     function renderClientEntries(store, range, sellerId) {
       const rows = getClientEntries(store, { range, sellerId });
+      const visiveis = rows.slice(0, 100);
+      if (visiveis.some((r) => r.dealId && !camposRd.has(r.dealId))) {
+        carregarCamposRd(visiveis.map((r) => r.dealId)).then((novo) => { if (novo) renderClientEntries(store, range, sellerId); });
+      }
       // Um cliente com produto mensal + único vira 2 linhas (uma por produto),
       // mas continua sendo UM cliente / UMA venda.
       const nClientes = new Set(rows.map((r) => r.saleId)).size;
@@ -211,10 +247,10 @@
         <div class="table-scroll client-table-wrap">
           <table class="client-entries-table">
             <thead><tr>
-              <th>Cliente</th><th>Produto</th><th>Data da venda</th><th>Valor</th><th>Status</th><th class="col-tipo">Tipo</th><th>Vendedor</th><th>Campanha / origem</th>
+              <th>Cliente</th><th>Produto</th><th>Data da venda</th><th>Valor</th><th>Status</th><th class="col-tipo">Tipo</th><th>Vendedor</th><th>Campanha / origem</th><th>Conta Azul</th><th>Constituição / Troca</th><th>Qualidade</th>
             </tr></thead>
             <tbody>
-              ${rows.length ? rows.slice(0, 100).map((r) => `
+              ${rows.length ? visiveis.map((r) => `
                 <tr>
                   <td><div class="client-primary">${esc(r.clientName)}</div><div class="client-secondary">${esc(r.companyName)}</div></td>
                   <td>${produtoVendaHtml(r)}</td>
@@ -224,7 +260,8 @@
                   <td class="col-tipo">${tipoVendaHtml(r)}</td>
                   <td>${esc(r.sellerName)}</td>
                   <td>${esc(r.campaign)}</td>
-                </tr>`).join("") : `<tr><td colspan="8" class="text-empty">Nenhuma venda registrada no período selecionado.</td></tr>`}
+                  ${(() => { const q = qualifDoDeal(camposRd.get(r.dealId)); return `<td>${qualifBadge(q.contaAzul, q.contaAzul === "Sim" ? "q-sim" : "q-nao")}</td><td>${qualifBadge(q.entrada, q.entrada === "Constituição" ? "q-const" : "q-troca")}</td><td>${q.qualidade ? `<span class="q-badge ${QUALIF_NIVEIS[q.qualidade].classe}" title="${esc(QUALIF_NIVEIS[q.qualidade].desc)}">${q.qualidade}</span>` : qualifBadge("", "")}</td>`; })()}
+                </tr>`).join("") : `<tr><td colspan="11" class="text-empty">Nenhuma venda registrada no período selecionado.</td></tr>`}
             </tbody>
           </table>
         </div>

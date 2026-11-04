@@ -6,40 +6,6 @@
   <title>BSconta + Marketing — SDR</title>
   <link rel="icon" type="image/png" href="../assets/bsconta-icon.png" />
   <link rel="stylesheet" href="../css/styles.css?v=20260915" />
-  <style>
-    .qualif-card{padding:0}
-    .qualif-head{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;padding:1.05rem 1.15rem .75rem}
-    .qualif-head h2{font-size:1rem;font-weight:800;margin:0}
-    .qualif-head p{font-size:.72rem;color:var(--text-faint);margin:.2rem 0 0}
-    .qualif-resumo{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.6rem;padding:0 1.15rem .9rem}
-    .qualif-tile{border:1px solid var(--border);border-radius:12px;padding:.7rem .8rem;background:var(--surface);cursor:pointer;text-align:left;font-family:inherit;transition:box-shadow .12s,border-color .12s}
-    .qualif-tile:hover,.qualif-tile.ativo{border-color:var(--indigo-500);box-shadow:0 0 0 3px rgba(99,102,241,.08)}
-    .qualif-tile .t-num{font-size:1.35rem;font-weight:900;line-height:1.1}
-    .qualif-tile .t-lbl{font-size:.68rem;font-weight:800;margin-top:.15rem}
-    .qualif-tile .t-desc{font-size:.6rem;color:var(--text-faint);margin-top:.15rem}
-    .qualif-extra{display:flex;flex-wrap:wrap;gap:.45rem;padding:0 1.15rem .9rem;font-size:.68rem;color:var(--text-soft)}
-    .qualif-extra span{background:var(--surface-2);border-radius:999px;padding:.25rem .6rem;font-weight:700}
-    .qualif-filtros{padding:.75rem 1.15rem;display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:.55rem;border-top:1px solid var(--surface-2);border-bottom:1px solid var(--surface-2)}
-    .qualif-filtros input,.qualif-filtros select{width:100%;height:38px;border:1px solid var(--border);border-radius:9px;background:var(--surface);padding:0 .72rem;font-size:.76rem;color:var(--text-soft);font-family:inherit}
-    .qualif-wrap{overflow:auto}
-    .qualif-table{width:100%;border-collapse:collapse;font-size:.74rem;min-width:820px}
-    .qualif-table th{font-size:.62rem;text-transform:uppercase;letter-spacing:.045em;color:var(--text-faint);font-weight:850;text-align:left;padding:.65rem 1rem;border-bottom:1px solid var(--border);white-space:nowrap}
-    .qualif-table td{padding:.62rem 1rem;border-bottom:1px solid var(--surface-2);vertical-align:middle}
-    .qualif-table .meta{font-size:.62rem;color:var(--text-faint)}
-    .q-badge{display:inline-flex;align-items:center;justify-content:center;min-width:26px;border-radius:999px;padding:.2rem .5rem;font-size:.66rem;font-weight:900;white-space:nowrap}
-    .q-a{background:var(--emerald-100);color:var(--emerald-700)}
-    .q-b{background:var(--blue-50);color:#1d4ed8}
-    .q-c{background:var(--red-100);color:var(--red-700)}
-    .q-vazio{background:var(--surface-2);color:var(--text-faint);font-weight:700}
-    .q-sim{background:var(--emerald-100);color:var(--emerald-700)}
-    .q-nao{background:var(--amber-100);color:var(--amber-700)}
-    .q-const{background:var(--indigo-100);color:var(--indigo-700)}
-    .q-troca{background:var(--amber-100);color:var(--amber-700)}
-    .ghost-btn{border-radius:10px;padding:.6rem .85rem;border:1px solid var(--border);font-size:.8rem;font-weight:700;background:var(--surface);color:var(--text-soft);cursor:pointer;font-family:inherit}
-    .qualif-vazio{padding:1.5rem;text-align:center;color:var(--text-faint);font-size:.76rem}
-    .qualif-mais{display:flex;justify-content:center;padding:.8rem}
-    @media (max-width:760px){.qualif-resumo{grid-template-columns:repeat(2,minmax(0,1fr))}.qualif-filtros{grid-template-columns:1fr 1fr}.qualif-filtros .busca{grid-column:1/-1}}
-  </style>
 </head>
 <body>
   <div class="app-shell"><div id="app-header"></div><div class="app-content"><main class="main"><div id="content"><div class="loading-wrap"><div class="spinner"></div></div></div></main></div></div>
@@ -52,8 +18,6 @@
   <script src="../js/calc.js?v=20261009"></script>
   <script src="../js/ui.js?v=20260915"></script>
   <script src="../js/lancamentos.js?v=20260915"></script>
-  <script src="../js/leads.js?v=20261104"></script>
-  <script src="../js/qualificacao.js?v=20261104"></script>
   <script src="../js/sync.js?v=20260915"></script>
   <script>
     let store = null;
@@ -102,7 +66,6 @@
             <tbody id="sdr-team-rows"></tbody>
           </table>
         </div>
-        <div class="card qualif-card" id="qualif-section"><div class="qualif-vazio">Carregando qualificação dos leads…</div></div>
       `;
       const sdrRows = document.getElementById("sdr-team-rows");
       if (sdrRows) {
@@ -120,97 +83,6 @@
       }
       renderPeriodFilter(document.getElementById("period-filter"), sdrs, render, { defaultPeriod: "this_week", defaultSellerId: effectiveSellerId || "" });
       setupCalendarPicker(render);
-      renderQualificacao(range, effectiveSellerId);
-    }
-
-    // ---------------------------------------------------------------------
-    // Qualificação do lead (04/11/2026) — campos personalizados do RD que o
-    // vendedor preenche na lateral da negociação: Conta Azul, Constituição ou
-    // Troca e Qualidade do Cliente (A/B/C). Vêm de deals.rd_details.campos,
-    // buscados só para as negociações do período (cache por id).
-    // ---------------------------------------------------------------------
-    const camposRd = new Map();
-    const qTabela = { busca: "", qualidade: "", contaAzul: "", entrada: "", limite: 30 };
-    async function carregarCamposRd(ids) {
-      const faltam = ids.filter((id) => !camposRd.has(id));
-      for (let i = 0; i < faltam.length; i += 100) {
-        const lote = faltam.slice(i, i + 100);
-        const { data, error } = await sb.from("deals").select("id, rd_details").in("id", lote);
-        if (error) throw error;
-        for (const id of lote) camposRd.set(id, []);
-        for (const r of data || []) camposRd.set(r.id, (r.rd_details && r.rd_details.campos) || []);
-      }
-    }
-    let qualifSeq = 0;
-    async function renderQualificacao(range, sellerId) {
-      const alvo = document.getElementById("qualif-section");
-      if (!alvo) return;
-      const seq = ++qualifSeq;
-      const stages = new Map((store.stages || []).map((s) => [s.id, s]));
-      const sellers = new Map((store.sellers || []).map((s) => [s.id, s.name]));
-      const deals = (store.deals || []).filter((d) => !d.deleted_at && d.created_at && new Date(d.created_at) >= range.start && new Date(d.created_at) < range.end && (!sellerId || d.seller_id === sellerId));
-      try { await carregarCamposRd(deals.map((d) => d.id)); }
-      catch (e) { console.warn("Qualificação do RD indisponível:", e.message); if (seq === qualifSeq) alvo.innerHTML = `<div class="qualif-vazio">Não foi possível carregar os campos do RD agora.</div>`; return; }
-      if (seq !== qualifSeq) return; // o usuário trocou de período no meio da busca
-      const todos = deals.map((d) => ({
-        id: d.id,
-        nome: d.client_name || "Sem nome",
-        empresa: d.company_name || "",
-        vendedor: sellers.get(d.seller_id) || "—",
-        etapa: (typeof leadsNomeDaEtapa === "function" ? leadsNomeDaEtapa(stages.get(d.stage_id)) : stages.get(d.stage_id)?.name) || "—",
-        chegada: new Date(d.created_at),
-        ...qualifDoDeal(camposRd.get(d.id)),
-      })).sort((a, b) => b.chegada - a.chegada);
-      const r = qualifResumo(todos);
-      const busca = qualifNorm(qTabela.busca);
-      const linhas = todos.filter((l) =>
-        (!busca || qualifNorm(`${l.nome} ${l.empresa} ${l.vendedor}`).includes(busca)) &&
-        (!qTabela.qualidade || (qTabela.qualidade === "-" ? !l.qualidade : l.qualidade === qTabela.qualidade)) &&
-        (!qTabela.contaAzul || (qTabela.contaAzul === "-" ? !l.contaAzul : l.contaAzul === qTabela.contaAzul)) &&
-        (!qTabela.entrada || (qTabela.entrada === "-" ? !l.entrada : l.entrada === qTabela.entrada)));
-      const pct = (n) => (r.total ? Math.round((n / r.total) * 100) : 0);
-      const tile = (k, num, lbl, desc, cls) => `<button type="button" class="qualif-tile ${qTabela.qualidade === k ? "ativo" : ""}" data-q="${k}"><div class="t-num"><span class="q-badge ${cls}">${num}</span></div><div class="t-lbl">${lbl} · ${pct(num)}%</div><div class="t-desc">${desc}</div></button>`;
-      const badge = (v, cls) => v ? `<span class="q-badge ${cls}">${esc(v)}</span>` : `<span class="q-badge q-vazio">—</span>`;
-      const opt = (v, txt, atual) => `<option value="${v}" ${v === atual ? "selected" : ""}>${txt}</option>`;
-      const dataBr = (d) => d.toLocaleDateString("pt-BR");
-      alvo.innerHTML = `
-        <div class="qualif-head"><div><h2>Qualificação dos leads</h2><p>Preenchido pelo vendedor no RD Station (campos Conta Azul, Constituição ou Troca e Qualidade do Cliente). Leads que chegaram no período.</p></div><span class="client-count-pill">${r.total} leads</span></div>
-        <div class="qualif-resumo">
-          ${tile("A", r.A, "Qualidade A", QUALIF_NIVEIS.A.desc, "q-a")}
-          ${tile("B", r.B, "Qualidade B", QUALIF_NIVEIS.B.desc, "q-b")}
-          ${tile("C", r.C, "Qualidade C", QUALIF_NIVEIS.C.desc, "q-c")}
-          ${tile("-", r.semQualidade, "Sem classificação", "Vendedor ainda não preencheu no RD", "q-vazio")}
-        </div>
-        <div class="qualif-extra"><span>Conta Azul: Sim ${r.contaAzulSim} · Não ${r.contaAzulNao}</span><span>Constituição ${r.constituicao} · Troca ${r.troca}</span></div>
-        <div class="qualif-filtros">
-          <input class="busca" id="q-busca" type="search" placeholder="Buscar nome, empresa ou vendedor..." value="${esc(qTabela.busca)}" />
-          <select id="q-qualidade" aria-label="Qualidade">${opt("", "Todas as qualidades", qTabela.qualidade)}${opt("A", "Qualidade A", qTabela.qualidade)}${opt("B", "Qualidade B", qTabela.qualidade)}${opt("C", "Qualidade C", qTabela.qualidade)}${opt("-", "Sem classificação", qTabela.qualidade)}</select>
-          <select id="q-ca" aria-label="Conta Azul">${opt("", "Conta Azul: todos", qTabela.contaAzul)}${opt("Sim", "Conta Azul: Sim", qTabela.contaAzul)}${opt("Não", "Conta Azul: Não", qTabela.contaAzul)}${opt("-", "Conta Azul: não informado", qTabela.contaAzul)}</select>
-          <select id="q-entrada" aria-label="Constituição ou Troca">${opt("", "Constituição/Troca: todos", qTabela.entrada)}${opt("Constituição", "Constituição", qTabela.entrada)}${opt("Troca", "Troca de contabilidade", qTabela.entrada)}${opt("-", "Não informado", qTabela.entrada)}</select>
-        </div>
-        <div class="qualif-wrap"><table class="qualif-table">
-          <thead><tr><th>Lead</th><th>Chegada</th><th>Vendedor</th><th>Etapa no RD</th><th>Conta Azul</th><th>Constituição / Troca</th><th>Qualidade</th></tr></thead>
-          <tbody>${linhas.slice(0, qTabela.limite).map((l) => `<tr>
-            <td><div><strong>${esc(l.nome)}</strong></div><div class="meta">${esc(l.empresa || "—")}</div></td>
-            <td>${dataBr(l.chegada)}</td>
-            <td>${esc(l.vendedor)}</td>
-            <td class="meta">${esc(l.etapa)}</td>
-            <td>${badge(l.contaAzul, l.contaAzul === "Sim" ? "q-sim" : "q-nao")}</td>
-            <td>${badge(l.entrada, l.entrada === "Constituição" ? "q-const" : "q-troca")}</td>
-            <td>${l.qualidade ? `<span class="q-badge ${QUALIF_NIVEIS[l.qualidade].classe}" title="${esc(QUALIF_NIVEIS[l.qualidade].desc)}">${l.qualidade}</span>` : badge("", "")}</td>
-          </tr>`).join("")}</tbody>
-        </table></div>
-        ${linhas.length ? "" : `<div class="qualif-vazio">Nenhum lead com esses filtros no período.</div>`}
-        ${linhas.length > qTabela.limite ? `<div class="qualif-mais"><button type="button" class="ghost-btn" id="q-mais">Mostrar mais (${linhas.length - qTabela.limite} restantes)</button></div>` : ""}`;
-      const refazer = () => renderQualificacao(range, sellerId);
-      alvo.querySelectorAll(".qualif-tile").forEach((b) => b.addEventListener("click", () => { qTabela.qualidade = qTabela.qualidade === b.dataset.q ? "" : b.dataset.q; qTabela.limite = 30; refazer(); }));
-      const buscaEl = document.getElementById("q-busca");
-      buscaEl.addEventListener("input", () => { qTabela.busca = buscaEl.value; clearTimeout(buscaEl._t); buscaEl._t = setTimeout(() => { refazer().then(() => { const el = document.getElementById("q-busca"); if (el) { el.focus(); el.setSelectionRange(el.value.length, el.value.length); } }); }, 250); });
-      document.getElementById("q-qualidade").addEventListener("change", (e) => { qTabela.qualidade = e.target.value; qTabela.limite = 30; refazer(); });
-      document.getElementById("q-ca").addEventListener("change", (e) => { qTabela.contaAzul = e.target.value; qTabela.limite = 30; refazer(); });
-      document.getElementById("q-entrada").addEventListener("change", (e) => { qTabela.entrada = e.target.value; qTabela.limite = 30; refazer(); });
-      const mais = document.getElementById("q-mais");
-      if (mais) mais.addEventListener("click", () => { qTabela.limite += 50; refazer(); });
     }
     (async()=>{ try { const dados=loadAllInstantaneo((novo)=>{store=novo;render();}).catch(e=>e); const auth=await requireAuth(); if(!auth)return; renderShell(auth.profile); const resultado=await dados; if(resultado instanceof Error)throw resultado; store=resultado; lancamentos=await carregarLancamentos(JANELA_LANCAMENTOS()); render(); startPageLoadSync(async()=>{ [store,lancamentos]=await Promise.all([loadAll({fresh:true}),carregarLancamentos(JANELA_LANCAMENTOS())]); render(); }); } catch(err){ console.error(err); showFatalError(err); }})();
   </script>
