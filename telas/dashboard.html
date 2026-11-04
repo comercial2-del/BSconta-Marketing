@@ -27,6 +27,9 @@
        lado no topo e a tabela de clientes na largura toda, com cabeçalho fixo. */
     .vendas-duo{grid-template-columns:1fr}
     .kpi-grid.cols-5 .kpi-card-top .kpi-label{hyphens:none;overflow-wrap:normal;word-break:normal;font-size:.66rem;letter-spacing:.03em}
+    /* Cartão "Leads que chegaram": melhor campanha do período. */
+    #kpi-grid .kpi-card:last-child .kpi-change:nth-of-type(2){font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;font-weight:800;color:var(--text-faint);margin-top:.15rem}
+    #kpi-grid .kpi-card:last-child .kpi-change:nth-of-type(3){color:var(--indigo-700);font-weight:800;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
     .vendas-coluna{display:block;position:static}
     .vendas-coluna .resumo-financeiro-lista{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:.6rem}
     .vendas-coluna > .card{height:100%}
@@ -355,7 +358,25 @@
       // LEADS QUE CHEGARAM (04/11/2026): negociações criadas no RD dentro do
       // período e do vendedor filtrados (deals.created_at = data de criação no RD).
       const leads = getLeads(store, { range, sellerId: allowedSellerId });
-      const leadsAntes = getLeads(store, { range: prevRange, sellerId: allowedSellerId });
+      // Chegadas por campanha do RD (deals.campaign), da que trouxe mais leads
+      // para a que trouxe menos. Vazio e "Sem Campanha" contam juntos.
+      const leadsPorCampanha = (() => {
+        const m = new Map();
+        for (const d of store.deals || []) {
+          if (!d.created_at || !inRange(d.created_at, range)) continue;
+          if (allowedSellerId && d.seller_id !== allowedSellerId) continue;
+          const c = (d.campaign || "").trim();
+          const nome = !c || /^sem campanha$/i.test(c) ? "Sem campanha" : c;
+          m.set(nome, (m.get(nome) || 0) + 1);
+        }
+        return [...m.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "pt-BR"));
+      })();
+      // Uma linha por campanha não coube bem no cartão: mostra a MELHOR campanha
+      // (a que mais trouxe leads; "Sem campanha" só se não houver outra).
+      const melhorCampanha = leadsPorCampanha.find(([nome]) => nome !== "Sem campanha") || leadsPorCampanha[0];
+      const leadsSub = melhorCampanha
+        ? ["Melhor campanha", melhorCampanha[0], `${melhorCampanha[1]} lead${melhorCampanha[1] === 1 ? "" : "s"} · ${Math.round((melhorCampanha[1] / Math.max(1, leads.chegaram)) * 100)}% do total`]
+        : ["Nenhum lead no período"];
       const perf = performanceLabel(kpis);
 
       const content = document.getElementById("content");
@@ -418,7 +439,7 @@
         // Reunião de proposta + Follow-up + Prováveis fechamentos num cartão só (pedido do usuário, 25/09/2026).
         { label: "Oportunidades em acompanhamento", value: kpis.reuniaoPropostaCount + kpis.followUpCount + kpis.probableClosures, sub: [brl(kpis.opportunitiesValue), `Proposta ${kpis.reuniaoPropostaCount} · Follow-up ${kpis.followUpCount} · Fechamento ${kpis.probableClosures}`], tone: "violet", icon: ICONS.handshake },
         // "Leads que chegaram" no lugar de "Clientes que entraram" (04/11/2026): segue os filtros de período e vendedor.
-        { label: "Leads que chegaram", value: leads.chegaram, change: pctChange(leads.chegaram, leadsAntes.chegaram), tone: "indigo", icon: ICONS.users },
+        { label: "Leads que chegaram", value: leads.chegaram, sub: leadsSub, tone: "indigo", icon: ICONS.users },
       ], true);
 
       renderClientEntries(store, range, allowedSellerId);
