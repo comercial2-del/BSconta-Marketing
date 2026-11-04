@@ -14,7 +14,8 @@
     "teste:responsivo": "node test/verify-responsivo.mjs",
     "medir": "node test/medir-velocidade.mjs",
     "teste:onboarding": "node test/verify-onboarding-etapas.mjs && node test/verify-onboarding-situacao.mjs && node test/verify-onboarding-responsavel.mjs && node test/verify-onboarding-email.mjs && node test/verify-onboarding-fluxo.mjs && node test/verify-onboarding-cnpj.mjs",
-    "teste:vendas-tipo": "node test/verify-vendas-tipo.mjs"
+    "teste:vendas-tipo": "node test/verify-vendas-tipo.mjs",
+    "teste:qualificacao": "node test/verify-qualificacao-visao-geral.mjs"
   },
   "devDependencies": {
     "chart.js": "4.5.1",
