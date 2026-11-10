@@ -24,6 +24,8 @@ const MARKETING_SDR_DATA = [
   // contratos de setembro ainda não vieram na planilha: ficam 0, como agosto.
   { period: "2026-08", label: "Ago/26", investimento: 2391.55, impressoes: 52451, cliques: 647, leads: 73, qualificados: 73, reunioes: 0, contratos: 0 },
   { period: "2026-09", label: "Set/26", investimento: 3391.00, impressoes: 60461, cliques: 697, leads: 63, qualificados: 63, reunioes: 0, contratos: 0 },
+  // 10/11/2026 (planilha enviada pelo Gabriel no WhatsApp): outubro/2026.
+  { period: "2026-10", label: "Out/26", investimento: 3907.35, impressoes: 83142, cliques: 734, leads: 57, qualificados: 57, reunioes: 10, contratos: 4 },
 ];
 // Recortes de campanhas estruturados a partir do bloco de campanhas da planilha.
 // A ordenação da "melhor campanha" prioriza conversão de reuniões em contratos,
