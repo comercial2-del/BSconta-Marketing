@@ -58,6 +58,21 @@
     .cmp-note{margin-top:.75rem;font-size:.7rem;color:var(--text-faint)}
     @media (max-width:640px){.cmp-row{grid-template-columns:1fr auto}.cmp-bars{grid-column:1 / -1;grid-row:2}.cmp-bar{grid-template-columns:1fr 80px}}
 
+    /* Botão e tela "Comparativo" — 13/11/2026 */
+    .cmp-open-btn{display:inline-flex;align-items:center;gap:.45rem;height:40px;padding:0 1rem;border-radius:10px;border:0;cursor:pointer;font:inherit;font-size:.84rem;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--indigo-500),var(--indigo-700));box-shadow:0 6px 16px rgba(79,70,229,.22)}
+    .cmp-open-btn:hover{filter:brightness(1.06)}
+    .cmp-open-btn svg{width:16px;height:16px}
+    .cmp-back-btn{display:inline-flex;align-items:center;gap:.4rem;height:38px;padding:0 .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font:inherit;font-size:.8rem;font-weight:700;color:var(--text-soft)}
+    .cmp-back-btn:hover{background:var(--surface-2)}
+    .cmp-controls{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.8rem 1.1rem}
+    .cmp-field{display:flex;flex-direction:column;gap:.3rem}
+    .cmp-field label{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.045em;color:var(--text-faint)}
+    .cmp-quick{display:flex;flex-wrap:wrap;gap:.4rem}
+    .cmp-quick button{height:34px;padding:0 .8rem;border-radius:9px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font:inherit;font-size:.76rem;font-weight:700;color:var(--text-soft)}
+    .cmp-quick button:hover{background:var(--indigo-50);color:var(--indigo-700);border-color:var(--indigo-100)}
+    .mm-tabela tbody tr.mm-b td{background:var(--surface-2)}
+    .mm-tabela tbody tr.mm-b td:first-child{box-shadow:inset 3px 0 0 #94a3b8;font-weight:800}
+
     /* Mês a mês com soma, saldo acumulado e média — 13/11/2026 */
     .mm-tabela{width:100%;border-collapse:collapse;min-width:980px}
     .mm-tabela th,.mm-tabela td{font-size:.76rem;padding:.55rem .7rem;border-bottom:1px solid var(--slate-100);white-space:nowrap}
@@ -283,9 +298,7 @@ function marketingPerformance(m) {
     // Todos os meses da planilha, com saldo acumulado do investimento e, no
     // final, a soma dos meses e a média mensal. Os meses do período
     // selecionado ficam destacados.
-    function mesAMesHtml(range) {
-      const a = monthStart(range.start), b = monthStart(range.end);
-      const meses = MARKETING_SDR_DATA;
+    function mesAMesHtml(meses, destaqueA = new Set(), destaqueB = new Set(), controles = "") {
       const campos = ["investimento","impressoes","cliques","leads","qualificados","reunioes","contratos"];
       const soma = Object.fromEntries(campos.map((k) => [k, 0]));
       let acumInv = 0, acumLeads = 0, acumContratos = 0;
@@ -294,10 +307,8 @@ function marketingPerformance(m) {
         acumInv += Number(r.investimento || 0);
         acumLeads += Number(r.leads || 0);
         acumContratos += Number(r.contratos || 0);
-        const d = keyToDate(r.period);
-        const noPeriodo = d >= a && d <= b;
         const cpl = r.leads > 0 ? r.investimento / r.leads : 0;
-        return `<tr class="${noPeriodo ? "no-periodo" : ""}">
+        return `<tr class="${destaqueA.has(r.period) ? "no-periodo" : destaqueB.has(r.period) ? "mm-b" : ""}">
           <td>${esc(r.label)}</td>
           <td class="cell-num">${brl0(r.investimento)}</td>
           <td class="cell-num mm-acum">${brl0(acumInv)}</td>
@@ -321,10 +332,11 @@ function marketingPerformance(m) {
           <div class="row-between marketing-card-head">
             <div>
               <h2>Mês a mês</h2>
-              <p class="card-sub">Todos os meses da planilha, com o saldo acumulado e, no final, a soma dos meses e a média mensal. Meses do período selecionado em destaque.</p>
+              <p class="card-sub">Meses escolhidos, com o saldo acumulado e, no final, a soma dos meses e a média mensal. Os meses comparados ficam em destaque.</p>
             </div>
             <span class="mini-badge">${num(meses.length)} meses</span>
           </div>
+          ${controles}
           <div class="table-scroll">
             <table class="mm-tabela">
               <thead><tr>
@@ -369,6 +381,92 @@ function marketingPerformance(m) {
           </div>
           <p class="cmp-note">Meses com reuniões e contratos ainda não preenchidos na planilha entram como 0 na soma e na média. CPL da soma/média = investimento total ÷ leads totais.</p>
         </div>`;
+    }
+
+    // ---- Tela "Comparativo" (13/11/2026, organização da tela) ----
+    // A comparação saiu do painel principal e virou um botão "Comparativo".
+    // Estado na URL: ?view=comparativo&cmpA=AAAA-MM&cmpB=AAAA-MM&de=AAAA-MM&ate=AAAA-MM
+    function mesesDaPlanilha() { return MARKETING_SDR_DATA.map((r) => r.period); }
+    function rotuloMes(k) { return (MARKETING_SDR_DATA.find((r) => r.period === k) || {}).label || k; }
+    function mesKey(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; }
+    function opcoesMeses(sel) {
+      return [...MARKETING_SDR_DATA].reverse().map((r) => `<option value="${r.period}" ${r.period === sel ? "selected" : ""}>${esc(r.label)}</option>`).join("");
+    }
+    function mesRange(k) { const d = keyToDate(k); return { start: d, end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999) }; }
+
+    function comparativoView(params) {
+      const ks = mesesDaPlanilha();
+      const ultimo = ks[ks.length - 1];
+      const valido = (k) => ks.includes(k);
+      let kA = valido(params.get("cmpA")) ? params.get("cmpA") : ultimo;
+      let kB = valido(params.get("cmpB")) ? params.get("cmpB") : (ks[ks.indexOf(kA) - 1] || ks[0]);
+      let de = valido(params.get("de")) ? params.get("de") : ks[0];
+      let ate = valido(params.get("ate")) ? params.get("ate") : ultimo;
+      if (de > ate) [de, ate] = [ate, de];
+
+      const A = withCosts(aggregateMarketing(mesRange(kA)));
+      const B = withCosts(aggregateMarketing(mesRange(kB)));
+      const meses = MARKETING_SDR_DATA.filter((r) => r.period >= de && r.period <= ate);
+      const anterior = mesKey(addMonths(keyToDate(kA), -1));
+      const anoPassado = mesKey(addMonths(keyToDate(kA), -12));
+
+      const filtroTabela = `
+          <div class="cmp-controls" style="margin:.4rem 0 .8rem">
+            <div class="cmp-field"><label for="mm-de">De</label><select class="cmp-month" id="mm-de">${opcoesMeses(de)}</select></div>
+            <div class="cmp-field"><label for="mm-ate">Até</label><select class="cmp-month" id="mm-ate">${opcoesMeses(ate)}</select></div>
+            <div class="cmp-quick">
+              <button type="button" data-mm="12">Últimos 12 meses</button>
+              <button type="button" data-mm="ano">Este ano</button>
+              <button type="button" data-mm="tudo">Todos os meses</button>
+            </div>
+          </div>`;
+
+      return `
+        <div class="row-between">
+          <div>
+            <h1 class="page-title">Comparativo</h1>
+            <p class="page-sub">Compare meses da planilha de marketing: valor investido, leads, reuniões, contratos e custos.</p>
+          </div>
+          <div class="header-actions"><button type="button" class="cmp-back-btn" id="cmp-voltar">← Voltar ao painel</button></div>
+        </div>
+
+        <div class="card card-p">
+          <div class="cmp-controls">
+            <div class="cmp-field"><label for="cmp-a">Mês</label><select class="cmp-month" id="cmp-a">${opcoesMeses(kA)}</select></div>
+            <span class="cmp-vs" style="padding-bottom:.55rem">comparar com</span>
+            <div class="cmp-field"><label for="cmp-b">Mês de comparação</label><select class="cmp-month" id="cmp-b">${opcoesMeses(kB)}</select></div>
+            <div class="cmp-quick">
+              ${valido(anterior) ? `<button type="button" data-cmpb="${anterior}">Mês anterior (${esc(rotuloMes(anterior))})</button>` : ""}
+              ${valido(anoPassado) ? `<button type="button" data-cmpb="${anoPassado}">Mesmo mês do ano passado (${esc(rotuloMes(anoPassado))})</button>` : ""}
+            </div>
+          </div>
+        </div>
+
+        ${compareCardHtml(A, B, rotuloMes(kA), rotuloMes(kB), true)}
+
+        ${mesAMesHtml(meses, new Set([kA]), new Set([kB]), filtroTabela)}`;
+    }
+
+    function setParams(changes) {
+      const p = new URLSearchParams(window.location.search);
+      for (const [k, v] of Object.entries(changes)) { if (v == null || v === "") p.delete(k); else p.set(k, v); }
+      history.replaceState(null, "", `${location.pathname}?${p}`);
+      render();
+    }
+
+    function wireComparativo() {
+      document.getElementById("cmp-voltar")?.addEventListener("click", () => { setParams({ view: null }); window.scrollTo({ top: 0 }); });
+      document.getElementById("cmp-a")?.addEventListener("change", (e) => setParams({ cmpA: e.target.value }));
+      document.getElementById("cmp-b")?.addEventListener("change", (e) => setParams({ cmpB: e.target.value }));
+      document.getElementById("mm-de")?.addEventListener("change", (e) => setParams({ de: e.target.value }));
+      document.getElementById("mm-ate")?.addEventListener("change", (e) => setParams({ ate: e.target.value }));
+      document.querySelectorAll("[data-cmpb]").forEach((b) => b.addEventListener("click", () => setParams({ cmpB: b.dataset.cmpb })));
+      document.querySelectorAll("[data-mm]").forEach((b) => b.addEventListener("click", () => {
+        const ks = mesesDaPlanilha(), ultimo = ks[ks.length - 1];
+        if (b.dataset.mm === "tudo") setParams({ de: null, ate: null });
+        else if (b.dataset.mm === "ano") setParams({ de: ks.find((k) => k.startsWith(ultimo.slice(0, 4))), ate: ultimo });
+        else setParams({ de: ks[Math.max(0, ks.length - 12)], ate: ultimo });
+      }));
     }
 
     function formatMarketingRange(range) {
@@ -463,6 +561,13 @@ function marketingPerformance(m) {
 
     function render() {
       const params = new URLSearchParams(window.location.search);
+      if (params.get("view") === "comparativo") {
+        const c = document.getElementById("content");
+        c.className = "space-y";
+        c.innerHTML = comparativoView(params);
+        wireComparativo();
+        return;
+      }
       const period = params.get("period") || "last_month";
       const range = resolvePeriod(period);
       const m = aggregateMarketing(range);
@@ -479,17 +584,8 @@ function marketingPerformance(m) {
       // Origem dos leads por canal e campanha — dados do RD Station (js/origens.js).
       const origens = getOrigensDosLeads(store, { range });
 
-      // Comparativo: ?compare=previous|last_year|month (&compareMonth=AAAA-MM)
-      const cmpMode = params.get("compare") || "";
-      let cmpMonth = params.get("compareMonth") || "";
-      if (cmpMode === "month" && !cmpMonth) { const ms = [...MARKETING_SDR_DATA].reverse(); cmpMonth = (ms[1] || ms[0]).period; }
-      const rangeB = cmpMode ? compareRange(range, cmpMode, cmpMonth) : null;
-      const A = withCosts(m);
-      const B = rangeB ? withCosts(aggregateMarketing(rangeB)) : null;
-      const labelA = rangeShortLabel(range);
-      const labelB = rangeB ? rangeShortLabel(rangeB) : "";
-      const temDadosB = rangeB ? hasSheetData(rangeB) : false;
-      const dl = (key, lower) => (B && temDadosB) ? deltaPill(A[key], B[key], { lowerIsBetter: lower, suffix: `vs ${labelB}` }) : "";
+      // O comparativo agora fica na tela própria (botão "Comparativo").
+      const dl = () => "";
 
       document.getElementById("content").className = "space-y";
       document.getElementById("content").innerHTML = `
@@ -498,12 +594,14 @@ function marketingPerformance(m) {
             <h1 class="page-title">Marketing</h1>
             <p class="page-sub">Aquisição, mídia e eficiência com base no Controle Gestão Marketing.</p>
           </div>
-          <div class="header-actions"><button type="button" class="icon-btn" aria-label="Calendário">${ICONS.meeting}</button></div>
+          <div class="header-actions">
+            <button type="button" class="cmp-open-btn" id="cmp-abrir" title="Comparar meses">${ICONS.sales}Comparativo</button>
+            <button type="button" class="icon-btn" aria-label="Calendário">${ICONS.meeting}</button>
+          </div>
         </div>
 
         <div>
           <div id="period-filter"></div>
-          ${compareFilterHtml(cmpMode, cmpMonth, labelB)}
         </div>
 
         <div class="card card-p marketing-performance ${marketingPerformance(m).tone}">
@@ -534,9 +632,6 @@ function marketingPerformance(m) {
           ${marketingCard("Custo por contrato", brl0(cpc), "Investimento ÷ contratos", "orange", ICONS.sales, dl("cpc", true))}
         </div>
 
-        ${B ? compareCardHtml(A, B, labelA, labelB, temDadosB) : ""}
-
-        ${mesAMesHtml(range)}
 
         <div class="grid-2 marketing-main-grid">
           <div class="card card-p origem-card">
@@ -658,7 +753,14 @@ function marketingPerformance(m) {
 
       renderPeriodFilter(document.getElementById("period-filter"), [], render, { periods: MARKETING_PERIODS, defaultPeriod: "last_month", showSellerFilter: false });
       setupCalendarPicker(render);
-      wireCompareFilter();
+      document.getElementById("cmp-abrir").addEventListener("click", () => {
+        // Abre já comparando o último mês do período escolhido com o anterior.
+        const ks = mesesDaPlanilha();
+        const fim = mesKey(range.end);
+        const kA = ks.includes(fim) ? fim : ks[ks.length - 1];
+        setParams({ view: "comparativo", cmpA: kA, cmpB: ks[ks.indexOf(kA) - 1] || ks[0] });
+        window.scrollTo({ top: 0 });
+      });
     }
 
     (async () => {
