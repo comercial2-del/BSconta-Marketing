@@ -57,6 +57,18 @@
     .cmp-empty{padding:1rem;border:1px dashed var(--border);border-radius:.8rem;text-align:center;font-size:.8rem;color:var(--text-faint)}
     .cmp-note{margin-top:.75rem;font-size:.7rem;color:var(--text-faint)}
     @media (max-width:640px){.cmp-row{grid-template-columns:1fr auto}.cmp-bars{grid-column:1 / -1;grid-row:2}.cmp-bar{grid-template-columns:1fr 80px}}
+
+    /* Mês a mês com soma, saldo acumulado e média — 13/11/2026 */
+    .mm-tabela{width:100%;border-collapse:collapse;min-width:980px}
+    .mm-tabela th,.mm-tabela td{font-size:.76rem;padding:.55rem .7rem;border-bottom:1px solid var(--slate-100);white-space:nowrap}
+    .mm-tabela th{font-size:.64rem;text-transform:uppercase;letter-spacing:.045em;color:var(--text-faint);font-weight:800;text-align:left}
+    .mm-tabela .cell-num{text-align:right}
+    .mm-tabela tbody tr.no-periodo td{background:var(--indigo-50)}
+    .mm-tabela tbody tr.no-periodo td:first-child{box-shadow:inset 3px 0 0 var(--indigo-600);font-weight:800}
+    .mm-tabela .mm-acum{color:var(--indigo-700);font-weight:700}
+    .mm-tabela tfoot td{font-weight:800;background:var(--surface-2);border-top:2px solid var(--border)}
+    .mm-tabela tfoot tr.mm-media td{font-weight:700;color:var(--text-soft);background:var(--surface)}
+    .mm-tabela tfoot small{display:block;font-size:.62rem;font-weight:600;color:var(--text-faint)}
   </style>
 </head>
 <body>
@@ -267,6 +279,98 @@ function marketingPerformance(m) {
       });
     }
 
+    // ---- Mês a mês (13/11/2026, pedido do Gabriel) ----
+    // Todos os meses da planilha, com saldo acumulado do investimento e, no
+    // final, a soma dos meses e a média mensal. Os meses do período
+    // selecionado ficam destacados.
+    function mesAMesHtml(range) {
+      const a = monthStart(range.start), b = monthStart(range.end);
+      const meses = MARKETING_SDR_DATA;
+      const campos = ["investimento","impressoes","cliques","leads","qualificados","reunioes","contratos"];
+      const soma = Object.fromEntries(campos.map((k) => [k, 0]));
+      let acumInv = 0, acumLeads = 0, acumContratos = 0;
+      const linhas = meses.map((r) => {
+        for (const k of campos) soma[k] += Number(r[k] || 0);
+        acumInv += Number(r.investimento || 0);
+        acumLeads += Number(r.leads || 0);
+        acumContratos += Number(r.contratos || 0);
+        const d = keyToDate(r.period);
+        const noPeriodo = d >= a && d <= b;
+        const cpl = r.leads > 0 ? r.investimento / r.leads : 0;
+        return `<tr class="${noPeriodo ? "no-periodo" : ""}">
+          <td>${esc(r.label)}</td>
+          <td class="cell-num">${brl0(r.investimento)}</td>
+          <td class="cell-num mm-acum">${brl0(acumInv)}</td>
+          <td class="cell-num">${num(r.impressoes)}</td>
+          <td class="cell-num">${num(r.cliques)}</td>
+          <td class="cell-num">${num(r.leads)}</td>
+          <td class="cell-num mm-acum">${num(acumLeads)}</td>
+          <td class="cell-num">${num(r.qualificados)}</td>
+          <td class="cell-num">${num(r.reunioes)}</td>
+          <td class="cell-num">${num(r.contratos)}</td>
+          <td class="cell-num mm-acum">${num(acumContratos)}</td>
+          <td class="cell-num">${brl0(cpl)}</td>
+        </tr>`;
+      }).join("");
+      const qtd = meses.length || 1;
+      const media = Object.fromEntries(campos.map((k) => [k, soma[k] / qtd]));
+      const dec = (v) => Number(v || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+      const cplTotal = soma.leads > 0 ? soma.investimento / soma.leads : 0;
+      return `
+        <div class="card card-p">
+          <div class="row-between marketing-card-head">
+            <div>
+              <h2>Mês a mês</h2>
+              <p class="card-sub">Todos os meses da planilha, com o saldo acumulado e, no final, a soma dos meses e a média mensal. Meses do período selecionado em destaque.</p>
+            </div>
+            <span class="mini-badge">${num(meses.length)} meses</span>
+          </div>
+          <div class="table-scroll">
+            <table class="mm-tabela">
+              <thead><tr>
+                <th>Mês</th><th class="cell-num">Investimento</th><th class="cell-num">Invest. acumulado</th>
+                <th class="cell-num">Impressões</th><th class="cell-num">Cliques</th>
+                <th class="cell-num">Leads</th><th class="cell-num">Leads acumulados</th>
+                <th class="cell-num">Qualificados</th><th class="cell-num">Reuniões</th>
+                <th class="cell-num">Contratos</th><th class="cell-num">Contratos acumulados</th><th class="cell-num">CPL</th>
+              </tr></thead>
+              <tbody>${linhas}</tbody>
+              <tfoot>
+                <tr class="mm-soma">
+                  <td>Soma dos meses<small>Saldo acumulado · ${num(meses.length)} meses</small></td>
+                  <td class="cell-num">${brl0(soma.investimento)}</td>
+                  <td class="cell-num mm-acum">${brl0(soma.investimento)}</td>
+                  <td class="cell-num">${num(soma.impressoes)}</td>
+                  <td class="cell-num">${num(soma.cliques)}</td>
+                  <td class="cell-num">${num(soma.leads)}</td>
+                  <td class="cell-num mm-acum">${num(soma.leads)}</td>
+                  <td class="cell-num">${num(soma.qualificados)}</td>
+                  <td class="cell-num">${num(soma.reunioes)}</td>
+                  <td class="cell-num">${num(soma.contratos)}</td>
+                  <td class="cell-num mm-acum">${num(soma.contratos)}</td>
+                  <td class="cell-num">${brl0(cplTotal)}</td>
+                </tr>
+                <tr class="mm-media">
+                  <td>Média mensal<small>Soma ÷ ${num(meses.length)} meses</small></td>
+                  <td class="cell-num">${brl0(media.investimento)}</td>
+                  <td class="cell-num">—</td>
+                  <td class="cell-num">${num(Math.round(media.impressoes))}</td>
+                  <td class="cell-num">${dec(media.cliques)}</td>
+                  <td class="cell-num">${dec(media.leads)}</td>
+                  <td class="cell-num">—</td>
+                  <td class="cell-num">${dec(media.qualificados)}</td>
+                  <td class="cell-num">${dec(media.reunioes)}</td>
+                  <td class="cell-num">${dec(media.contratos)}</td>
+                  <td class="cell-num">—</td>
+                  <td class="cell-num">${brl0(cplTotal)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <p class="cmp-note">Meses com reuniões e contratos ainda não preenchidos na planilha entram como 0 na soma e na média. CPL da soma/média = investimento total ÷ leads totais.</p>
+        </div>`;
+    }
+
     function formatMarketingRange(range) {
       const f = (d) => d.toLocaleDateString("pt-BR", { day:"2-digit", month:"2-digit", year:"numeric" });
       return `${f(range.start)} até ${f(range.end)}`;
@@ -431,6 +535,8 @@ function marketingPerformance(m) {
         </div>
 
         ${B ? compareCardHtml(A, B, labelA, labelB, temDadosB) : ""}
+
+        ${mesAMesHtml(range)}
 
         <div class="grid-2 marketing-main-grid">
           <div class="card card-p origem-card">

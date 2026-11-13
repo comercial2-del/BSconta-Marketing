@@ -69,7 +69,7 @@
     .perda-track span{display:block;height:100%;border-radius:999px}
     .perdas-nota{font-size:.65rem;color:var(--text-faint);line-height:1.45;margin:0}
 
-    .leads-filters{padding:.75rem 1.1rem;display:grid;grid-template-columns:2fr 1fr 1fr;gap:.55rem;border-bottom:1px solid var(--surface-2)}
+    .leads-filters{padding:.75rem 1.1rem;display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr 1fr;gap:.55rem;border-bottom:1px solid var(--surface-2)}
     .field{position:relative}
     .field input,.field select{width:100%;height:40px;border:1px solid var(--border);border-radius:9px;background:var(--surface);padding:0 .72rem;font-size:.78rem;color:var(--text-soft);outline:none;font-family:inherit}
     .field input:focus,.field select:focus{border-color:var(--indigo-500);box-shadow:0 0 0 3px rgba(99,102,241,.08)}
@@ -77,7 +77,7 @@
     .field.search input{padding-left:2rem}
 
     .leads-table-wrap{overflow:auto}
-    .leads-table{width:100%;border-collapse:collapse;font-size:.74rem;min-width:860px}
+    .leads-table{width:100%;border-collapse:collapse;font-size:.74rem;min-width:960px}
     .leads-table th{font-size:.62rem;text-transform:uppercase;letter-spacing:.045em;color:var(--text-faint);font-weight:850;text-align:left;padding:.72rem 1rem;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--surface)}
     .leads-table td{padding:.72rem 1rem;border-bottom:1px solid var(--surface-2);vertical-align:middle}
     .leads-table tbody tr{cursor:pointer;transition:background .12s}
@@ -145,6 +145,9 @@
     .motivo-num strong{color:var(--text)}
     .motivo-track{grid-column:1/-1;height:7px;border-radius:999px;background:var(--surface-2);overflow:hidden}
     .motivo-track span{display:block;height:100%;border-radius:999px;background:var(--red-500)}
+    /* Origem dos leads na tela Leads (13/11/2026) */
+    .origem-tag{display:inline-flex;align-items:center;gap:.35rem;font-size:.72rem;font-weight:750;color:var(--text);white-space:nowrap}
+    .origem-tag i{width:8px;height:8px;border-radius:50%;display:inline-block}
     @media (max-width:760px){.leads-filters{grid-template-columns:1fr}}
     @media (max-width:760px){
       .leads-kpis{grid-template-columns:1fr 1fr}
@@ -172,7 +175,7 @@
   <script>
     let store = null;
     // Estado da tabela (não vai para a URL: é só a visão do momento).
-    const tabela = { visao: "chegaram", busca: "", limite: 100, motivo: "", vendedor: "" };
+    const tabela = { visao: "chegaram", busca: "", limite: 100, motivo: "", vendedor: "", canal: "" };
 
     const PERIODOS_LEADS = [
       { value: "today", label: "Hoje" },
@@ -216,7 +219,7 @@
     const n = (v) => Number(v || 0).toLocaleString("pt-BR");
     const dataBr = (d) => (d ? new Date(d).toLocaleDateString("pt-BR") : "—");
 
-    function linhasDaVisao(painel, range, { ignorarVendedor = false } = {}) {
+    function linhasDaVisao(painel, range, { ignorarVendedor = false, ignorarCanal = false } = {}) {
       const perdidoNoPeriodo = (l) => l.perdidoEm && l.perdidoEm >= range.start && l.perdidoEm < range.end;
       const baldes = ["retornoFuturo", "vendasPerdidas", "semRetorno"];
       let linhas;
@@ -236,6 +239,8 @@
       if (q) linhas = linhas.filter((l) => leadsNorm(`${l.nome} ${l.empresa} ${l.vendedor}`).includes(q));
       // Filtro por motivo de perda (vem do RD).
       if (tabela.motivo) linhas = linhas.filter((l) => ((l.motivo || "").trim() || "Sem motivo informado") === tabela.motivo);
+      // Filtro por origem (Facebook/Moonflag, Indicação... — mesmos canais da aba Marketing).
+      if (tabela.canal && !ignorarCanal) linhas = linhas.filter((l) => canalDaFonte(l.origem).id === tabela.canal);
       // Filtro por colaborador (vendedores do RD — novos entram sozinhos pela sincronização).
       if (tabela.vendedor && !ignorarVendedor) linhas = linhas.filter((l) => l.vendedor === tabela.vendedor);
       const dataDeOrdem = (l) => (visaoFechados(tabela.visao) ? painel.vendaEm.get(l.id) || l.chegada : tabela.visao === "chegaram" || tabela.visao === "semContatoAgora" ? l.chegada : l.perdidoEm || l.chegada);
@@ -289,7 +294,8 @@
         return `<tr data-lead="${esc(l.id)}">
           <td><div class="lead-cell"><div class="lead-avatar">${esc(initials(l.nome))}</div><div><div class="lead-name">${esc(l.nome)}</div><div class="lead-meta">${esc(l.empresa || "—")}</div></div></div></td>
           <td class="lead-date">${dataBr(l.chegada)}</td>
-          <td><span class="lead-status ${sit.classe}">${esc(sit.label)}</span>${mostraPerda && l.motivo ? `<div class="lead-meta">${esc(l.motivo)}</div>` : ""}${fechados ? `<div class="lead-meta">${esc(canalDaFonte(l.origem).nome)}</div>` : ""}</td>
+          <td><span class="lead-status ${sit.classe}">${esc(sit.label)}</span>${mostraPerda && l.motivo ? `<div class="lead-meta">${esc(l.motivo)}</div>` : ""}</td>
+          <td>${origemTagHtml(l.origem)}</td>
           <td class="lead-etapa">${esc(l.etapa)}</td>
           <td>${esc(l.vendedor)}</td>
           <td class="cell-num">${l.valor ? brl(l.valor) : "—"}</td>
@@ -297,11 +303,23 @@
         </tr>`;
       }).join("");
       return `<div class="leads-table-wrap"><table class="leads-table">
-          <thead><tr><th>Lead</th><th>Chegada</th><th>Situação</th><th>Etapa no RD</th><th>Vendedor</th><th class="cell-num">Valor</th><th>${fechados ? "Fechou em" : mostraPerda ? "Perdido em" : "Última interação"}</th></tr></thead>
+          <thead><tr><th>Lead</th><th>Chegada</th><th>Situação</th><th>Origem</th><th>Etapa no RD</th><th>Vendedor</th><th class="cell-num">Valor</th><th>${fechados ? "Fechou em" : mostraPerda ? "Perdido em" : "Última interação"}</th></tr></thead>
           <tbody>${corpo}</tbody>
         </table></div>
         ${linhas.length ? "" : `<div class="lead-empty">Nenhum lead encontrado com os filtros atuais.</div>`}
         ${linhas.length > tabela.limite ? `<div class="lead-more"><button type="button" class="ghost-btn" id="lead-more">Mostrar mais (${n(linhas.length - tabela.limite)} restantes)</button></div>` : ""}`;
+    }
+
+    // Origem do lead: canal (Facebook/Moonflag, Indicação...) + fonte do RD.
+    function origemTagHtml(origem) {
+      const c = canalDaFonte(origem);
+      return `<span class="origem-tag"><i style="background:${c.cor}"></i>${esc(c.nome)}</span>${origem ? `<div class="lead-meta">${esc(origem)}</div>` : ""}`;
+    }
+    function contarPorCanal(lista) {
+      const canais = [...CANAIS_LEAD, CANAL_OUTROS].map((c) => ({ ...c, n: 0 }));
+      const porId = new Map(canais.map((c) => [c.id, c]));
+      for (const l of lista) porId.get(canalDaFonte(l.origem).id).n += 1;
+      return canais.filter((c) => c.id !== "outros" || c.n > 0);
     }
 
     function abrirLead(lead) {
@@ -322,7 +340,7 @@
           ${item("Chegou em", dataBr(lead.chegada))}
           ${item("Perdido em", dataBr(lead.perdidoEm))}
           ${item("Última interação", dataBr(lead.ultimaInteracao))}
-          ${item("Origem", lead.origem || "Não informada no RD")}
+          ${item("Origem", `${canalDaFonte(lead.origem).nome}${lead.origem ? ` — ${lead.origem}` : " (não informada no RD)"}`)}
           ${lead.perdidoEm ? item("Motivo da perda", lead.motivo || "Sem motivo informado") : ""}
         </div>
         <div class="lead-modal-actions"><button type="button" class="ghost-btn" data-fechar>Fechar</button></div>
@@ -380,6 +398,10 @@
       const vendedoresDaLista = contarPorVendedor(linhasDaVisao(painel, range, { ignorarVendedor: true }));
       if (tabela.vendedor && !vendedoresDaLista.some(([v]) => v === tabela.vendedor)) vendedoresDaLista.push([tabela.vendedor, 0]);
       const pctDe = (v) => (totalSafra ? (v / totalSafra) * 100 : 0);
+      // Origem dos leads que chegaram (pedido do Gabriel, 13/11/2026).
+      const canaisChegaram = contarPorCanal(painel.chegaram);
+      const canaisDaLista = contarPorCanal(linhasDaVisao(painel, range, { ignorarCanal: true }));
+      const maxCanal = Math.max(1, ...canaisChegaram.map((c) => c.n));
       const cartaoClicavel = (visao, cfg) => `<button type="button" class="lead-kpi-btn ${tabela.visao === visao ? "ativo" : ""}" data-visao="${visao}" title="Ver a lista">${kpiCardHtml(cfg)}</button>`;
 
       const content = document.getElementById("content");
@@ -430,6 +452,24 @@
         <div class="card card-p">
           <div class="lead-sec-head">
             <div>
+              <h2>Origem dos leads</h2>
+              <p>De onde vieram os ${n(totalSafra)} leads que chegaram no período (Moonflag, indicação...) — campo Fonte do RD Station. Clique numa origem para ver os leads.</p>
+            </div>
+          </div>
+          ${totalSafra ? `
+            <div class="motivos-lista">
+              ${canaisChegaram.map((c) => `
+                <button type="button" class="motivo-row ${tabela.canal === c.id ? "ativo" : ""}" data-canal="${c.id}" ${c.n ? "" : "disabled"}>
+                  <span class="motivo-nome"><span class="origem-tag"><i style="background:${c.cor}"></i>${esc(c.nome)}</span></span>
+                  <span class="motivo-num"><strong>${n(c.n)}</strong> · ${pctDe(c.n).toFixed(0)}%</span>
+                  <span class="motivo-track"><span style="width:${(c.n / maxCanal) * 100}%;background:${c.cor}"></span></span>
+                </button>`).join("")}
+            </div>` : `<p class="text-empty">Nenhum lead chegou no período selecionado.</p>`}
+        </div>
+
+        <div class="card card-p">
+          <div class="lead-sec-head">
+            <div>
               <h2>Motivos de perda</h2>
               <p>Por que os ${n(perdidosPeriodo.length)} leads perdidos no período foram perdidos — motivo registrado no RD Station. Clique num motivo para ver os leads.</p>
             </div>
@@ -464,6 +504,7 @@
                 </optgroup>
               </select></div>
             <div class="field"><select id="lead-vendedor" aria-label="Colaborador"><option value="">Todos os colaboradores</option>${vendedoresDaLista.map(([v, q]) => `<option value="${esc(v)}" ${v === tabela.vendedor ? "selected" : ""}>${esc(v)} (${n(q)})</option>`).join("")}</select></div>
+            <div class="field"><select id="lead-canal" aria-label="Origem"><option value="">Todas as origens</option>${canaisDaLista.map((c) => `<option value="${c.id}" ${c.id === tabela.canal ? "selected" : ""}>${esc(c.nome)} (${n(c.n)})</option>`).join("")}</select></div>
             <div class="field"><select id="lead-motivo" aria-label="Motivo de perda"><option value="">Todos os motivos de perda</option>${motivos.map((m) => `<option value="${esc(m.motivo)}" ${m.motivo === tabela.motivo ? "selected" : ""}>${esc(m.motivo)} (${n(m.n)})</option>`).join("")}</select></div>
           </div>
           <div id="lead-table"></div>
@@ -500,6 +541,15 @@
         tabela.limite = 100;
         render();
       });
+      document.getElementById("lead-canal").addEventListener("change", (e) => { tabela.canal = e.target.value; tabela.limite = 100; render(); });
+      content.querySelectorAll("[data-canal]").forEach((b) => b.addEventListener("click", () => {
+        const canal = b.dataset.canal;
+        tabela.canal = tabela.canal === canal ? "" : canal;
+        if (tabela.canal && !["chegaram", "andamento"].includes(tabela.visao) && !visaoFechados(tabela.visao)) tabela.visao = "chegaram";
+        tabela.limite = 100;
+        render();
+        document.getElementById("lead-table")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }));
       document.getElementById("lead-vendedor").addEventListener("change", (e) => { tabela.vendedor = e.target.value; tabela.limite = 100; render(); });
       document.getElementById("lead-motivo").addEventListener("change", (e) => {
         tabela.motivo = e.target.value;
