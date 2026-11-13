@@ -124,6 +124,26 @@
     .mm-tabela tfoot tr:first-child td{border-top:2px solid var(--border)}
     .mm-tabela tfoot tr.mm-media td{font-weight:700;color:var(--text-soft);background:var(--surface)}
     .mm-tabela tfoot small{display:block;font-size:.62rem;font-weight:600;color:var(--text-faint)}
+    .mm-tabela .mm-q{display:block;font-weight:700;color:var(--text)}
+    .mm-tabela .mm-c{display:block;font-size:.66rem;font-weight:700;color:var(--emerald-700);margin-top:.1rem}
+    .mm-th-sub{display:block;font-size:.56rem;font-weight:700;color:var(--emerald-700);text-transform:none;letter-spacing:0;margin-top:.1rem}
+    .vt-tabela{width:100%;border-collapse:separate;border-spacing:0;min-width:760px}
+    .vt-tabela th,.vt-tabela td{font-size:.75rem;padding:.5rem .7rem;white-space:nowrap;border-bottom:1px solid var(--slate-100);font-variant-numeric:tabular-nums}
+    .vt-tabela thead th{font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);font-weight:800;background:var(--surface-2);border-bottom:1px solid var(--border)}
+    .vt-tabela thead th:first-child,.vt-tabela tbody th{position:sticky;left:0;z-index:1;text-align:left;background:var(--surface)}
+    .vt-tabela thead th:first-child{background:var(--surface-2)}
+    .vt-tabela tbody th{font-weight:750;color:var(--text);box-shadow:1px 0 0 var(--border);text-transform:none;letter-spacing:0;font-size:.76rem}
+    .vt-tabela .cell-num{text-align:right}
+    .vt-tabela tr.vt-custo th,.vt-tabela tr.vt-custo td{color:var(--emerald-700);font-weight:700;font-size:.7rem;padding-top:.15rem;border-bottom-color:var(--border)}
+    .vt-tabela tr.vt-custo th{padding-left:1.4rem;font-weight:600}
+    .vt-tabela tr.vt-inv td,.vt-tabela tr.vt-inv th{font-weight:800;background:var(--indigo-50)}
+    .vt-tabela tr.vt-acum td{color:var(--indigo-700);font-weight:700}
+    .vt-tabela td.va,.vt-tabela th.va{background:var(--indigo-50)}
+    .vt-tabela thead th.va{color:var(--indigo-700);box-shadow:inset 0 3px 0 var(--indigo-600)}
+    .vt-tabela td.vb,.vt-tabela th.vb{background:#f6f7f9}
+    .vt-tabela thead th.vb{box-shadow:inset 0 3px 0 #94a3b8}
+    .vt-tabela .vt-soma{background:var(--surface-2);font-weight:800}
+    .vt-tabela .vt-media{background:var(--surface-2);font-weight:700;color:var(--text-soft);border-right:2px solid var(--border)}
     .cv-note{margin:.8rem 0 0;font-size:.7rem;color:var(--text-faint)}
     @media (max-width:1000px){.cv-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.cv-grid{grid-template-columns:1fr}}
     @media (max-width:520px){.cv-kpis{grid-template-columns:1fr}.cv-bar{padding:.8rem}}
@@ -348,79 +368,113 @@ function marketingPerformance(m) {
     }
     function mesRange(k) { const d = keyToDate(k); return { start: d, end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999) }; }
 
-    // Tabela mês a mês: saldo acumulado do investimento e, no final, soma e média.
-    function mesAMesHtml(meses, destaqueA = new Set(), destaqueB = new Set(), ferramentas = "") {
-      const campos = ["investimento","impressoes","cliques","leads","qualificados","reunioes","contratos"];
+    // Tabela mês a mês (pedido do Gabriel, 13/11/2026): cada métrica mostra
+    // embaixo o custo em R$ (investimento ÷ métrica). Sem invest./leads
+    // acumulados; contratos acumulados ficam. No final, soma e média.
+    const MM_METRICAS = [
+      { key: "impressoes", label: "Impressões", custo: "Custo por impressão" },
+      { key: "cliques", label: "Cliques", custo: "Custo por clique" },
+      { key: "leads", label: "Leads", custo: "Custo por lead" },
+      { key: "qualificados", label: "Qualificados", custo: "Custo por qualificado" },
+      { key: "reunioes", label: "Reuniões", custo: "Custo por reunião" },
+      { key: "contratos", label: "Contratos", custo: "Custo por contrato" },
+    ];
+    const brl2 = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // Custo unitário: centavos quando < R$ 10 (impressão, clique), inteiro no resto.
+    const custoFmt = (inv, qtd) => (qtd > 0 ? (inv / qtd < 10 ? brl2(inv / qtd) : brl0(inv / qtd)) : "—");
+    const decFmt = (v) => Number(v || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+
+    function somaMeses(meses) {
+      const campos = ["investimento", ...MM_METRICAS.map((m) => m.key)];
       const soma = Object.fromEntries(campos.map((k) => [k, 0]));
+      for (const r of meses) for (const k of campos) soma[k] += Number(r[k] || 0);
+      const qtd = meses.length || 1;
+      const media = Object.fromEntries(campos.map((k) => [k, soma[k] / qtd]));
+      return { soma, media };
+    }
+
+    function mesAMesHtml(meses, destaqueA = new Set(), destaqueB = new Set(), ferramentas = "") {
+      const { soma, media } = somaMeses(meses);
       const maxInv = Math.max(1, ...meses.map((r) => Number(r.investimento || 0)));
-      let acum = 0;
+      let acumContratos = 0;
+      const cel = (qtd, inv, fmtQtd = num) => `<td class="cell-num"><b class="mm-q">${fmtQtd(qtd)}</b><span class="mm-c">${custoFmt(inv, qtd)}</span></td>`;
       const linhas = meses.map((r) => {
-        for (const k of campos) soma[k] += Number(r[k] || 0);
-        acum += Number(r.investimento || 0);
-        const cpl = r.leads > 0 ? r.investimento / r.leads : 0;
+        acumContratos += Number(r.contratos || 0);
         return `<tr class="${destaqueA.has(r.period) ? "no-periodo" : destaqueB.has(r.period) ? "mm-b" : ""}">
           <td>${esc(r.label)}</td>
-          <td class="cell-num"><div class="mm-inv"><i style="width:${Math.round((r.investimento / maxInv) * 60)}px"></i>${brl0(r.investimento)}</div></td>
-          <td class="cell-num mm-acum">${brl0(acum)}</td>
-          <td class="cell-num">${num(r.impressoes)}</td>
-          <td class="cell-num">${num(r.cliques)}</td>
-          <td class="cell-num">${num(r.leads)}</td>
-          <td class="cell-num">${num(r.qualificados)}</td>
-          <td class="cell-num">${num(r.reunioes)}</td>
-          <td class="cell-num">${num(r.contratos)}</td>
-          <td class="cell-num">${brl0(cpl)}</td>
+          <td class="cell-num"><div class="mm-inv"><i style="width:${Math.round((r.investimento / maxInv) * 50)}px"></i>${brl0(r.investimento)}</div></td>
+          ${MM_METRICAS.map((m) => cel(Number(r[m.key] || 0), Number(r.investimento || 0))).join("")}
+          <td class="cell-num mm-acum">${num(acumContratos)}</td>
         </tr>`;
       }).join("");
-      const qtd = meses.length || 1;
-      const media = (k) => soma[k] / qtd;
-      const dec = (v) => Number(v || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
-      const cplTotal = soma.leads > 0 ? soma.investimento / soma.leads : 0;
       return `
         <div class="card card-p">
           <div class="cv-card-head">
             <div>
               <h2>Mês a mês</h2>
-              <p>${num(meses.length)} meses · saldo acumulado do investimento, soma e média no final.</p>
+              <p>${num(meses.length)} meses · embaixo de cada número, o custo em R$ (investimento ÷ quantidade). Soma e média no final.</p>
             </div>
             ${ferramentas}
           </div>
           <div class="table-scroll" style="margin-top:.6rem">
             <table class="mm-tabela">
               <thead><tr>
-                <th>Mês</th><th class="cell-num">Investimento</th><th class="cell-num">Saldo acumulado</th>
-                <th class="cell-num">Impressões</th><th class="cell-num">Cliques</th><th class="cell-num">Leads</th>
-                <th class="cell-num">Qualificados</th><th class="cell-num">Reuniões</th><th class="cell-num">Contratos</th><th class="cell-num">CPL</th>
+                <th>Mês</th><th class="cell-num">Investimento</th>
+                ${MM_METRICAS.map((m) => `<th class="cell-num">${m.label}<span class="mm-th-sub">R$ por ${m.label.toLowerCase().replace(/ões$/, "ão").replace(/s$/, "")}</span></th>`).join("")}
+                <th class="cell-num">Contratos acumulados</th>
               </tr></thead>
               <tbody>${linhas}</tbody>
               <tfoot>
                 <tr>
                   <td>Soma dos meses<small>${num(meses.length)} meses</small></td>
                   <td class="cell-num">${brl0(soma.investimento)}</td>
-                  <td class="cell-num mm-acum">${brl0(soma.investimento)}</td>
-                  <td class="cell-num">${num(soma.impressoes)}</td>
-                  <td class="cell-num">${num(soma.cliques)}</td>
-                  <td class="cell-num">${num(soma.leads)}</td>
-                  <td class="cell-num">${num(soma.qualificados)}</td>
-                  <td class="cell-num">${num(soma.reunioes)}</td>
-                  <td class="cell-num">${num(soma.contratos)}</td>
-                  <td class="cell-num">${brl0(cplTotal)}</td>
+                  ${MM_METRICAS.map((m) => cel(soma[m.key], soma.investimento)).join("")}
+                  <td class="cell-num mm-acum">${num(soma.contratos)}</td>
                 </tr>
                 <tr class="mm-media">
                   <td>Média mensal<small>soma ÷ ${num(meses.length)}</small></td>
-                  <td class="cell-num">${brl0(media("investimento"))}</td>
+                  <td class="cell-num">${brl0(media.investimento)}</td>
+                  ${MM_METRICAS.map((m) => cel(media[m.key], media.investimento, m.key === "impressoes" ? (v) => num(Math.round(v)) : decFmt)).join("")}
                   <td class="cell-num">—</td>
-                  <td class="cell-num">${num(Math.round(media("impressoes")))}</td>
-                  <td class="cell-num">${dec(media("cliques"))}</td>
-                  <td class="cell-num">${dec(media("leads"))}</td>
-                  <td class="cell-num">${dec(media("qualificados"))}</td>
-                  <td class="cell-num">${dec(media("reunioes"))}</td>
-                  <td class="cell-num">${dec(media("contratos"))}</td>
-                  <td class="cell-num">${brl0(cplTotal)}</td>
                 </tr>
               </tfoot>
             </table>
           </div>
-          <p class="cv-note">Meses sem reuniões/contratos preenchidos na planilha entram como 0. CPL da soma e da média = investimento total ÷ leads totais.</p>
+          <p class="cv-note">Meses sem reuniões/contratos preenchidos na planilha entram como 0 (custo aparece como —). Custo da soma e da média = investimento total ÷ quantidade total.</p>
+        </div>`;
+    }
+
+    // Mesma informação na vertical: métricas nas linhas, meses nas colunas.
+    function mesAMesVerticalHtml(meses, destaqueA = new Set(), destaqueB = new Set()) {
+      const { soma, media } = somaMeses(meses);
+      const cls = (r) => (destaqueA.has(r.period) ? "va" : destaqueB.has(r.period) ? "vb" : "");
+      let acum = 0;
+      const acumulados = meses.map((r) => (acum += Number(r.contratos || 0)));
+      // Soma e média logo depois da métrica; meses do mais recente para o mais antigo.
+      const ordem = meses.map((r, i) => [r, i]).reverse();
+      const linha = (rotulo, porMes, s, m, extra = "") => `<tr class="${extra}"><th scope="row">${rotulo}</th><td class="cell-num vt-soma">${s}</td><td class="cell-num vt-media">${m}</td>${ordem.map(([r, i]) => `<td class="cell-num ${cls(r)}">${porMes(r, i)}</td>`).join("")}</tr>`;
+      const corpo = [
+        linha("Investimento", (r) => brl0(r.investimento), brl0(soma.investimento), brl0(media.investimento), "vt-inv"),
+        ...MM_METRICAS.flatMap((mt) => [
+          linha(mt.label, (r) => num(r[mt.key]), num(soma[mt.key]), mt.key === "impressoes" ? num(Math.round(media[mt.key])) : decFmt(media[mt.key])),
+          linha(mt.custo, (r) => custoFmt(Number(r.investimento || 0), Number(r[mt.key] || 0)), custoFmt(soma.investimento, soma[mt.key]), custoFmt(soma.investimento, soma[mt.key]), "vt-custo"),
+        ]),
+        linha("Contratos acumulados", (r, i) => num(acumulados[i]), num(soma.contratos), "—", "vt-acum"),
+      ].join("");
+      return `
+        <div class="card card-p">
+          <div class="cv-card-head">
+            <div>
+              <h2>Mês a mês — visão vertical</h2>
+              <p>Métricas nas linhas e meses nas colunas (do mais recente ao mais antigo), com soma e média logo no início. Mesmo intervalo De/Até da tabela acima.</p>
+            </div>
+          </div>
+          <div class="table-scroll" style="margin-top:.6rem">
+            <table class="vt-tabela">
+              <thead><tr><th>Métrica</th><th class="cell-num vt-soma">Soma</th><th class="cell-num vt-media">Média</th>${[...meses].reverse().map((r) => `<th class="cell-num ${cls(r)}">${esc(r.label)}</th>`).join("")}</tr></thead>
+              <tbody>${corpo}</tbody>
+            </table>
+          </div>
         </div>`;
     }
 
@@ -516,7 +570,9 @@ function marketingPerformance(m) {
               ${chip("data-mm", "ano", "Este ano", de === anoIni && ate === ultimo)}
               ${chip("data-mm", "tudo", "Tudo", de === ks[0] && ate === ultimo)}
             </div>
-          </div>`)}`;
+          </div>`)}
+
+        ${mesAMesVerticalHtml(meses, new Set([kA]), new Set([kB]))}`;
     }
     function setParams(changes) {
       const p = new URLSearchParams(window.location.search);
