@@ -148,6 +148,9 @@
     .vt-tabela tr.vt-pctlast th,.vt-tabela tr.vt-pctlast td{border-bottom-color:var(--border);padding-bottom:.45rem}
     .vt-pct{font-weight:750}
     .vt-pct.up{color:var(--emerald-700)} .vt-pct.down{color:var(--red-700)} .vt-pct.flat{color:var(--text-faint)}
+    .vt-tabela tr.vt-main th,.vt-tabela tr.vt-main td{font-weight:800}
+    .oc-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:.35rem;vertical-align:middle}
+    .cv-chips button.on .oc-dot{box-shadow:0 0 0 2px #fff}
     .vt-tabela .vt-soma{background:var(--surface-2);font-weight:800}
     .vt-tabela .vt-media{background:var(--surface-2);font-weight:700;color:var(--text-soft);border-right:2px solid var(--border)}
     .cv-note{margin:.8rem 0 0;font-size:.7rem;color:var(--text-faint)}
@@ -490,7 +493,7 @@ function marketingPerformance(m) {
         <div class="card card-p">
           <div class="cv-card-head">
             <div>
-              <h2>Mês a mês — visão vertical</h2>
+              <h2>Comparativo Facebook (Moonflag)</h2>
               <p>Métricas nas linhas e meses nas colunas (do mais recente ao mais antigo), com soma e média logo no início. Mesmo intervalo De/Até da tabela acima.</p>
             </div>
           </div>
@@ -500,6 +503,86 @@ function marketingPerformance(m) {
               <tbody>${corpo}</tbody>
             </table>
           </div>
+        </div>`;
+    }
+
+    // ---- Outras campanhas e indicações (pedido do Gabriel, 13/11/2026) ----
+    // Mesma visão vertical, mas para os canais que não são o Facebook
+    // (Moonflag), direto do RD Station: leads (negociações criadas), reuniões
+    // realizadas ligadas à negociação e contratos (vendas). Sem investimento,
+    // então sem custos e sem qualificados.
+    const CANAIS_OUTROS = () => [...CANAIS_LEAD, CANAL_OUTROS].filter((c) => c.id !== "facebook");
+
+    function outrasPorMes(canalId) {
+      const vazio = () => ({ leads: 0, reunioes: 0, contratos: 0 });
+      const porMes = new Map();
+      if (!store) return porMes;
+      const dealCanal = new Map((store.deals || []).map((d) => [d.id, canalDaFonte(d.origin).id]));
+      const aceita = (id) => id && id !== "facebook" && (!canalId || id === canalId);
+      const add = (data, campo, id) => {
+        if (!data || !aceita(id)) return;
+        const k = mesKey(new Date(data));
+        if (!porMes.has(k)) porMes.set(k, vazio());
+        porMes.get(k)[campo] += 1;
+      };
+      for (const d of store.deals || []) add(d.created_at, "leads", dealCanal.get(d.id));
+      const { meetings } = classifyActivities(store.activities || [], store.sellers || []);
+      for (const a of meetings) if (a.deal_id && isMeetingRealized(a)) add(a.scheduled_at, "reunioes", dealCanal.get(a.deal_id));
+      for (const s of store.sales || []) add(s.closed_at, "contratos", dealCanal.get(s.deal_id));
+      return porMes;
+    }
+
+    function outrasCampanhasHtml(mesesPlanilha, canalId, destaqueA = new Set(), destaqueB = new Set()) {
+      const porMes = outrasPorMes(canalId);
+      // Meses antes do primeiro lead no RD não têm dado (a integração é mais
+      // nova que a planilha): ficam de fora para não virar 0 / −100%.
+      const datas = (store?.deals || []).map((d) => d.created_at).filter(Boolean).map((d) => mesKey(new Date(d))).sort();
+      const primeiro = datas[0] || "9999-99";
+      const meses = mesesPlanilha.filter((r) => r.period >= primeiro);
+      const val = (k, campo) => (porMes.get(k) || {})[campo] || 0;
+      const campos = [
+        { key: "leads", label: "Leads" },
+        { key: "reunioes", label: "Reuniões" },
+        { key: "contratos", label: "Contratos" },
+      ];
+      const qtd = meses.length || 1;
+      const soma = Object.fromEntries(campos.map((c) => [c.key, meses.reduce((t, r) => t + val(r.period, c.key), 0)]));
+      const media = Object.fromEntries(campos.map((c) => [c.key, soma[c.key] / qtd]));
+      const cls = (r) => (destaqueA.has(r.period) ? "va" : destaqueB.has(r.period) ? "vb" : "");
+      const ordem = [...meses].reverse();
+      const anterior = (k) => mesKey(addMonths(keyToDate(k), -1));
+      const linha = (rotulo, porMesFn, s, m, extra = "") => `<tr class="${extra}"><th scope="row">${rotulo}</th><td class="cell-num vt-soma">${s}</td><td class="cell-num vt-media">${m}</td>${ordem.map((r) => `<td class="cell-num ${cls(r)}">${porMesFn(r)}</td>`).join("")}</tr>`;
+      const pcts = (key) => [
+        linha("% Comp Mês Anterior", (r) => pctComp(val(r.period, key), val(anterior(r.period), key)), "", "", "vt-pctrow"),
+        linha("% Comp Média", (r) => pctComp(val(r.period, key), media[key]), "", "", "vt-pctrow vt-pctlast"),
+      ];
+      let acum = 0;
+      const acumulado = new Map(meses.map((r) => [r.period, (acum += val(r.period, "contratos"))]));
+      const corpo = [
+        ...campos.flatMap((c) => [linha(c.label, (r) => num(val(r.period, c.key)), num(soma[c.key]), decFmt(media[c.key]), "vt-main"), ...pcts(c.key)]),
+        linha("Contratos acumulados", (r) => num(acumulado.get(r.period)), num(soma.contratos), "—", "vt-acum"),
+      ].join("");
+      const canais = CANAIS_OUTROS();
+      const chip = (id, nome, cor) => `<button type="button" data-oc="${id}" class="${(canalId || "") === id ? "on" : ""}">${cor ? `<i class="oc-dot" style="background:${cor}"></i>` : ""}${esc(nome)}</button>`;
+      return `
+        <div class="card card-p">
+          <div class="cv-card-head">
+            <div>
+              <h2>Comparativo outras campanhas e indicações</h2>
+              <p>Leads, reuniões e contratos dos canais que não são o Facebook (Moonflag) — direto do RD Station. Mesmo intervalo De/Até.</p>
+            </div>
+            <div class="cv-chips">
+              ${chip("", "Todos (sem Facebook)")}
+              ${canais.map((c) => chip(c.id, c.nome, c.cor)).join("")}
+            </div>
+          </div>
+          ${store ? `<div class="table-scroll" style="margin-top:.6rem">
+            <table class="vt-tabela">
+              <thead><tr><th>Métrica</th><th class="cell-num vt-soma">Soma</th><th class="cell-num vt-media">Média</th>${ordem.map((r) => `<th class="cell-num ${cls(r)}">${esc(r.label)}</th>`).join("")}</tr></thead>
+              <tbody>${corpo}</tbody>
+            </table>
+          </div>
+          <p class="cv-note">Leads = negociações criadas no RD no mês; reuniões = reuniões realizadas ligadas a uma negociação desse canal; contratos = vendas fechadas no mês. O canal vem do campo Fonte do RD. Meses anteriores ao início da integração com o RD não aparecem.</p>` : `<div class="cmp-empty">Carregando dados do RD Station…</div>`}
         </div>`;
     }
 
@@ -597,7 +680,9 @@ function marketingPerformance(m) {
             </div>
           </div>`)}
 
-        ${mesAMesVerticalHtml(meses, new Set([kA]), new Set([kB]))}`;
+        ${mesAMesVerticalHtml(meses, new Set([kA]), new Set([kB]))}
+
+        ${outrasCampanhasHtml(meses, params.get("oc") || "", new Set([kA]), new Set([kB]))}`;
     }
     function setParams(changes) {
       const p = new URLSearchParams(window.location.search);
@@ -607,6 +692,7 @@ function marketingPerformance(m) {
     }
 
     function wireComparativo() {
+      document.querySelectorAll("[data-oc]").forEach((b) => b.addEventListener("click", () => setParams({ oc: b.dataset.oc || null })));
       document.getElementById("cmp-voltar")?.addEventListener("click", () => { setParams({ view: null }); window.scrollTo({ top: 0 }); });
       document.getElementById("cmp-a")?.addEventListener("change", (e) => setParams({ cmpA: e.target.value }));
       document.getElementById("cmp-b")?.addEventListener("change", (e) => setParams({ cmpB: e.target.value }));
