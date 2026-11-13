@@ -142,6 +142,12 @@
     .vt-tabela thead th.va{color:var(--indigo-700);box-shadow:inset 0 3px 0 var(--indigo-600)}
     .vt-tabela td.vb,.vt-tabela th.vb{background:#f6f7f9}
     .vt-tabela thead th.vb{box-shadow:inset 0 3px 0 #94a3b8}
+    .vt-tabela tr.vt-custo th,.vt-tabela tr.vt-custo td{border-bottom-color:var(--slate-100)}
+    .vt-tabela tr.vt-pctrow th,.vt-tabela tr.vt-pctrow td{font-size:.68rem;padding-top:.15rem;padding-bottom:.15rem}
+    .vt-tabela tr.vt-pctrow th{padding-left:1.4rem;font-weight:600;color:var(--text-faint)}
+    .vt-tabela tr.vt-pctlast th,.vt-tabela tr.vt-pctlast td{border-bottom-color:var(--border);padding-bottom:.45rem}
+    .vt-pct{font-weight:750}
+    .vt-pct.up{color:var(--emerald-700)} .vt-pct.down{color:var(--red-700)} .vt-pct.flat{color:var(--text-faint)}
     .vt-tabela .vt-soma{background:var(--surface-2);font-weight:800}
     .vt-tabela .vt-media{background:var(--surface-2);font-weight:700;color:var(--text-soft);border-right:2px solid var(--border)}
     .cv-note{margin:.8rem 0 0;font-size:.7rem;color:var(--text-faint)}
@@ -382,6 +388,16 @@ function marketingPerformance(m) {
     const brl2 = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
     // Custo unitário: centavos quando < R$ 10 (impressão, clique), inteiro no resto.
     const custoFmt = (inv, qtd) => (qtd > 0 ? (inv / qtd < 10 ? brl2(inv / qtd) : brl0(inv / qtd)) : "—");
+    // Custo por impressão com 3 casas (ex.: R$ 0,022) — pedido do Gabriel, 13/11/2026.
+    const brl3 = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    const custoDe = (key, inv, qtd) => (key === "impressoes" ? (qtd > 0 ? brl3(inv / qtd) : "—") : custoFmt(inv, qtd));
+    // % comparativo: (valor ÷ base) − 1. Ex.: 52.451 ÷ 64.697 = 0,81 − 1 = −18,93%.
+    function pctComp(v, base) {
+      if (!(base > 0)) return `<span class="vt-pct flat">—</span>`;
+      const d = (Number(v || 0) / base - 1) * 100;
+      const cls = Math.abs(d) < 0.005 ? "flat" : d > 0 ? "up" : "down";
+      return `<span class="vt-pct ${cls}">${d > 0 ? "+" : ""}${d.toFixed(2).replace(".", ",")}%</span>`;
+    }
     const decFmt = (v) => Number(v || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
 
     function somaMeses(meses) {
@@ -397,13 +413,13 @@ function marketingPerformance(m) {
       const { soma, media } = somaMeses(meses);
       const maxInv = Math.max(1, ...meses.map((r) => Number(r.investimento || 0)));
       let acumContratos = 0;
-      const cel = (qtd, inv, fmtQtd = num) => `<td class="cell-num"><b class="mm-q">${fmtQtd(qtd)}</b><span class="mm-c">${custoFmt(inv, qtd)}</span></td>`;
+      const cel = (qtd, inv, fmtQtd = num, key = "") => `<td class="cell-num"><b class="mm-q">${fmtQtd(qtd)}</b><span class="mm-c">${custoDe(key, inv, qtd)}</span></td>`;
       const linhas = meses.map((r) => {
         acumContratos += Number(r.contratos || 0);
         return `<tr class="${destaqueA.has(r.period) ? "no-periodo" : destaqueB.has(r.period) ? "mm-b" : ""}">
           <td>${esc(r.label)}</td>
           <td class="cell-num"><div class="mm-inv"><i style="width:${Math.round((r.investimento / maxInv) * 50)}px"></i>${brl0(r.investimento)}</div></td>
-          ${MM_METRICAS.map((m) => cel(Number(r[m.key] || 0), Number(r.investimento || 0))).join("")}
+          ${MM_METRICAS.map((m) => cel(Number(r[m.key] || 0), Number(r.investimento || 0), num, m.key)).join("")}
           <td class="cell-num mm-acum">${num(acumContratos)}</td>
         </tr>`;
       }).join("");
@@ -428,13 +444,13 @@ function marketingPerformance(m) {
                 <tr>
                   <td>Soma dos meses<small>${num(meses.length)} meses</small></td>
                   <td class="cell-num">${brl0(soma.investimento)}</td>
-                  ${MM_METRICAS.map((m) => cel(soma[m.key], soma.investimento)).join("")}
+                  ${MM_METRICAS.map((m) => cel(soma[m.key], soma.investimento, num, m.key)).join("")}
                   <td class="cell-num mm-acum">${num(soma.contratos)}</td>
                 </tr>
                 <tr class="mm-media">
                   <td>Média mensal<small>soma ÷ ${num(meses.length)}</small></td>
                   <td class="cell-num">${brl0(media.investimento)}</td>
-                  ${MM_METRICAS.map((m) => cel(media[m.key], media.investimento, m.key === "impressoes" ? (v) => num(Math.round(v)) : decFmt)).join("")}
+                  ${MM_METRICAS.map((m) => cel(media[m.key], media.investimento, m.key === "impressoes" ? (v) => num(Math.round(v)) : decFmt, m.key)).join("")}
                   <td class="cell-num">—</td>
                 </tr>
               </tfoot>
@@ -452,12 +468,21 @@ function marketingPerformance(m) {
       const acumulados = meses.map((r) => (acum += Number(r.contratos || 0)));
       // Soma e média logo depois da métrica; meses do mais recente para o mais antigo.
       const ordem = meses.map((r, i) => [r, i]).reverse();
+      // % Comp Mês Anterior e % Comp Média (pedido do Gabriel, 13/11/2026). O mês
+      // anterior vem da planilha inteira, mesmo fora do intervalo De/Até.
+      const anteriorDe = (r) => MARKETING_SDR_DATA[MARKETING_SDR_DATA.findIndex((x) => x.period === r.period) - 1];
+      const linhasPct = (key) => [
+        linha("% Comp Mês Anterior", (r) => { const a = anteriorDe(r); return a ? pctComp(r[key], Number(a[key] || 0)) : `<span class="vt-pct flat">—</span>`; }, "", "", "vt-pctrow"),
+        linha("% Comp Média", (r) => pctComp(r[key], media[key]), "", "", "vt-pctrow vt-pctlast"),
+      ];
       const linha = (rotulo, porMes, s, m, extra = "") => `<tr class="${extra}"><th scope="row">${rotulo}</th><td class="cell-num vt-soma">${s}</td><td class="cell-num vt-media">${m}</td>${ordem.map(([r, i]) => `<td class="cell-num ${cls(r)}">${porMes(r, i)}</td>`).join("")}</tr>`;
       const corpo = [
         linha("Investimento", (r) => brl0(r.investimento), brl0(soma.investimento), brl0(media.investimento), "vt-inv"),
+        ...linhasPct("investimento"),
         ...MM_METRICAS.flatMap((mt) => [
           linha(mt.label, (r) => num(r[mt.key]), num(soma[mt.key]), mt.key === "impressoes" ? num(Math.round(media[mt.key])) : decFmt(media[mt.key])),
-          linha(mt.custo, (r) => custoFmt(Number(r.investimento || 0), Number(r[mt.key] || 0)), custoFmt(soma.investimento, soma[mt.key]), custoFmt(soma.investimento, soma[mt.key]), "vt-custo"),
+          linha(mt.custo, (r) => custoDe(mt.key, Number(r.investimento || 0), Number(r[mt.key] || 0)), custoDe(mt.key, soma.investimento, soma[mt.key]), custoDe(mt.key, soma.investimento, soma[mt.key]), "vt-custo"),
+          ...linhasPct(mt.key),
         ]),
         linha("Contratos acumulados", (r, i) => num(acumulados[i]), num(soma.contratos), "—", "vt-acum"),
       ].join("");
