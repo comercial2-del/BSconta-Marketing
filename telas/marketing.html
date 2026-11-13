@@ -58,32 +58,75 @@
     .cmp-note{margin-top:.75rem;font-size:.7rem;color:var(--text-faint)}
     @media (max-width:640px){.cmp-row{grid-template-columns:1fr auto}.cmp-bars{grid-column:1 / -1;grid-row:2}.cmp-bar{grid-template-columns:1fr 80px}}
 
-    /* Botão e tela "Comparativo" — 13/11/2026 */
+    /* Tela "Comparativo" — visual limpo (13/11/2026) */
     .cmp-open-btn{display:inline-flex;align-items:center;gap:.45rem;height:40px;padding:0 1rem;border-radius:10px;border:0;cursor:pointer;font:inherit;font-size:.84rem;font-weight:800;color:#fff;background:linear-gradient(135deg,var(--indigo-500),var(--indigo-700));box-shadow:0 6px 16px rgba(79,70,229,.22)}
     .cmp-open-btn:hover{filter:brightness(1.06)}
     .cmp-open-btn svg{width:16px;height:16px}
     .cmp-back-btn{display:inline-flex;align-items:center;gap:.4rem;height:38px;padding:0 .9rem;border-radius:10px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font:inherit;font-size:.8rem;font-weight:700;color:var(--text-soft)}
     .cmp-back-btn:hover{background:var(--surface-2)}
-    .cmp-controls{display:flex;flex-wrap:wrap;align-items:flex-end;gap:.8rem 1.1rem}
-    .cmp-field{display:flex;flex-direction:column;gap:.3rem}
-    .cmp-field label{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.045em;color:var(--text-faint)}
-    .cmp-quick{display:flex;flex-wrap:wrap;gap:.4rem}
-    .cmp-quick button{height:34px;padding:0 .8rem;border-radius:9px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font:inherit;font-size:.76rem;font-weight:700;color:var(--text-soft)}
-    .cmp-quick button:hover{background:var(--indigo-50);color:var(--indigo-700);border-color:var(--indigo-100)}
-    .mm-tabela tbody tr.mm-b td{background:var(--surface-2)}
-    .mm-tabela tbody tr.mm-b td:first-child{box-shadow:inset 3px 0 0 #94a3b8;font-weight:800}
-
-    /* Mês a mês com soma, saldo acumulado e média — 13/11/2026 */
-    .mm-tabela{width:100%;border-collapse:collapse;min-width:980px}
-    .mm-tabela th,.mm-tabela td{font-size:.76rem;padding:.55rem .7rem;border-bottom:1px solid var(--slate-100);white-space:nowrap}
-    .mm-tabela th{font-size:.64rem;text-transform:uppercase;letter-spacing:.045em;color:var(--text-faint);font-weight:800;text-align:left}
-    .mm-tabela .cell-num{text-align:right}
+    .cv-bar{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.8rem 1.2rem;padding:.9rem 1.1rem}
+    .cv-pick{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem}
+    .cv-sel{display:inline-flex;align-items:center;gap:.5rem;padding:.3rem .35rem .3rem .75rem;border-radius:12px;border:1px solid var(--border);background:var(--surface)}
+    .cv-sel i{width:10px;height:10px;border-radius:50%;flex:none}
+    .cv-sel.a{border-color:var(--indigo-100);background:var(--indigo-50)} .cv-sel.a i{background:var(--indigo-600)}
+    .cv-sel.b i{background:#94a3b8}
+    .cv-sel span{font-size:.66rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint)}
+    .cv-sel select{border:0;background:transparent;font:inherit;font-size:.9rem;font-weight:800;color:var(--text);padding:.25rem .3rem;cursor:pointer;outline:none}
+    .cv-vs{font-size:.72rem;font-weight:800;color:var(--text-faint);text-transform:uppercase;letter-spacing:.06em}
+    .cv-chips{display:flex;flex-wrap:wrap;gap:.35rem}
+    .cv-chips button{height:30px;padding:0 .75rem;border-radius:999px;border:1px solid var(--border);background:var(--surface);cursor:pointer;font:inherit;font-size:.72rem;font-weight:700;color:var(--text-soft);transition:all .12s}
+    .cv-chips button:hover{border-color:var(--indigo-100);color:var(--indigo-700);background:var(--indigo-50)}
+    .cv-chips button.on{background:var(--indigo-600);border-color:var(--indigo-600);color:#fff}
+    .cv-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.9rem}
+    .cv-kpi{padding:1rem 1.1rem;display:flex;flex-direction:column;gap:.25rem}
+    .cv-kpi-label{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint)}
+    .cv-kpi-value{font-size:1.55rem;font-weight:850;letter-spacing:-.02em;color:var(--text);line-height:1.15}
+    .cv-kpi-foot{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-top:.2rem}
+    .cv-kpi-foot small{font-size:.72rem;color:var(--text-faint)}
+    .cv-kpi .cmp-delta{margin-top:0}
+    .cv-grid{display:grid;grid-template-columns:1.35fr 1fr;gap:.9rem;align-items:start}
+    .cv-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:.8rem;flex-wrap:wrap;margin-bottom:.4rem}
+    .cv-card-head h2{margin:0}
+    .cv-card-head p{margin:.2rem 0 0;font-size:.74rem;color:var(--text-faint)}
+    .cv-legend{display:flex;gap:.8rem;font-size:.7rem;font-weight:700;color:var(--text-soft)}
+    .cv-legend span{display:inline-flex;align-items:center;gap:.3rem}
+    .cv-legend i{width:8px;height:8px;border-radius:50%}
+    .cv-rows{display:flex;flex-direction:column}
+    .cv-row{display:grid;grid-template-columns:minmax(110px,1fr) auto auto;gap:.2rem 1rem;align-items:center;padding:.7rem 0;border-top:1px solid var(--slate-100)}
+    .cv-row:first-child{border-top:0}
+    .cv-row-name{font-size:.8rem;font-weight:750;color:var(--text)}
+    .cv-row-vals{text-align:right;white-space:nowrap;font-size:.8rem}
+    .cv-row-vals b{font-weight:800;color:var(--text)}
+    .cv-row-vals em{font-style:normal;color:var(--text-faint);font-size:.72rem;margin-left:.35rem}
+    .cv-row .cmp-delta{margin:0;justify-self:end;min-width:66px;justify-content:center}
+    .cv-track{grid-column:1/-1;display:flex;flex-direction:column;gap:3px}
+    .cv-track span{display:block;height:5px;border-radius:999px;transition:width .5s ease}
+    .cv-track .ta{background:linear-gradient(90deg,var(--indigo-500),var(--indigo-700))}
+    .cv-track .tb{background:#d5dbe5}
+    .cv-mm-tools{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem}
+    .cv-mm-tools .cv-sel{padding:.2rem .3rem .2rem .65rem}
+    .cv-mm-tools .cv-sel select{font-size:.8rem}
+    .mm-tabela{width:100%;border-collapse:separate;border-spacing:0;min-width:900px}
+    .mm-tabela th,.mm-tabela td{font-size:.76rem;padding:.6rem .75rem;white-space:nowrap;border-bottom:1px solid var(--slate-100)}
+    .mm-tabela th{font-size:.62rem;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint);font-weight:800;text-align:left;background:var(--surface-2);border-bottom:1px solid var(--border)}
+    .mm-tabela th:first-child{border-radius:9px 0 0 0} .mm-tabela th:last-child{border-radius:0 9px 0 0}
+    .mm-tabela .cell-num{text-align:right;font-variant-numeric:tabular-nums}
+    .mm-tabela td:first-child{font-weight:700}
+    .mm-tabela tbody tr:hover td{background:#fafafe}
     .mm-tabela tbody tr.no-periodo td{background:var(--indigo-50)}
-    .mm-tabela tbody tr.no-periodo td:first-child{box-shadow:inset 3px 0 0 var(--indigo-600);font-weight:800}
+    .mm-tabela tbody tr.no-periodo td:first-child{box-shadow:inset 3px 0 0 var(--indigo-600);color:var(--indigo-700)}
+    .mm-tabela tbody tr.mm-b td{background:#f6f7f9}
+    .mm-tabela tbody tr.mm-b td:first-child{box-shadow:inset 3px 0 0 #94a3b8}
+    .mm-inv{display:flex;align-items:center;justify-content:flex-end;gap:.55rem}
+    .mm-inv i{display:block;height:6px;border-radius:999px;background:var(--indigo-100);min-width:2px}
     .mm-tabela .mm-acum{color:var(--indigo-700);font-weight:700}
-    .mm-tabela tfoot td{font-weight:800;background:var(--surface-2);border-top:2px solid var(--border)}
+    .mm-tabela tfoot td{font-weight:800;border-bottom:0;background:var(--surface-2)}
+    .mm-tabela tfoot tr:first-child td{border-top:2px solid var(--border)}
     .mm-tabela tfoot tr.mm-media td{font-weight:700;color:var(--text-soft);background:var(--surface)}
     .mm-tabela tfoot small{display:block;font-size:.62rem;font-weight:600;color:var(--text-faint)}
+    .cv-note{margin:.8rem 0 0;font-size:.7rem;color:var(--text-faint)}
+    @media (max-width:1000px){.cv-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.cv-grid{grid-template-columns:1fr}}
+    @media (max-width:520px){.cv-kpis{grid-template-columns:1fr}.cv-bar{padding:.8rem}}
   </style>
 </head>
 <body>
@@ -294,96 +337,7 @@ function marketingPerformance(m) {
       });
     }
 
-    // ---- Mês a mês (13/11/2026, pedido do Gabriel) ----
-    // Todos os meses da planilha, com saldo acumulado do investimento e, no
-    // final, a soma dos meses e a média mensal. Os meses do período
-    // selecionado ficam destacados.
-    function mesAMesHtml(meses, destaqueA = new Set(), destaqueB = new Set(), controles = "") {
-      const campos = ["investimento","impressoes","cliques","leads","qualificados","reunioes","contratos"];
-      const soma = Object.fromEntries(campos.map((k) => [k, 0]));
-      let acumInv = 0, acumLeads = 0, acumContratos = 0;
-      const linhas = meses.map((r) => {
-        for (const k of campos) soma[k] += Number(r[k] || 0);
-        acumInv += Number(r.investimento || 0);
-        acumLeads += Number(r.leads || 0);
-        acumContratos += Number(r.contratos || 0);
-        const cpl = r.leads > 0 ? r.investimento / r.leads : 0;
-        return `<tr class="${destaqueA.has(r.period) ? "no-periodo" : destaqueB.has(r.period) ? "mm-b" : ""}">
-          <td>${esc(r.label)}</td>
-          <td class="cell-num">${brl0(r.investimento)}</td>
-          <td class="cell-num mm-acum">${brl0(acumInv)}</td>
-          <td class="cell-num">${num(r.impressoes)}</td>
-          <td class="cell-num">${num(r.cliques)}</td>
-          <td class="cell-num">${num(r.leads)}</td>
-          <td class="cell-num mm-acum">${num(acumLeads)}</td>
-          <td class="cell-num">${num(r.qualificados)}</td>
-          <td class="cell-num">${num(r.reunioes)}</td>
-          <td class="cell-num">${num(r.contratos)}</td>
-          <td class="cell-num mm-acum">${num(acumContratos)}</td>
-          <td class="cell-num">${brl0(cpl)}</td>
-        </tr>`;
-      }).join("");
-      const qtd = meses.length || 1;
-      const media = Object.fromEntries(campos.map((k) => [k, soma[k] / qtd]));
-      const dec = (v) => Number(v || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
-      const cplTotal = soma.leads > 0 ? soma.investimento / soma.leads : 0;
-      return `
-        <div class="card card-p">
-          <div class="row-between marketing-card-head">
-            <div>
-              <h2>Mês a mês</h2>
-              <p class="card-sub">Meses escolhidos, com o saldo acumulado e, no final, a soma dos meses e a média mensal. Os meses comparados ficam em destaque.</p>
-            </div>
-            <span class="mini-badge">${num(meses.length)} meses</span>
-          </div>
-          ${controles}
-          <div class="table-scroll">
-            <table class="mm-tabela">
-              <thead><tr>
-                <th>Mês</th><th class="cell-num">Investimento</th><th class="cell-num">Invest. acumulado</th>
-                <th class="cell-num">Impressões</th><th class="cell-num">Cliques</th>
-                <th class="cell-num">Leads</th><th class="cell-num">Leads acumulados</th>
-                <th class="cell-num">Qualificados</th><th class="cell-num">Reuniões</th>
-                <th class="cell-num">Contratos</th><th class="cell-num">Contratos acumulados</th><th class="cell-num">CPL</th>
-              </tr></thead>
-              <tbody>${linhas}</tbody>
-              <tfoot>
-                <tr class="mm-soma">
-                  <td>Soma dos meses<small>Saldo acumulado · ${num(meses.length)} meses</small></td>
-                  <td class="cell-num">${brl0(soma.investimento)}</td>
-                  <td class="cell-num mm-acum">${brl0(soma.investimento)}</td>
-                  <td class="cell-num">${num(soma.impressoes)}</td>
-                  <td class="cell-num">${num(soma.cliques)}</td>
-                  <td class="cell-num">${num(soma.leads)}</td>
-                  <td class="cell-num mm-acum">${num(soma.leads)}</td>
-                  <td class="cell-num">${num(soma.qualificados)}</td>
-                  <td class="cell-num">${num(soma.reunioes)}</td>
-                  <td class="cell-num">${num(soma.contratos)}</td>
-                  <td class="cell-num mm-acum">${num(soma.contratos)}</td>
-                  <td class="cell-num">${brl0(cplTotal)}</td>
-                </tr>
-                <tr class="mm-media">
-                  <td>Média mensal<small>Soma ÷ ${num(meses.length)} meses</small></td>
-                  <td class="cell-num">${brl0(media.investimento)}</td>
-                  <td class="cell-num">—</td>
-                  <td class="cell-num">${num(Math.round(media.impressoes))}</td>
-                  <td class="cell-num">${dec(media.cliques)}</td>
-                  <td class="cell-num">${dec(media.leads)}</td>
-                  <td class="cell-num">—</td>
-                  <td class="cell-num">${dec(media.qualificados)}</td>
-                  <td class="cell-num">${dec(media.reunioes)}</td>
-                  <td class="cell-num">${dec(media.contratos)}</td>
-                  <td class="cell-num">—</td>
-                  <td class="cell-num">${brl0(cplTotal)}</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-          <p class="cmp-note">Meses com reuniões e contratos ainda não preenchidos na planilha entram como 0 na soma e na média. CPL da soma/média = investimento total ÷ leads totais.</p>
-        </div>`;
-    }
-
-    // ---- Tela "Comparativo" (13/11/2026, organização da tela) ----
+    // ---- Tela "Comparativo" (13/11/2026) ----
     // A comparação saiu do painel principal e virou um botão "Comparativo".
     // Estado na URL: ?view=comparativo&cmpA=AAAA-MM&cmpB=AAAA-MM&de=AAAA-MM&ate=AAAA-MM
     function mesesDaPlanilha() { return MARKETING_SDR_DATA.map((r) => r.period); }
@@ -394,59 +348,176 @@ function marketingPerformance(m) {
     }
     function mesRange(k) { const d = keyToDate(k); return { start: d, end: new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999) }; }
 
+    // Tabela mês a mês: saldo acumulado do investimento e, no final, soma e média.
+    function mesAMesHtml(meses, destaqueA = new Set(), destaqueB = new Set(), ferramentas = "") {
+      const campos = ["investimento","impressoes","cliques","leads","qualificados","reunioes","contratos"];
+      const soma = Object.fromEntries(campos.map((k) => [k, 0]));
+      const maxInv = Math.max(1, ...meses.map((r) => Number(r.investimento || 0)));
+      let acum = 0;
+      const linhas = meses.map((r) => {
+        for (const k of campos) soma[k] += Number(r[k] || 0);
+        acum += Number(r.investimento || 0);
+        const cpl = r.leads > 0 ? r.investimento / r.leads : 0;
+        return `<tr class="${destaqueA.has(r.period) ? "no-periodo" : destaqueB.has(r.period) ? "mm-b" : ""}">
+          <td>${esc(r.label)}</td>
+          <td class="cell-num"><div class="mm-inv"><i style="width:${Math.round((r.investimento / maxInv) * 60)}px"></i>${brl0(r.investimento)}</div></td>
+          <td class="cell-num mm-acum">${brl0(acum)}</td>
+          <td class="cell-num">${num(r.impressoes)}</td>
+          <td class="cell-num">${num(r.cliques)}</td>
+          <td class="cell-num">${num(r.leads)}</td>
+          <td class="cell-num">${num(r.qualificados)}</td>
+          <td class="cell-num">${num(r.reunioes)}</td>
+          <td class="cell-num">${num(r.contratos)}</td>
+          <td class="cell-num">${brl0(cpl)}</td>
+        </tr>`;
+      }).join("");
+      const qtd = meses.length || 1;
+      const media = (k) => soma[k] / qtd;
+      const dec = (v) => Number(v || 0).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+      const cplTotal = soma.leads > 0 ? soma.investimento / soma.leads : 0;
+      return `
+        <div class="card card-p">
+          <div class="cv-card-head">
+            <div>
+              <h2>Mês a mês</h2>
+              <p>${num(meses.length)} meses · saldo acumulado do investimento, soma e média no final.</p>
+            </div>
+            ${ferramentas}
+          </div>
+          <div class="table-scroll" style="margin-top:.6rem">
+            <table class="mm-tabela">
+              <thead><tr>
+                <th>Mês</th><th class="cell-num">Investimento</th><th class="cell-num">Saldo acumulado</th>
+                <th class="cell-num">Impressões</th><th class="cell-num">Cliques</th><th class="cell-num">Leads</th>
+                <th class="cell-num">Qualificados</th><th class="cell-num">Reuniões</th><th class="cell-num">Contratos</th><th class="cell-num">CPL</th>
+              </tr></thead>
+              <tbody>${linhas}</tbody>
+              <tfoot>
+                <tr>
+                  <td>Soma dos meses<small>${num(meses.length)} meses</small></td>
+                  <td class="cell-num">${brl0(soma.investimento)}</td>
+                  <td class="cell-num mm-acum">${brl0(soma.investimento)}</td>
+                  <td class="cell-num">${num(soma.impressoes)}</td>
+                  <td class="cell-num">${num(soma.cliques)}</td>
+                  <td class="cell-num">${num(soma.leads)}</td>
+                  <td class="cell-num">${num(soma.qualificados)}</td>
+                  <td class="cell-num">${num(soma.reunioes)}</td>
+                  <td class="cell-num">${num(soma.contratos)}</td>
+                  <td class="cell-num">${brl0(cplTotal)}</td>
+                </tr>
+                <tr class="mm-media">
+                  <td>Média mensal<small>soma ÷ ${num(meses.length)}</small></td>
+                  <td class="cell-num">${brl0(media("investimento"))}</td>
+                  <td class="cell-num">—</td>
+                  <td class="cell-num">${num(Math.round(media("impressoes")))}</td>
+                  <td class="cell-num">${dec(media("cliques"))}</td>
+                  <td class="cell-num">${dec(media("leads"))}</td>
+                  <td class="cell-num">${dec(media("qualificados"))}</td>
+                  <td class="cell-num">${dec(media("reunioes"))}</td>
+                  <td class="cell-num">${dec(media("contratos"))}</td>
+                  <td class="cell-num">${brl0(cplTotal)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <p class="cv-note">Meses sem reuniões/contratos preenchidos na planilha entram como 0. CPL da soma e da média = investimento total ÷ leads totais.</p>
+        </div>`;
+    }
+
+    function cvRowsHtml(metricas, A, B) {
+      return metricas.map((mt) => {
+        const a = Number(A[mt.key] || 0), b = Number(B[mt.key] || 0);
+        const max = Math.max(a, b, 1);
+        return `<div class="cv-row">
+          <span class="cv-row-name">${mt.label}</span>
+          <span class="cv-row-vals"><b>${mt.fmt(a)}</b><em>${mt.fmt(b)}</em></span>
+          ${deltaPill(a, b, { lowerIsBetter: mt.lower })}
+          <div class="cv-track"><span class="ta" style="width:${(a / max) * 100}%"></span><span class="tb" style="width:${(b / max) * 100}%"></span></div>
+        </div>`;
+      }).join("");
+    }
+
     function comparativoView(params) {
       const ks = mesesDaPlanilha();
       const ultimo = ks[ks.length - 1];
       const valido = (k) => ks.includes(k);
-      let kA = valido(params.get("cmpA")) ? params.get("cmpA") : ultimo;
-      let kB = valido(params.get("cmpB")) ? params.get("cmpB") : (ks[ks.indexOf(kA) - 1] || ks[0]);
+      const kA = valido(params.get("cmpA")) ? params.get("cmpA") : ultimo;
+      const kB = valido(params.get("cmpB")) ? params.get("cmpB") : (ks[ks.indexOf(kA) - 1] || ks[0]);
       let de = valido(params.get("de")) ? params.get("de") : ks[0];
       let ate = valido(params.get("ate")) ? params.get("ate") : ultimo;
       if (de > ate) [de, ate] = [ate, de];
 
       const A = withCosts(aggregateMarketing(mesRange(kA)));
       const B = withCosts(aggregateMarketing(mesRange(kB)));
+      const lA = rotuloMes(kA), lB = rotuloMes(kB);
       const meses = MARKETING_SDR_DATA.filter((r) => r.period >= de && r.period <= ate);
       const anterior = mesKey(addMonths(keyToDate(kA), -1));
       const anoPassado = mesKey(addMonths(keyToDate(kA), -12));
+      const doze = ks[Math.max(0, ks.length - 12)];
+      const anoIni = ks.find((k) => k.startsWith(ultimo.slice(0, 4)));
 
-      const filtroTabela = `
-          <div class="cmp-controls" style="margin:.4rem 0 .8rem">
-            <div class="cmp-field"><label for="mm-de">De</label><select class="cmp-month" id="mm-de">${opcoesMeses(de)}</select></div>
-            <div class="cmp-field"><label for="mm-ate">Até</label><select class="cmp-month" id="mm-ate">${opcoesMeses(ate)}</select></div>
-            <div class="cmp-quick">
-              <button type="button" data-mm="12">Últimos 12 meses</button>
-              <button type="button" data-mm="ano">Este ano</button>
-              <button type="button" data-mm="tudo">Todos os meses</button>
-            </div>
-          </div>`;
+      const kpi = (label, key, fmt, lower) => `
+        <div class="card cv-kpi">
+          <span class="cv-kpi-label">${label}</span>
+          <span class="cv-kpi-value">${fmt(A[key])}</span>
+          <div class="cv-kpi-foot"><small>${esc(lB)}: ${fmt(B[key])}</small>${deltaPill(A[key], B[key], { lowerIsBetter: lower })}</div>
+        </div>`;
+      const porKey = Object.fromEntries(COMPARE_METRICS.map((m) => [m.key, m]));
+      const funil = ["investimento","impressoes","cliques","leads","qualificados","reunioes","contratos"].map((k) => porKey[k]);
+      const custos = ["cpl","cpq","cpr","cpc"].map((k) => porKey[k]);
+      const legenda = `<div class="cv-legend"><span><i style="background:var(--indigo-600)"></i>${esc(lA)}</span><span><i style="background:#94a3b8"></i>${esc(lB)}</span></div>`;
+      const chip = (attr, val, label, on) => `<button type="button" ${attr}="${val}" class="${on ? "on" : ""}">${label}</button>`;
 
       return `
         <div class="row-between">
           <div>
             <h1 class="page-title">Comparativo</h1>
-            <p class="page-sub">Compare meses da planilha de marketing: valor investido, leads, reuniões, contratos e custos.</p>
+            <p class="page-sub">Compare os meses da planilha de marketing lado a lado.</p>
           </div>
           <div class="header-actions"><button type="button" class="cmp-back-btn" id="cmp-voltar">← Voltar ao painel</button></div>
         </div>
 
-        <div class="card card-p">
-          <div class="cmp-controls">
-            <div class="cmp-field"><label for="cmp-a">Mês</label><select class="cmp-month" id="cmp-a">${opcoesMeses(kA)}</select></div>
-            <span class="cmp-vs" style="padding-bottom:.55rem">comparar com</span>
-            <div class="cmp-field"><label for="cmp-b">Mês de comparação</label><select class="cmp-month" id="cmp-b">${opcoesMeses(kB)}</select></div>
-            <div class="cmp-quick">
-              ${valido(anterior) ? `<button type="button" data-cmpb="${anterior}">Mês anterior (${esc(rotuloMes(anterior))})</button>` : ""}
-              ${valido(anoPassado) ? `<button type="button" data-cmpb="${anoPassado}">Mesmo mês do ano passado (${esc(rotuloMes(anoPassado))})</button>` : ""}
-            </div>
+        <div class="card cv-bar">
+          <div class="cv-pick">
+            <label class="cv-sel a"><i></i><span>Mês</span><select id="cmp-a" aria-label="Mês">${opcoesMeses(kA)}</select></label>
+            <span class="cv-vs">vs</span>
+            <label class="cv-sel b"><i></i><span>Comparar com</span><select id="cmp-b" aria-label="Comparar com">${opcoesMeses(kB)}</select></label>
+          </div>
+          <div class="cv-chips">
+            ${valido(anterior) ? chip("data-cmpb", anterior, "Mês anterior", kB === anterior) : ""}
+            ${valido(anoPassado) ? chip("data-cmpb", anoPassado, "Mesmo mês do ano passado", kB === anoPassado) : ""}
           </div>
         </div>
 
-        ${compareCardHtml(A, B, rotuloMes(kA), rotuloMes(kB), true)}
+        <div class="cv-kpis">
+          ${kpi("Valor investido", "investimento", brl0)}
+          ${kpi("Leads gerados", "leads", num)}
+          ${kpi("Contratos", "contratos", num)}
+          ${kpi("Custo por lead", "cpl", brl0, true)}
+        </div>
 
-        ${mesAMesHtml(meses, new Set([kA]), new Set([kB]), filtroTabela)}`;
+        <div class="cv-grid">
+          <div class="card card-p">
+            <div class="cv-card-head"><div><h2>Funil</h2><p>Do investimento ao contrato.</p></div>${legenda}</div>
+            <div class="cv-rows">${cvRowsHtml(funil, A, B)}</div>
+          </div>
+          <div class="card card-p">
+            <div class="cv-card-head"><div><h2>Custos</h2><p>Verde = custo caiu.</p></div>${legenda}</div>
+            <div class="cv-rows">${cvRowsHtml(custos, A, B)}</div>
+          </div>
+        </div>
+
+        ${mesAMesHtml(meses, new Set([kA]), new Set([kB]), `
+          <div class="cv-mm-tools">
+            <label class="cv-sel"><span>De</span><select id="mm-de" aria-label="De">${opcoesMeses(de)}</select></label>
+            <label class="cv-sel"><span>Até</span><select id="mm-ate" aria-label="Até">${opcoesMeses(ate)}</select></label>
+            <div class="cv-chips">
+              ${chip("data-mm", "12", "12 meses", de === doze && ate === ultimo)}
+              ${chip("data-mm", "ano", "Este ano", de === anoIni && ate === ultimo)}
+              ${chip("data-mm", "tudo", "Tudo", de === ks[0] && ate === ultimo)}
+            </div>
+          </div>`)}`;
     }
-
     function setParams(changes) {
       const p = new URLSearchParams(window.location.search);
       for (const [k, v] of Object.entries(changes)) { if (v == null || v === "") p.delete(k); else p.set(k, v); }
