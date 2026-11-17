@@ -94,7 +94,9 @@
     .ficha-selos .q-badge{animation:none}
     .ficha-fechar{flex:none;border:none;background:transparent;color:var(--text-soft);width:34px;height:34px;border-radius:9px;font-size:1.35rem;line-height:1;cursor:pointer}
     .ficha-fechar:hover{background:var(--surface-2);color:var(--text)}
-    .ficha-corpo{padding:1rem 1.25rem 1.1rem;overflow:auto;display:flex;flex-direction:column;gap:1.05rem}
+    .ficha-corpo{padding:1rem 1.25rem 1.1rem;overflow:auto;display:flex;flex-direction:column;gap:1.05rem;scrollbar-width:none;-ms-overflow-style:none}
+    /* Sem barra de rolagem visível na ficha (17/11/2026): continua rolando com o mouse, o toque e o teclado. */
+    .ficha-corpo::-webkit-scrollbar{display:none;width:0;height:0}
     .ficha-secao h3{margin:0 0 .55rem;font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);font-weight:800;display:flex;justify-content:space-between;gap:.5rem}
     .ficha-secao h3 small{font-size:.62rem;text-transform:none;letter-spacing:0;font-weight:600}
     .ficha-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem .9rem}
