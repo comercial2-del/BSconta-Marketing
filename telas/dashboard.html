@@ -76,6 +76,45 @@
     .q-legenda{display:flex;flex-wrap:wrap;gap:.9rem;padding:0 1.15rem 1rem;margin:-.25rem 0 0;font-size:.7rem;color:var(--text-faint)}
     .q-legenda span{display:inline-flex;align-items:center;gap:.35rem}
     .q-legenda .q-badge{min-width:22px;height:22px;font-size:.66rem;animation:none}
+
+    /* Ficha do cliente (17/11/2026): clicar numa linha da tabela abre um card
+       no meio da tela com os dados básicos do cliente (RD + Receita Federal). */
+    .client-entries-table tbody tr[data-deal]:not([data-deal=""]){cursor:pointer}
+    .client-entries-table tbody tr[data-deal]:focus-visible{outline:2px solid var(--indigo-500);outline-offset:-2px}
+    dialog.ficha-cliente{border:1px solid var(--border);border-radius:18px;padding:0;width:min(94vw,40rem);max-height:min(90vh,52rem);background:var(--surface);color:var(--text);box-shadow:0 24px 60px rgba(15,23,42,.24);overflow:hidden;animation:confirmacao-entra .16s ease-out}
+    dialog.ficha-cliente[open]{display:flex;flex-direction:column}
+    dialog.ficha-cliente::backdrop{background:rgba(15,23,42,.45);backdrop-filter:blur(2px)}
+    @media (prefers-reduced-motion:reduce){dialog.ficha-cliente{animation:none}}
+    .ficha-topo{display:flex;align-items:flex-start;gap:.85rem;padding:1.15rem 1.25rem 1rem;border-bottom:1px solid var(--border);background:linear-gradient(90deg,var(--indigo-50),var(--surface))}
+    .ficha-avatar{flex:none;width:46px;height:46px;border-radius:13px;display:grid;place-items:center;background:var(--indigo-600);color:#fff;font-weight:800;font-size:.95rem}
+    .ficha-titulo{flex:1;min-width:0}
+    .ficha-titulo h2{margin:0;font-size:1.08rem;line-height:1.25;overflow-wrap:anywhere}
+    .ficha-titulo p{margin:.15rem 0 0;font-size:.78rem;color:var(--text-soft)}
+    .ficha-selos{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.55rem}
+    .ficha-selos .q-badge{animation:none}
+    .ficha-fechar{flex:none;border:none;background:transparent;color:var(--text-soft);width:34px;height:34px;border-radius:9px;font-size:1.35rem;line-height:1;cursor:pointer}
+    .ficha-fechar:hover{background:var(--surface-2);color:var(--text)}
+    .ficha-corpo{padding:1rem 1.25rem 1.1rem;overflow:auto;display:flex;flex-direction:column;gap:1.05rem}
+    .ficha-secao h3{margin:0 0 .55rem;font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--text-faint);font-weight:800;display:flex;justify-content:space-between;gap:.5rem}
+    .ficha-secao h3 small{font-size:.62rem;text-transform:none;letter-spacing:0;font-weight:600}
+    .ficha-grade{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem .9rem}
+    .ficha-item{min-width:0;padding:.5rem .65rem;border:1px solid var(--surface-2);background:var(--surface-2);border-radius:10px}
+    .ficha-item.largo{grid-column:1/-1}
+    .ficha-rotulo{font-size:.64rem;color:var(--text-faint);font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+    .ficha-valor{font-size:.84rem;font-weight:600;margin-top:.1rem;overflow-wrap:anywhere;display:flex;align-items:center;gap:.4rem;flex-wrap:wrap}
+    .ficha-valor.vazio{color:var(--text-faint);font-weight:500;font-style:italic}
+    .ficha-valor a{color:var(--indigo-600);text-decoration:none}
+    .ficha-valor a:hover{text-decoration:underline}
+    .ficha-copiar{border:1px solid var(--border);background:var(--surface);border-radius:7px;padding:.12rem .45rem;font-size:.66rem;font-weight:700;color:var(--text-soft);cursor:pointer}
+    .ficha-copiar:hover{color:var(--indigo-600);border-color:var(--indigo-100)}
+    .ficha-aviso{font-size:.76rem;color:var(--text-soft);padding:.6rem .7rem;border-radius:10px;background:var(--surface-2)}
+    .ficha-situacao-ativa{color:var(--emerald-700)}
+    .ficha-situacao-alerta{color:var(--red-600)}
+    .ficha-rodape{display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.8rem 1.25rem;border-top:1px solid var(--border);background:var(--surface-2)}
+    .ficha-rodape a{font-size:.8rem;font-weight:700;color:var(--indigo-600);text-decoration:none}
+    .ficha-rodape a:hover{text-decoration:underline}
+    .ficha-rodape button{border:1px solid var(--border);background:var(--surface);border-radius:9px;padding:.45rem .95rem;font-weight:700;font-size:.82rem;cursor:pointer;color:var(--text)}
+    @media (max-width:560px){.ficha-grade{grid-template-columns:1fr}.ficha-topo,.ficha-corpo,.ficha-rodape{padding-left:1rem;padding-right:1rem}}
   </style>
 </head>
 <body>
@@ -251,6 +290,7 @@
     // Constituição ou Troca e Qualidade do Cliente (A/B/C). Vêm de
     // deals.rd_details.campos, buscados só para as vendas da tabela.
     const camposRd = new Map();
+    const detalhesRd = new Map(); // dealId → rd_details completo + rd_deal_id
     let camposRdBusca = null;
     async function carregarCamposRd(ids) {
       if (camposRdBusca) await camposRdBusca.catch(() => {}); // uma busca por vez
@@ -260,11 +300,15 @@
         const lotes = [];
         for (let i = 0; i < faltam.length; i += 100) lotes.push(faltam.slice(i, i + 100));
         // Lotes em paralelo: uma espera só, em vez de uma por lote.
-        const respostas = await Promise.all(lotes.map((lote) => sb.from("deals").select("id, rd_details").in("id", lote)));
+        const respostas = await Promise.all(lotes.map((lote) => sb.from("deals").select("id, rd_deal_id, rd_details").in("id", lote)));
         respostas.forEach(({ data, error }, i) => {
           if (error) { console.warn("Campos do RD indisponíveis:", error.message); return; }
           for (const id of lotes[i]) camposRd.set(id, []);
-          for (const r of data || []) camposRd.set(r.id, (r.rd_details && r.rd_details.campos) || []);
+          for (const r of data || []) {
+            camposRd.set(r.id, (r.rd_details && r.rd_details.campos) || []);
+            // Quadro inteiro (contatos, CNPJ, fonte...) para a ficha do cliente.
+            detalhesRd.set(r.id, { ...(r.rd_details || {}), rd_deal_id: r.rd_deal_id });
+          }
         });
       })();
       try { await camposRdBusca; } finally { camposRdBusca = null; }
@@ -293,11 +337,242 @@
     // de rolagem dentro da tabela, e desenha mais rápido.
     let clientLimite = 20;
     let clientChave = "";
+    let clientLinhasAtuais = [];
+
+    // -----------------------------------------------------------------------
+    // Ficha do cliente (17/11/2026): clicar numa linha da tabela "Clientes das
+    // vendas realizadas" abre um card no meio da tela com os dados básicos:
+    // empresa, CNPJ, contato (telefone/e-mail), a venda e, quando há CNPJ, a
+    // situação na Receita Federal. Tudo vem de deals.rd_details (o mesmo quadro
+    // "Negociação" do RD que a tela Onboarding usa) — nada novo no banco.
+    // -----------------------------------------------------------------------
+    const soDigitosFicha = (v) => String(v || "").replace(/\D/g, "");
+    function formatarCnpjFicha(v) {
+      const d = soDigitosFicha(v);
+      return d.length === 14 ? d.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5") : String(v || "");
+    }
+    function formatarTelefoneFicha(v) {
+      let d = soDigitosFicha(v);
+      if (d.length > 11 && d.startsWith("55")) d = d.slice(2);
+      if (d.length === 11) return d.replace(/^(\d{2})(\d{5})(\d{4})$/, "($1) $2-$3");
+      if (d.length === 10) return d.replace(/^(\d{2})(\d{4})(\d{4})$/, "($1) $2-$3");
+      return String(v || "").trim();
+    }
+    function campoRdFicha(det, ...rotulos) {
+      for (const rotulo of rotulos) {
+        const v = qualifCampo(det && det.campos, rotulo);
+        if (v) return v;
+      }
+      return "";
+    }
+    const dataIsoBrFicha = (v) => { const m = String(v || "").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}/${m[2]}/${m[1]}` : (v || ""); };
+
+    // Consulta pública do CNPJ (BrasilAPI — a mesma da tela Onboarding). Uma por
+    // CNPJ por sessão; erro não fica guardado, para tentar de novo depois.
+    const cnpjFichaCache = new Map();
+    function consultarCnpjFicha(d) {
+      if (cnpjFichaCache.has(d)) return cnpjFichaCache.get(d);
+      const p = fetch(`https://brasilapi.com.br/api/cnpj/v1/${d}`)
+        .then(async (r) => {
+          if (r.status === 404) return { erro: "CNPJ não encontrado na Receita Federal. Confira o número no RD." };
+          if (!r.ok) throw new Error(`HTTP ${r.status}`);
+          const j = await r.json();
+          return {
+            razao: j.razao_social || "",
+            fantasia: j.nome_fantasia || "",
+            situacao: j.descricao_situacao_cadastral || "",
+            abertura: dataIsoBrFicha(j.data_inicio_atividade),
+            porte: j.porte || "",
+            natureza: j.natureza_juridica || "",
+            cnae: [j.cnae_fiscal, j.cnae_fiscal_descricao].filter(Boolean).join(" — "),
+            cidadeUf: [j.municipio, j.uf].filter(Boolean).join("/"),
+            regime: j.opcao_pelo_mei ? "MEI" : j.opcao_pelo_simples ? "Simples Nacional" : j.opcao_pelo_simples === false ? "Não optante pelo Simples" : "",
+            socios: (j.qsa || []).length,
+          };
+        })
+        .catch(() => { cnpjFichaCache.delete(d); return { erro: "Não foi possível consultar a Receita agora. Tente abrir a ficha de novo em instantes." }; });
+      cnpjFichaCache.set(d, p);
+      return p;
+    }
+
+    function fichaItem(rotulo, valorHtml, { largo = false } = {}) {
+      const vazio = valorHtml == null || valorHtml === "";
+      return `<div class="ficha-item${largo ? " largo" : ""}"><div class="ficha-rotulo">${esc(rotulo)}</div><div class="ficha-valor${vazio ? " vazio" : ""}">${vazio ? "Não informado" : valorHtml}</div></div>`;
+    }
+
+    function fichaDialog() {
+      let dlg = document.getElementById("ficha-cliente");
+      if (dlg) return dlg;
+      dlg = document.createElement("dialog");
+      dlg.id = "ficha-cliente";
+      dlg.className = "ficha-cliente";
+      dlg.setAttribute("aria-labelledby", "ficha-cliente-titulo");
+      document.body.appendChild(dlg);
+      // Fecha clicando fora do card (no fundo escurecido) ou no "×"/"Fechar".
+      dlg.addEventListener("click", (e) => {
+        if (e.target === dlg || e.target.closest("[data-ficha-fechar]")) { dlg.close(); return; }
+        const copiar = e.target.closest("[data-copiar]");
+        if (copiar) {
+          navigator.clipboard?.writeText(copiar.dataset.copiar).then(() => {
+            copiar.textContent = "Copiado!";
+            setTimeout(() => { copiar.textContent = "Copiar"; }, 1500);
+          }).catch(() => {});
+        }
+      });
+      return dlg;
+    }
+
+    async function abrirFichaCliente(dealId) {
+      const linhas = clientLinhasAtuais.filter((r) => r.dealId === dealId);
+      if (!linhas.length) return;
+      const dlg = fichaDialog();
+      dlg.dataset.deal = dealId;
+      // Os campos do RD já vêm junto com a tabela; se ainda não chegaram, busca agora.
+      if (!detalhesRd.has(dealId)) {
+        desenharFicha(dlg, linhas, null, true);
+        if (!dlg.open) dlg.showModal();
+        await carregarCamposRd([dealId]).catch(() => {});
+        if (dlg.dataset.deal !== dealId || !dlg.open) return;
+      }
+      desenharFicha(dlg, linhas, detalhesRd.get(dealId) || {}, false);
+      if (!dlg.open) dlg.showModal();
+    }
+
+    function desenharFicha(dlg, linhas, det, carregando) {
+      const r = linhas[0];
+      const q = qualifDoDeal(det && det.campos);
+      const contatos = (det && det.contatos) || [];
+      const contato = contatos[0] || {};
+      const empresa = campoRdFicha(det, "Nome da empresa") || (r.companyName && r.companyName !== "—" ? r.companyName : "");
+      const titulo = empresa || r.clientName;
+      const cnpjBruto = campoRdFicha(det, "CNPJ");
+      const cnpjDig = soDigitosFicha(cnpjBruto);
+      const cnpj = cnpjBruto ? formatarCnpjFicha(cnpjBruto) : "";
+      const servico = campoRdFicha(det, "Serviço contratado", "Serviço contratado (antigo)");
+      const telefones = [...new Set(contatos.flatMap((c) => c.telefones || []).map(formatarTelefoneFicha).filter(Boolean))];
+      const emails = [...new Set([
+        ...contatos.flatMap((c) => c.emails || []),
+        ...((det && det.campos) || []).filter((c) => /e-?mail/i.test(c.label || "")).map((c) => c.value),
+      ].map((e) => String(e || "").trim().toLowerCase()).filter((e) => e.includes("@")))];
+      const total = linhas.reduce((s, l) => s + (Number(l.value) || 0), 0);
+      const produtos = linhas.map((l) => `${l.produto ? esc(l.produto) + (l.quantidade > 1 ? ` × ${l.quantidade}` : "") + " · " : ""}${tipoVendaHtml(l)} <span>${brl(l.value)}</span>`).join("<br>");
+      const origem = [det && det.fonte, det && det.campanha].filter(Boolean).join(" · ") || (r.campaign !== "Não informado" ? r.campaign : "");
+      const nivel = q.qualidade ? QUALIF_NIVEIS[q.qualidade] : null;
+
+      const selos = [
+        clientStatusBadge(r.status),
+        nivel ? `<span class="q-badge ${nivel.classe}" title="${esc(nivel.desc)}">Qualidade ${q.qualidade}</span>` : "",
+        q.entrada ? `<span class="q-badge ${q.entrada === "Constituição" ? "q-const" : "q-troca"}">${esc(q.entrada)}</span>` : "",
+        q.contaAzul ? `<span class="q-badge ${q.contaAzul === "Sim" ? "q-sim" : "q-nao"}">Conta Azul: ${esc(q.contaAzul)}</span>` : "",
+      ].join("");
+
+      const cnpjHtml = cnpj
+        ? `${esc(cnpj)} <button type="button" class="ficha-copiar" data-copiar="${esc(cnpjDig || cnpj)}">Copiar</button>`
+        : (carregando ? "Carregando…" : "");
+      const telHtml = telefones.map((t) => {
+        const d = soDigitosFicha(t);
+        return d.length >= 10 ? `<a href="https://wa.me/55${d}" target="_blank" rel="noopener" title="Abrir no WhatsApp">${esc(t)}</a>` : esc(t);
+      }).join(", ");
+      const emailHtml = emails.map((e) => `<a href="mailto:${esc(e)}">${esc(e)}</a>`).join(", ");
+
+      let receitaHtml;
+      if (carregando) receitaHtml = `<div class="ficha-aviso">Carregando dados do RD Station…</div>`;
+      else if (cnpjDig.length === 14) receitaHtml = `<div class="ficha-aviso" id="ficha-receita">Consultando o CNPJ na Receita Federal…</div>`;
+      else if (cnpj) receitaHtml = `<div class="ficha-aviso">O CNPJ informado no RD (${esc(cnpj)}) não tem 14 dígitos. Confira o cadastro.</div>`;
+      else if (q.entrada === "Constituição") receitaHtml = `<div class="ficha-aviso">Empresa em constituição — o CNPJ ainda não existe ou não foi informado no RD.</div>`;
+      else receitaHtml = `<div class="ficha-aviso">CNPJ não informado no RD Station. Preencha o campo "CNPJ" na negociação para ver os dados da Receita aqui.</div>`;
+
+      const rdLink = det && det.rd_deal_id
+        ? `<a href="https://crm.rdstation.com/app/deals/${encodeURIComponent(det.rd_deal_id)}" target="_blank" rel="noopener">Abrir negociação no RD Station ↗</a>`
+        : `<span></span>`;
+
+      dlg.innerHTML = `
+        <div class="ficha-topo">
+          <div class="ficha-avatar" aria-hidden="true">${esc(initials(titulo))}</div>
+          <div class="ficha-titulo">
+            <h2 id="ficha-cliente-titulo">${esc(titulo)}</h2>
+            <p>${empresa && r.clientName !== empresa ? `Contato: ${esc(r.clientName)} · ` : ""}Vendedor: ${esc(r.sellerName || "—")}</p>
+            <div class="ficha-selos">${selos}</div>
+          </div>
+          <button type="button" class="ficha-fechar" data-ficha-fechar aria-label="Fechar">×</button>
+        </div>
+        <div class="ficha-corpo">
+          <section class="ficha-secao">
+            <h3>Dados do cliente</h3>
+            <div class="ficha-grade">
+              ${fichaItem("Nome / contato", esc(contato.nome || r.clientName))}
+              ${fichaItem("Empresa", esc(empresa))}
+              ${fichaItem("CNPJ", cnpjHtml)}
+              ${fichaItem("Cargo", esc(contato.cargo || ""))}
+              ${fichaItem("Telefone", carregando ? "Carregando…" : telHtml)}
+              ${fichaItem("E-mail", carregando ? "Carregando…" : emailHtml)}
+            </div>
+          </section>
+          <section class="ficha-secao">
+            <h3>Venda</h3>
+            <div class="ficha-grade">
+              ${fichaItem("Data da venda", r.enteredAt ? new Date(r.enteredAt).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }) : "")}
+              ${fichaItem("Valor total", brl(total))}
+              ${fichaItem("Serviço contratado", esc(servico))}
+              ${fichaItem("Campanha / origem", esc(origem))}
+              ${fichaItem(linhas.length > 1 ? "Produtos" : "Produto / cobrança", produtos, { largo: true })}
+              ${nivel ? fichaItem("Qualidade do cliente", `<b>${q.qualidade}</b> — ${esc(nivel.desc)}`, { largo: true }) : ""}
+            </div>
+          </section>
+          <section class="ficha-secao">
+            <h3>Receita Federal ${cnpjDig.length === 14 && !carregando ? "<small>fonte: BrasilAPI</small>" : ""}</h3>
+            ${receitaHtml}
+          </section>
+        </div>
+        <div class="ficha-rodape">${rdLink}<button type="button" data-ficha-fechar>Fechar</button></div>
+      `;
+
+      if (!carregando && cnpjDig.length === 14) {
+        const dealId = dlg.dataset.deal;
+        consultarCnpjFicha(cnpjDig).then((rf) => {
+          const box = dlg.querySelector("#ficha-receita");
+          if (!box || dlg.dataset.deal !== dealId) return;
+          if (rf.erro) { box.textContent = rf.erro; return; }
+          const ativa = /ativa/i.test(rf.situacao);
+          const div = document.createElement("div");
+          div.className = "ficha-grade";
+          div.innerHTML = [
+            fichaItem("Razão social", esc(rf.razao), { largo: true }),
+            fichaItem("Nome fantasia", esc(rf.fantasia)),
+            fichaItem("Situação cadastral", rf.situacao ? `<span class="${ativa ? "ficha-situacao-ativa" : "ficha-situacao-alerta"}">${esc(rf.situacao)}</span>` : ""),
+            fichaItem("Abertura", esc(rf.abertura)),
+            fichaItem("Cidade / UF", esc(rf.cidadeUf)),
+            fichaItem("Porte", esc(rf.porte)),
+            fichaItem("Regime", esc(rf.regime)),
+            fichaItem("Natureza jurídica", esc(rf.natureza)),
+            fichaItem("Sócios", rf.socios ? String(rf.socios) : ""),
+            fichaItem("Atividade principal (CNAE)", esc(rf.cnae), { largo: true }),
+          ].join("");
+          box.replaceWith(div);
+        });
+      }
+    }
+
+    // Um único ouvinte na página: a tabela é redesenhada a cada filtro.
+    function linhaDaFicha(e) {
+      const tr = e.target.closest("#client-entries tr[data-deal]");
+      return tr && tr.dataset.deal ? tr : null;
+    }
+    document.addEventListener("click", (e) => {
+      const tr = linhaDaFicha(e);
+      if (tr && !e.target.closest("a, button")) abrirFichaCliente(tr.dataset.deal);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      const tr = linhaDaFicha(e);
+      if (tr && e.target === tr) { e.preventDefault(); abrirFichaCliente(tr.dataset.deal); }
+    });
     function renderClientEntries(store, range, sellerId) {
       const rows = getClientEntries(store, { range, sellerId });
       const chave = `${range.start?.getTime?.()}|${range.end?.getTime?.()}|${sellerId || ""}`;
       if (chave !== clientChave) { clientChave = chave; clientLimite = 20; }
       const visiveis = rows.slice(0, clientLimite);
+      clientLinhasAtuais = rows;
       const faltamCampos = visiveis.some((r) => r.dealId && !camposRd.has(r.dealId));
       // Um cliente com produto mensal + único vira 2 linhas (uma por produto),
       // mas continua sendo UM cliente / UMA venda.
@@ -319,7 +594,7 @@
             </thead>
             <tbody>
               ${rows.length ? visiveis.map((r) => `
-                <tr data-deal="${esc(r.dealId || "")}">
+                <tr data-deal="${esc(r.dealId || "")}"${r.dealId ? ` tabindex="0" title="Ver ficha de ${esc(r.clientName)}" aria-label="Abrir ficha de ${esc(r.clientName)}"` : ""}>
                   <td><div class="client-cell"><span class="client-avatar">${esc(initials(r.clientName))}</span><div><div class="client-primary" title="${esc(r.clientName)}">${esc(r.clientName)}</div><div class="client-secondary">${esc(r.companyName)}</div></div></div></td>
                   <td class="col-data">${formatDateTimePt(r.enteredAt)}</td>
                   <td class="client-value"><div>${brl(r.value)}</div><div class="client-status-mini">${clientStatusBadge(r.status)}</div></td>
