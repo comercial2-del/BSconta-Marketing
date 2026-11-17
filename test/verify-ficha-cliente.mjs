@@ -133,10 +133,12 @@ await contexto.route("**/cdn.jsdelivr.net/**", (rota) => {
   }
   return rota.fulfill({ contentType: "text/javascript", body: "/* substituido pelo teste */" });
 });
-// Receita Federal (BrasilAPI) de mentira.
+// Receita Federal (BrasilAPI) de mentira. A 1ª consulta falha de propósito
+// (limite de acessos, como acontece de verdade): a ficha tem que tentar de novo.
 let consultasCnpj = 0;
 await contexto.route("**/brasilapi.com.br/**", (rota) => {
   consultasCnpj++;
+  if (consultasCnpj === 1) return rota.fulfill({ status: 429, body: "muitas consultas" });
   return rota.fulfill({ contentType: "application/json", body: JSON.stringify({
     razao_social: "EMPRESA TESTE LTDA", nome_fantasia: "TESTE", descricao_situacao_cadastral: "ATIVA",
     data_inicio_atividade: "2019-03-05", porte: "MICRO EMPRESA", natureza_juridica: "Sociedade Empresária Limitada",
@@ -212,7 +214,7 @@ const linhaCnpj = await pagina.evaluate(() => {
 ok(!!linhaCnpj, "há linha de cliente com CNPJ na tabela");
 await pagina.click(`.client-entries-table tr[data-deal="${linhaCnpj}"] .client-primary`);
 await pagina.waitForSelector("dialog.ficha-cliente[open]", { timeout: 5000 }).catch(() => {});
-await pagina.waitForFunction(() => !document.querySelector("#ficha-receita"), { timeout: 5000 }).catch(() => {});
+await pagina.waitForFunction(() => !document.querySelector("#ficha-receita"), { timeout: 8000 }).catch(() => {});
 await pagina.waitForTimeout(300); // fim da animação de entrada
 const ficha = await pagina.evaluate(() => {
   const d = document.querySelector("dialog.ficha-cliente");
@@ -229,7 +231,7 @@ if (ficha) {
   ok(/contato\d+@exemplo\.com\.br/.test(ficha.texto), "e-mail do contato");
   ok(ficha.texto.includes("Troca de Contabilidade"), "serviço contratado");
   ok(ficha.texto.includes("Facebook Ads"), "campanha / origem");
-  ok(ficha.texto.includes("EMPRESA TESTE LTDA") && ficha.texto.includes("ATIVA") && ficha.texto.includes("Simples Nacional"), "dados da Receita Federal");
+  ok(ficha.texto.includes("EMPRESA TESTE LTDA") && ficha.texto.includes("ATIVA") && ficha.texto.includes("Simples Nacional"), "dados da Receita Federal (tentou de novo após a falha)");
   ok(ficha.rd, "link para a negociação no RD Station");
 }
 if (process.env.SHOT) await pagina.screenshot({ path: process.env.SHOT });
@@ -262,6 +264,37 @@ await pagina.waitForSelector("dialog.ficha-cliente[open]", { timeout: 5000 }).ca
 const larg = await pagina.evaluate(() => { const r = document.querySelector("dialog.ficha-cliente").getBoundingClientRect(); return { l: r.left, r: r.right, w: innerWidth }; });
 ok(larg.l >= 0 && larg.r <= larg.w, "no celular a ficha cabe na largura da tela");
 if (process.env.SHOT_MOBILE) await pagina.screenshot({ path: process.env.SHOT_MOBILE });
+
+
+// 6) Tela Vendas: a mesma ficha na tabela "Vendas do período".
+const vendas = await contexto.newPage();
+vendas.on("pageerror", (e) => erros.push("vendas: " + String(e.message)));
+vendas.on("console", (m) => { if (m.type() === "error") erros.push("vendas: " + m.text()); });
+await vendas.setViewportSize({ width: 1366, height: 900 });
+await vendas.goto(`${BASE}/telas/vendas.html?period=this_year`, { waitUntil: "load" });
+await vendas.waitForSelector(".vendas-linhas tr[data-deal]", { timeout: 15000 }).catch(() => {});
+const nLinhasVendas = await vendas.evaluate(() => document.querySelectorAll(".vendas-linhas tr[data-deal][tabindex]").length);
+ok(nLinhasVendas > 0, `Vendas: linhas clicáveis (${nLinhasVendas})`);
+const dealVendas = await vendas.evaluate(() => {
+  const tr = [...document.querySelectorAll(".vendas-linhas tr[data-deal]")].find((t) => Number(t.dataset.deal.slice(-12)) % 2 === 0);
+  return tr ? tr.dataset.deal : null;
+});
+await vendas.click(`.vendas-linhas tr[data-deal="${dealVendas}"] td:nth-child(2)`);
+await vendas.waitForSelector("dialog.ficha-cliente[open]", { timeout: 5000 }).catch(() => {});
+await vendas.waitForFunction(() => !document.querySelector("#ficha-receita"), { timeout: 8000 }).catch(() => {});
+const fichaVendas = await vendas.evaluate(() => document.querySelector("dialog.ficha-cliente[open]")?.innerText || "");
+ok(fichaVendas.includes("11.222.333/0001-81") && fichaVendas.includes("(61) 99876-5432") && fichaVendas.includes("EMPRESA TESTE LTDA"), "Vendas: ficha abre com CNPJ, telefone e Receita");
+if (process.env.SHOT_VENDAS) await vendas.screenshot({ path: process.env.SHOT_VENDAS });
+await vendas.keyboard.press("Escape");
+
+// 7) Vendas: lista de pessoas de "Campanhas mais vendidas" também abre.
+await vendas.click(".camp-row[data-canal]:not([disabled])");
+await vendas.waitForSelector(".camp-pessoas tr[data-deal]", { timeout: 5000 }).catch(() => {});
+await vendas.click(".camp-pessoas tbody tr[data-deal] td:nth-child(2)");
+await vendas.waitForSelector("dialog.ficha-cliente[open]", { timeout: 5000 }).catch(() => {});
+ok(await vendas.evaluate(() => !!document.querySelector("dialog.ficha-cliente[open]")), "Vendas: pessoa de uma campanha abre a ficha");
+const barra = await vendas.evaluate(() => { const c = document.querySelector(".ficha-corpo"); return c ? c.offsetWidth - c.clientWidth : -1; });
+ok(barra === 0, "ficha sem barra de rolagem visível");
 
 const semErro = erros.filter((e) => !/favicon|Failed to load resource/i.test(e));
 ok(semErro.length === 0, `sem erros de JavaScript ${semErro.slice(0, 2).join(" | ")}`);
