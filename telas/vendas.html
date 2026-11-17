@@ -57,9 +57,17 @@
   <script src="../js/charts.js?v=20260914"></script>
   <script src="../js/sync.js?v=20260914"></script>
   <script src="../js/origens.js?v=20260928"></script>
+  <script src="../js/qualificacao.js?v=20261104"></script>
+  <script src="../js/fichaCliente.js?v=20261117"></script>
   <script>
     let store = null;
     let canalAberto = ""; // canal clicado em "Campanhas mais vendidas" (mostra as pessoas)
+
+    // Ficha do cliente (17/11/2026): clicar numa venda — na tabela "Vendas do
+    // período" ou na lista de pessoas de "Campanhas mais vendidas" — abre o card
+    // com os dados básicos do cliente (js/fichaCliente.js, o mesmo da Visão geral).
+    let linhasFicha = [];
+    FichaCliente.ligar(".vendas-linhas tr[data-deal], .camp-pessoas tr[data-deal]", (dealId) => linhasFicha.filter((l) => l.dealId === dealId));
 
     function render() {
       const { period } = currentPeriodFromUrl("this_month");
@@ -84,6 +92,12 @@
       // o seu tipo de cobrança. Contagens e totais continuam por venda.
       const produtosDoCard = produtosPorNegociacao(store);
       const linhasTabela = saleRows.flatMap((s) => linhasDaVenda(s, produtosDoCard.get(s.deal_id)).map((l) => ({ ...s, ...l })));
+      linhasFicha = linhasTabela.map((l) => ({
+        ...l,
+        dealId: l.deal_id,
+        enteredAt: l.closed_at,
+        campaign: (dealById.get(l.deal_id) || {}).origin || "",
+      }));
       const tipoHtml = (l) => l.tipo === "RECORRENTE"
         ? `<span class="tipo-venda tipo-venda-recorrente">Recorrente${l.recorrencia && l.recorrencia !== "Recorrente" ? ` · ${esc(l.recorrencia)}` : ""}</span>`
         : `<span class="tipo-venda tipo-venda-unico">Único</span>`;
@@ -183,7 +197,7 @@
                       <table>
                         <thead><tr><th>Data</th><th>Cliente</th><th>Campanha</th><th>Vendedor</th><th class="cell-num">Valor</th></tr></thead>
                         <tbody>
-                          ${c.pessoas.map((p) => `<tr>
+                          ${c.pessoas.map((p) => `<tr${FichaCliente.attrsLinha(p.deal_id, p.clientName)}>
                             <td>${p.closed_at.toLocaleDateString("pt-BR")}</td>
                             <td>${esc(p.clientName) || "—"}${p.companyName ? `<small>${esc(p.companyName)}</small>` : ""}</td>
                             <td>${esc(p.campanha)}${p.fonte ? `<small>${esc(p.fonte)}</small>` : ""}</td>
@@ -214,7 +228,7 @@
               <tbody>
                 ${linhasTabela
                   .map(
-                    (s) => `<tr>
+                    (s) => `<tr${FichaCliente.attrsLinha(s.deal_id, s.clientName)}>
                       <td>${s.closed_at.toLocaleDateString("pt-BR")}</td>
                       <td>${esc(s.clientName) || "—"}</td>
                       <td>${esc(s.companyName) || "—"}</td>
