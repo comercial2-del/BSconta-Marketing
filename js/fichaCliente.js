@@ -108,6 +108,7 @@ const FichaCliente = (() => {
   // --- Visual --------------------------------------------------------------
   const CSS = `
     [data-ficha-linha]{cursor:pointer}
+    [data-ficha-linha]:hover > td{background:#f3f4ff}
     [data-ficha-linha]:focus-visible{outline:2px solid var(--indigo-500);outline-offset:-2px}
     dialog.ficha-cliente{border:1px solid var(--border);border-radius:18px;padding:0;width:min(94vw,40rem);max-height:min(90vh,52rem);background:var(--surface);color:var(--text);box-shadow:0 24px 60px rgba(15,23,42,.24);overflow:hidden;animation:ficha-entra .16s ease-out}
     dialog.ficha-cliente[open]{display:flex;flex-direction:column}
@@ -284,7 +285,7 @@ const FichaCliente = (() => {
             ${nivel ? item("Qualidade do cliente", `<b>${q.qualidade}</b> — ${esc(nivel.desc)}`, { largo: true }) : ""}
           </div>
         </section>
-        <section class="ficha-secao">
+        <section class="ficha-secao" id="ficha-receita-secao">
           <h3>Receita Federal ${cnpjDig.length === 14 && !carregando ? "<small>fonte: BrasilAPI</small>" : ""}</h3>
           ${receitaHtml}
         </section>
@@ -297,7 +298,9 @@ const FichaCliente = (() => {
       consultarCnpj(cnpjDig).then((rf) => {
         const box = dlg.querySelector("#ficha-receita");
         if (!box || dlg.dataset.deal !== dealId) return;
-        if (rf.erro) { box.textContent = rf.erro; return; }
+        // Consulta falhou (17/11/2026, pedido do usuário): a seção da Receita
+        // some da ficha em vez de mostrar o aviso de erro.
+        if (rf.erro) { dlg.querySelector("#ficha-receita-secao")?.remove(); return; }
         const ativa = /ativa/i.test(rf.situacao);
         const div = document.createElement("div");
         div.className = "ficha-grade";
